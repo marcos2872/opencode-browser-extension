@@ -79,6 +79,65 @@ a {
   background: var(--accent-soft);
 }
 
+/* Scrollbars no estilo da extensão */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 68%, transparent);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: color-mix(in srgb, var(--accent) 60%, var(--muted));
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Barras internas (saídas de ferramenta, código, menus) mais finas */
+.tool-output::-webkit-scrollbar,
+.tool-args::-webkit-scrollbar,
+.reasoning div::-webkit-scrollbar,
+.command-menu::-webkit-scrollbar,
+.permission-preview::-webkit-scrollbar,
+.code-line::-webkit-scrollbar,
+.msg-body pre::-webkit-scrollbar,
+.msg-body table::-webkit-scrollbar,
+.textarea::-webkit-scrollbar,
+.composer textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tool-output::-webkit-scrollbar-thumb,
+.tool-args::-webkit-scrollbar-thumb,
+.reasoning div::-webkit-scrollbar-thumb,
+.command-menu::-webkit-scrollbar-thumb,
+.permission-preview::-webkit-scrollbar-thumb,
+.code-line::-webkit-scrollbar-thumb,
+.msg-body pre::-webkit-scrollbar-thumb,
+.msg-body table::-webkit-scrollbar-thumb,
+.textarea::-webkit-scrollbar-thumb,
+.composer textarea::-webkit-scrollbar-thumb {
+  border-width: 2px;
+}
+
 /* Layout */
 .app {
   display: flex;
