@@ -27,6 +27,14 @@ export interface ModelInfo {
   cost?: unknown
 }
 
+export interface AgentInfo {
+  id: string
+  name?: string
+  description?: string
+  mode?: string
+  hidden?: boolean
+}
+
 export interface SessionInfo {
   id: string
   title?: string
@@ -76,7 +84,11 @@ export interface OpencodeConfig {
   token: string
   directory?: string
   defaultModel?: ModelRef
+  defaultAgent?: string
   permissionMode: PermissionMode
+  permissionTimeoutMs?: number
+  findMode?: "heuristic" | "model"
+  soundEnabled?: boolean
 }
 
 export interface PermissionRequest {
@@ -120,6 +132,7 @@ export interface AppSnapshot {
   busy: boolean
   backend: "unknown" | "online" | "offline"
   defaultModel: ModelRef | null
+  agents: AgentInfo[]
   statusMessage: string | null
 }
 

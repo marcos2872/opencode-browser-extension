@@ -1,4 +1,4 @@
-import { resolveRef } from "./a11y"
+import { clickRef, focusRef, hoverRef, isMainFrameRef, resolveRef, scrollRef } from "./a11y"
 import { tabContext, withIndicator } from "./tabs"
 import type { ToolContext, ToolMap, ToolResult } from "./types"
 import { num, requireString, truncate } from "./types"
@@ -140,15 +140,33 @@ export const computerTools: ToolMap = {
     if (!allowed) return { content: "Ação negada pelo usuário." }
 
     if (action === "click") {
+      const ref = typeof args.ref === "string" ? args.ref : undefined
+      if (ref && !isMainFrameRef(ref)) {
+        const result = await clickRef(tabId, ref)
+        if (!result.ok) throw new Error(result.error ?? "Falha ao clicar no elemento.")
+        await sleep(200)
+        const adopted = await adoptOpenerTabs(ctx, tabId)
+        const suffix =
+          adopted.length > 0
+            ? `\nA nova aba abriu como Tab ID ${adopted.join(", ")} e entrou no grupo desta sessão.`
+            : ""
+        return { content: `Clique em ${ref} (iframe, via eventos de DOM).${suffix}` }
+      }
       const point = await pointFor(args, ctx, tabId)
       const button = args.button === "right" ? "right" : args.button === "middle" ? "middle" : "left"
       const count = Math.min(Math.max(num(args.click_count) ?? num(args.clickCount) ?? 1, 1), 3)
       await ctx.cursor(tabId, point.x, point.y)
       await ctx.indicator(tabId, "Clicando", true)
-      await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
-      for (let index = 1; index <= count; index += 1) {
-        await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button, clickCount: index })
-        await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button, clickCount: index })
+      try {
+        await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
+        for (let index = 1; index <= count; index += 1) {
+          await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button, clickCount: index })
+          await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button, clickCount: index })
+        }
+      } catch (error) {
+        if (!ref) throw error
+        const fallback = await clickRef(tabId, ref)
+        if (!fallback.ok) throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).")
       }
       await sleep(250)
       const adopted = await adoptOpenerTabs(ctx, tabId)
@@ -161,9 +179,21 @@ export const computerTools: ToolMap = {
     }
 
     if (action === "hover") {
+      const ref = typeof args.ref === "string" ? args.ref : undefined
+      if (ref && !isMainFrameRef(ref)) {
+        const result = await hoverRef(tabId, ref)
+        if (!result.ok) throw new Error(result.error ?? "Falha no hover.")
+        return { content: `Hover em ${ref} (iframe, via eventos de DOM).` }
+      }
       const point = await pointFor(args, ctx, tabId)
       await ctx.cursor(tabId, point.x, point.y)
-      await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
+      try {
+        await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
+      } catch (error) {
+        if (!ref) throw error
+        const fallback = await hoverRef(tabId, ref)
+        if (!fallback.ok) throw new Error(fallback.error ?? "Falha no hover (DevTools aberto?).")
+      }
       return { content: `Hover em (${Math.round(point.x)}, ${Math.round(point.y)}).` }
     }
 
@@ -171,11 +201,17 @@ export const computerTools: ToolMap = {
       const text = typeof args.text === "string" ? args.text : ""
       if (!text) throw new Error("Informe `text`.")
       if (typeof args.ref === "string") {
-        const point = await pointFor(args, ctx, tabId)
-        await ctx.cursor(tabId, point.x, point.y)
-        await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button: "left", clickCount: 1 })
-        await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button: "left", clickCount: 1 })
-        await sleep(100)
+        if (!isMainFrameRef(args.ref)) {
+          const result = await focusRef(tabId, args.ref)
+          if (!result.ok) throw new Error(result.error ?? "Falha ao focar o campo.")
+          await sleep(80)
+        } else {
+          const point = await pointFor(args, ctx, tabId)
+          await ctx.cursor(tabId, point.x, point.y)
+          await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button: "left", clickCount: 1 })
+          await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button: "left", clickCount: 1 })
+          await sleep(100)
+        }
       }
       await ctx.indicator(tabId, "Digitando", true)
       await ctx.cdp.text(tabId, text)
@@ -202,6 +238,13 @@ export const computerTools: ToolMap = {
     if (action === "scroll") {
       const direction = typeof args.scroll_direction === "string" ? args.scroll_direction : "down"
       const amount = Math.min(Math.max(num(args.scroll_amount) ?? 600, 50), 5000)
+      if (typeof args.ref === "string" && !isMainFrameRef(args.ref)) {
+        await ctx.indicator(tabId, "Rolando", true)
+        const result = await scrollRef(tabId, args.ref)
+        await ctx.hideIndicator(tabId)
+        if (!result.ok) throw new Error(result.error ?? "Falha ao rolar até o elemento.")
+        return { content: `Rolou até ${args.ref} (iframe).` }
+      }
       const point =
         typeof args.ref === "string" || Array.isArray(args.coordinate)
           ? await pointFor(args, ctx, tabId)

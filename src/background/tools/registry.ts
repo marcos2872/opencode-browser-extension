@@ -1,5 +1,6 @@
 import type { ToolContext, ToolHandler, ToolMap, ToolResult } from "./types"
 
+
 export class ToolRegistry {
   private tools = new Map<string, ToolHandler>()
 

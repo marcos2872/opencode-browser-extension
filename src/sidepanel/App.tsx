@@ -24,6 +24,7 @@ export default function App() {
   const [pairBusy, setPairBusy] = useState(false)
   const [draft, setDraft] = useState("")
   const [selectedModel, setSelectedModel] = useState<ModelRef | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -76,6 +77,7 @@ export default function App() {
   useEffect(() => {
     if (!snapshot) return
     setSelectedModel(activeSession?.model ?? snapshot.config?.defaultModel ?? snapshot.defaultModel ?? null)
+    setSelectedAgent(activeSession?.agent ?? snapshot.config?.defaultAgent ?? "build")
   }, [snapshot?.activeSessionID])
 
   useEffect(() => {
@@ -108,8 +110,18 @@ export default function App() {
     if (!response.ok) showToast(response.error)
   }
 
+  async function changeAgent(agent: string) {
+    setSelectedAgent(agent)
+    const response = await request({ type: "session:agent", agent })
+    if (!response.ok) showToast(response.error)
+  }
+
   async function newSession() {
-    const response = await request({ type: "session:new", model: selectedModel ?? undefined })
+    const response = await request({
+      type: "session:new",
+      model: selectedModel ?? undefined,
+      agent: selectedAgent ?? undefined,
+    })
     if (!response.ok) showToast(response.error)
     else setDraft("")
   }
@@ -202,9 +214,13 @@ export default function App() {
             sessions={snapshot.sessions}
             activeID={snapshot.activeSessionID}
             busy={snapshot.busy}
+            agents={snapshot.agents}
+            agent={selectedAgent}
             onSelect={(id) => void request({ type: "session:select", id })}
             onNew={() => void newSession()}
             onDelete={() => void deleteSession()}
+            onAgent={(agent) => void changeAgent(agent)}
+            onAttach={() => void request({ type: "tabs:attach-current" })}
           />
           <Chat messages={snapshot.messages} busy={snapshot.busy} onSuggestion={setDraft} bottomRef={bottomRef} />
           {snapshot.statusMessage ? (

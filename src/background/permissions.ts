@@ -46,9 +46,11 @@ export class Permissions {
 
   constructor(
     private readonly mode: () => PermissionMode,
+    private readonly timeoutMs: () => number,
     private readonly hasUi: () => boolean,
     private readonly notify: (request: PermissionRequest) => void,
     private readonly resolved: (requestId: string) => void,
+    private readonly sound: () => void = () => {},
   ) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type !== "permission:respond" || typeof message.requestId !== "string") return
@@ -138,9 +140,10 @@ export class Permissions {
     return new Promise<PermissionDecision>((resolve) => {
       const timer = setTimeout(() => {
         this.finish(request.id, { allowed: false })
-      }, 60_000)
+      }, this.timeoutMs())
       this.pending.set(request.id, { request, sessionID, resolve, timer })
       void chrome.storage.session.set({ [REQUEST_KEY + request.id]: request })
+      this.sound()
 
       if (this.hasUi()) {
         this.notify(request)

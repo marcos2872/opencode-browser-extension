@@ -186,6 +186,41 @@ export class TabGroups {
     await chrome.tabs.remove(tabId)
   }
 
+  async cleanup(): Promise<void> {
+    await this.serialize(async () => {
+      const records = await this.load(true)
+      const known = new Set(records.map((record) => record.groupId))
+      let groups: chrome.tabGroups.TabGroup[] = []
+      try {
+        groups = await chrome.tabGroups.query({ title: "OpenCode" })
+      } catch {
+        return
+      }
+      let changed = false
+      for (const group of groups) {
+        if (known.has(group.id)) continue
+        const tabs = await chrome.tabs.query({ groupId: group.id }).catch(() => [])
+        const ids = tabs.map((tab) => tab.id).filter((id): id is number => id !== undefined)
+        const blanks = tabs.filter(
+          (tab) => !tab.url || tab.url === "about:blank" || tab.url.startsWith("chrome://newtab"),
+        )
+        const keep = tabs.filter((tab) => !blanks.includes(tab))
+        try {
+          if (keep.length === 0) {
+            for (const id of ids) await chrome.tabs.remove(id)
+          } else {
+            const keepIds = keep.map((tab) => tab.id).filter((id): id is number => id !== undefined)
+            for (const id of keepIds) await chrome.tabs.ungroup(id)
+          }
+        } catch {
+          // ignore individual failures
+        }
+        changed = true
+      }
+      if (changed) await this.save()
+    })
+  }
+
   async groupOf(sessionID: string): Promise<number | null> {
     const records = await this.load(true)
     const record = records.find((item) => item.sessionID === sessionID)

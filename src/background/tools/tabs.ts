@@ -81,6 +81,33 @@ export const tabsTools: ToolMap = {
     }
   },
 
+  async tabs_attach(args, ctx) {
+    let tabId = typeof args.tabId === "number" ? args.tabId : undefined
+    if (tabId === undefined) {
+      const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+      tabId = active?.id
+    }
+    if (tabId === undefined) throw new Error("Nenhuma aba ativa encontrada para anexar.")
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+    if (!tab) throw new Error("Aba não encontrada.")
+    if (!/^https?:/i.test(tab.url ?? "")) {
+      throw new Error("Só é possível anexar abas http(s).")
+    }
+    const allowed = await ctx.ask({
+      kind: "action",
+      tool: "tabs_attach",
+      title: "Dar acesso a esta aba ao agente",
+      detail: tab.title,
+      url: tab.url,
+    })
+    if (!allowed) return { content: "Anexação negada pelo usuário." }
+    await ctx.tabs.addTab(ctx.sessionID, tabId)
+    return {
+      content: `Aba anexada ao grupo desta sessão.\n\n${await tabContext(ctx, tabId)}`,
+      metadata: { tabId },
+    }
+  },
+
   async navigate(args, ctx) {
     const tabId = await resolve(ctx, args)
     const direction = args.direction

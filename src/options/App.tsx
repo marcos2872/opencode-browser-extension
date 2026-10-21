@@ -11,6 +11,7 @@ const TOOLS = [
   ["tabs_context", "lista as abas do grupo"],
   ["tabs_create", "cria uma aba no grupo"],
   ["tabs_close", "fecha uma aba do grupo"],
+  ["tabs_attach", "move a aba atual para o grupo"],
   ["navigate", "navega, volta e avança"],
   ["read_page", "árvore de acessibilidade com refs"],
   ["find", "busca elementos por texto/role"],
@@ -22,6 +23,7 @@ const TOOLS = [
   ["read_network_requests", "lê requisições de rede"],
   ["resize_window", "redimensiona a janela"],
   ["update_plan", "pede aprovação de domínios"],
+  ["upload_image", "envia arquivos para inputs/drop zones"],
   ["browser_batch", "executa várias ações em sequência"],
 ]
 
@@ -31,6 +33,10 @@ export default function App() {
   const [denyText, setDenyText] = useState("")
   const [mode, setMode] = useState<PermissionMode>("ask")
   const [defaultModel, setDefaultModel] = useState<ModelRef | null>(null)
+  const [defaultAgent, setDefaultAgent] = useState<string>("")
+  const [findMode, setFindMode] = useState<"heuristic" | "model">("heuristic")
+  const [timeoutSeconds, setTimeoutSeconds] = useState(60)
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -46,6 +52,10 @@ export default function App() {
         setSnapshot(response.snapshot)
         setMode(response.snapshot.config?.permissionMode ?? "ask")
         setDefaultModel(response.snapshot.config?.defaultModel ?? response.snapshot.defaultModel ?? null)
+        setDefaultAgent(response.snapshot.config?.defaultAgent ?? "build")
+        setFindMode(response.snapshot.config?.findMode ?? "heuristic")
+        setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
+        setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
       }
     })
     void chrome.storage.local.get([ALLOW_KEY, DENY_KEY]).then((data) => {
@@ -80,7 +90,14 @@ export default function App() {
     await chrome.storage.local.set({ [ALLOW_KEY]: allow, [DENY_KEY]: deny })
     const response = await request({
       type: "settings:update",
-      patch: { permissionMode: mode, defaultModel: defaultModel ?? undefined },
+      patch: {
+        permissionMode: mode,
+        defaultModel: defaultModel ?? undefined,
+        defaultAgent: defaultAgent || undefined,
+        findMode,
+        permissionTimeoutMs: timeoutSeconds * 1000,
+        soundEnabled,
+      },
     })
     if (!response.ok) {
       showToast(response.error)
@@ -204,6 +221,20 @@ export default function App() {
                 value={defaultModel}
                 onChange={(model) => setDefaultModel(model)}
               />
+              {snapshot.agents.length > 0 ? (
+                <select
+                  className="select"
+                  value={defaultAgent}
+                  onChange={(event) => setDefaultAgent(event.target.value)}
+                  title="Agente padrão"
+                >
+                  {snapshot.agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name ?? agent.id}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <button className="btn" onClick={() => void savePermissions()}>
                 Salvar
               </button>
@@ -244,6 +275,46 @@ export default function App() {
               </label>
             ))}
           </div>
+
+          <div className="row wrap">
+            <label className="desc" htmlFor="timeout">
+              Tempo para responder a um pedido:
+            </label>
+            <select
+              id="timeout"
+              className="select"
+              value={timeoutSeconds}
+              onChange={(event) => setTimeoutSeconds(Number(event.target.value))}
+            >
+              <option value={30}>30 segundos</option>
+              <option value={60}>1 minuto</option>
+              <option value={120}>2 minutos</option>
+              <option value={300}>5 minutos</option>
+            </select>
+            <label className="desc" htmlFor="find-mode">
+              Busca por elemento:
+            </label>
+            <select
+              id="find-mode"
+              className="select"
+              value={findMode}
+              onChange={(event) => setFindMode(event.target.value as "heuristic" | "model")}
+            >
+              <option value="heuristic">Heurística (grátis)</option>
+              <option value="model">Modelo do OpenCode (usa tokens)</option>
+            </select>
+          </div>
+
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={soundEnabled}
+              onChange={(event) => setSoundEnabled(event.target.checked)}
+            />
+            <span>
+              Tocar um aviso sonoro quando o agente terminar ou pedir permissão com o painel fechado
+            </span>
+          </label>
 
           <div className="field">
             <label htmlFor="allow">Sites sempre permitidos (um por linha)</label>

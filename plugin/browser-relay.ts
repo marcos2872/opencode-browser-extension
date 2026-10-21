@@ -169,6 +169,16 @@ const tools = [
     },
   },
   {
+    name: "tabs_attach",
+    description:
+      "Move uma aba existente (informada por tabId ou a aba ativa do navegador) para o grupo desta sessão, dando ao agente acesso ao que já está aberto. Pede permissão. A aba sai do grupo atual do usuário.",
+    input: {
+      type: "object",
+      properties: { tabId },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "tabs_close",
     description: "Fecha uma aba do grupo desta sessão.",
     input: { type: "object", properties: { tabId }, required: ["tabId"], additionalProperties: false },
@@ -190,7 +200,7 @@ const tools = [
   {
     name: "read_page",
     description:
-      "Retorna a árvore de acessibilidade da página com refs (ref_1, ref_2...). Use as refs em computer/form_input/find.",
+      "Retorna a árvore de acessibilidade da página com refs (ref_1, ref_2...). Use as refs em computer/form_input/find. Com frames=all, refs de iframes vêm prefixadas como f<frameId>_ref_N.",
     input: {
       type: "object",
       properties: {
@@ -199,6 +209,7 @@ const tools = [
         ref_id: { type: "string" },
         max_chars: { type: "number" },
         include_hidden: { type: "boolean" },
+        frames: { type: "string", enum: ["main", "all"] },
         tabId,
       },
       additionalProperties: false,
@@ -213,6 +224,7 @@ const tools = [
       properties: {
         query: { type: "string" },
         max_results: { type: "number" },
+        frames: { type: "string", enum: ["main", "all"] },
         tabId,
       },
       required: ["query"],
@@ -221,10 +233,10 @@ const tools = [
   },
   {
     name: "get_page_text",
-    description: "Extrai o texto principal da página (artigo/main/body), sem HTML.",
+    description: "Extrai o texto principal da página (artigo/main/body), sem HTML. Com frames=all, concatena também o texto dos iframes.",
     input: {
       type: "object",
-      properties: { max_chars: { type: "number" }, tabId },
+      properties: { max_chars: { type: "number" }, frames: { type: "string", enum: ["main", "all"] }, tabId },
       additionalProperties: false,
     },
   },
@@ -241,7 +253,7 @@ const tools = [
   {
     name: "computer",
     description:
-      "Interage com a página via eventos confiáveis: click, type, key, scroll, hover, screenshot, zoom e wait. Use ref de read_page/find ou coordinate [x,y].",
+      "Interage com a página via eventos confiáveis: click, type, key, scroll, hover, screenshot, zoom e wait. Use ref de read_page/find ou coordinate [x,y]. Refs de iframe (f<id>_ref_N) funcionam para click/hover/scroll/type via eventos de DOM.",
     input: {
       type: "object",
       properties: {
@@ -333,6 +345,35 @@ const tools = [
         approach: { type: "array", items: { type: "string" } },
       },
       required: ["domains", "approach"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "upload_image",
+    description:
+      "Envia arquivos (bytes em base64) para um input[type=file] ou área de drag & drop identificada por ref. Pede permissão. Máximo de 3 arquivos e ~5 MB cada.",
+    input: {
+      type: "object",
+      properties: {
+        ref: { type: "string", description: "Ref do input de arquivo ou do alvo de drop." },
+        files: {
+          type: "array",
+          minItems: 1,
+          maxItems: 3,
+          items: {
+            type: "object",
+            properties: {
+              data: { type: "string", description: "Bytes do arquivo em base64." },
+              name: { type: "string" },
+              mimeType: { type: "string" },
+            },
+            required: ["data", "name"],
+            additionalProperties: false,
+          },
+        },
+        tabId,
+      },
+      required: ["ref", "files"],
       additionalProperties: false,
     },
   },

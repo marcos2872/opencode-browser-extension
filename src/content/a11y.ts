@@ -22,6 +22,7 @@ interface TreeResult {
   pageContent: string
   viewport: { width: number; height: number }
   count: number
+  url: string
 }
 
 const ROLE_BY_TAG: Record<string, string> = {
@@ -277,7 +278,13 @@ function install(): void {
     let root: Element | null = document.body ?? document.documentElement
     if (options.refId) {
       root = refToElement.get(options.refId) ?? null
-      if (!root) return { pageContent: `Ref ${options.refId} não encontrada.`, viewport: viewport(), count: 0 }
+      if (!root)
+        return {
+          pageContent: `Ref ${options.refId} não encontrada.`,
+          viewport: viewport(),
+          count: 0,
+          url: location.href,
+        }
     }
     if (root) walk(root, 0, maxDepth, filter, includeHidden, lines, collected)
     const maxChars = Math.max(1000, options.maxChars ?? 50_000)
@@ -287,7 +294,7 @@ function install(): void {
       text = text.slice(0, cut > 0 ? cut : maxChars)
       text += `\n\n[truncado em ${maxChars} de ${lines.join("\n").length} caracteres]`
     }
-    return { pageContent: text, viewport: viewport(), count: collected.length }
+    return { pageContent: text, viewport: viewport(), count: collected.length, url: location.href }
   }
 
   function viewport() {
@@ -384,12 +391,110 @@ function install(): void {
     return { text: truncated, title: document.title, url: location.href, source: source.tagName.toLowerCase() }
   }
 
+  function dispatchMouse(element: Element, type: string): void {
+    const rect = element.getBoundingClientRect()
+    element.dispatchEvent(
+      new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: rect.x + rect.width / 2,
+        clientY: rect.y + rect.height / 2,
+      }),
+    )
+  }
+
+  function clickRef(ref: string): { ok: boolean; error?: string } {
+    const element = refToElement.get(ref)
+    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
+    dispatchMouse(element, "mouseover")
+    dispatchMouse(element, "mousemove")
+    dispatchMouse(element, "mousedown")
+    dispatchMouse(element, "mouseup")
+    dispatchMouse(element, "click")
+    return { ok: true }
+  }
+
+  function hoverRef(ref: string): { ok: boolean; error?: string } {
+    const element = refToElement.get(ref)
+    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
+    dispatchMouse(element, "mouseover")
+    dispatchMouse(element, "mousemove")
+    return { ok: true }
+  }
+
+  function scrollRef(ref: string): { ok: boolean; error?: string } {
+    const element = refToElement.get(ref)
+    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
+    return { ok: true }
+  }
+
+  function focusRef(ref: string): { ok: boolean; error?: string } {
+    const element = refToElement.get(ref)
+    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
+    if (element instanceof HTMLElement) element.focus()
+    return { ok: true }
+  }
+
+  function uploadFiles(
+    ref: string,
+    files: Array<{ data: string; name: string; mimeType?: string }>,
+  ): { ok: boolean; target?: string; error?: string } {
+    const element = refToElement.get(ref)
+    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    let transfer: DataTransfer
+    try {
+      transfer = new DataTransfer()
+      for (const file of files) {
+        const binary = atob(file.data)
+        const bytes = new Uint8Array(binary.length)
+        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+        transfer.items.add(new File([bytes], file.name, { type: file.mimeType || "application/octet-stream" }))
+      }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Falha ao montar o arquivo." }
+    }
+
+    const input =
+      element instanceof HTMLInputElement && element.type === "file"
+        ? element
+        : element.querySelector<HTMLInputElement>('input[type="file"]')
+    if (input) {
+      input.files = transfer.files
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+      return { ok: true, target: "input" }
+    }
+
+    const rect = element.getBoundingClientRect()
+    const init: DragEventInit = {
+      bubbles: true,
+      cancelable: true,
+      clientX: rect.x + rect.width / 2,
+      clientY: rect.y + rect.height / 2,
+      dataTransfer: transfer,
+    }
+    element.dispatchEvent(new DragEvent("dragenter", init))
+    element.dispatchEvent(new DragEvent("dragover", init))
+    element.dispatchEvent(new DragEvent("drop", init))
+    return { ok: true, target: "drop" }
+  }
+
   ;(window as unknown as { __opencodeA11y: unknown }).__opencodeA11y = {
     generate,
     elements,
     resolve,
     setValue,
     pageText,
+    clickRef,
+    hoverRef,
+    scrollRef,
+    focusRef,
+    uploadFiles,
   }
 }
 

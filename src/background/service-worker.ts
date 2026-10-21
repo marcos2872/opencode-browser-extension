@@ -6,6 +6,7 @@ import { TabGroups } from "./tabGroups"
 import { computerTools } from "./tools/computer"
 import { pageTools } from "./tools/page"
 import { planTools } from "./tools/plan"
+import { uploadTools } from "./tools/upload"
 import { ToolRegistry } from "./tools/registry"
 import { tabsTools } from "./tools/tabs"
 import type { ToolContext } from "./tools/types"
@@ -19,6 +20,7 @@ import {
   type UiResponse,
 } from "../shared/protocol"
 import type {
+  AgentInfo,
   AppSnapshot,
   ChatMessage,
   ImagePayload,
@@ -33,7 +35,7 @@ import type {
 const ACTIVE_SESSION_KEY = "ui.activeSession"
 const cdp = new Cdp()
 const tabs = new TabGroups()
-const registry = new ToolRegistry([tabsTools, pageTools, computerTools, planTools])
+const registry = new ToolRegistry([tabsTools, pageTools, computerTools, planTools, uploadTools])
 const ports = new Set<chrome.runtime.Port>()
 const toolAborts = new Map<string, AbortController>()
 const toolNames = new Map<string, string>()
@@ -48,17 +50,25 @@ let messages: ChatMessage[] = []
 let busy = false
 let backend: AppSnapshot["backend"] = "unknown"
 let defaultModel: ModelRef | null = null
+let agents: AgentInfo[] = []
 let relayState: RelayState = { connected: false, url: RELAY_URL }
 let statusMessage: string | null = null
 let sseAbort: AbortController | null = null
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null
 let hydrateToken = 0
 
+function playSound(): void {
+  if (config?.soundEnabled === false) return
+  void chrome.runtime.sendMessage({ type: "PLAY_NOTIFICATION" }).catch(() => undefined)
+}
+
 const permissions = new Permissions(
   () => config?.permissionMode ?? "ask",
+  () => config?.permissionTimeoutMs ?? 60_000,
   () => ports.size > 0,
   (request) => broadcast({ type: "permission", request }),
   (requestId) => broadcast({ type: "permission:resolved", requestId }),
+  () => playSound(),
 )
 
 const relay = new RelayClient({
@@ -85,6 +95,7 @@ function snapshot(): AppSnapshot {
     busy,
     backend,
     defaultModel,
+    agents,
     statusMessage,
   }
 }
@@ -138,7 +149,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await refreshSessions()
       return { ok: true, snapshot: snapshot(), sessions }
     case "session:new":
-      await createSession(request.model)
+      await createSession(request.model, request.agent)
       return { ok: true, snapshot: snapshot() }
     case "session:select":
       await selectSession(request.id)
@@ -149,6 +160,27 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
     case "session:model":
       await switchModel(request.model)
       return { ok: true, snapshot: snapshot() }
+    case "session:agent":
+      await switchAgent(request.agent)
+      return { ok: true, snapshot: snapshot() }
+    case "tabs:attach-current": {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+      if (!tab?.id) throw new Error("Nenhuma aba ativa encontrada.")
+      const sessionID = activeSessionID ?? "default"
+      const allowed = await permissions.check(
+        {
+          kind: "action",
+          tool: "tabs_attach",
+          title: "Dar acesso a esta aba ao agente",
+          detail: tab.title,
+          url: tab.url,
+        },
+        sessionID,
+      )
+      if (!allowed) return { ok: true, snapshot: snapshot() }
+      await tabs.addTab(sessionID, tab.id)
+      return { ok: true, snapshot: snapshot() }
+    }
     case "prompt":
       await sendPrompt(request.text)
       return { ok: true, snapshot: snapshot() }
@@ -183,6 +215,7 @@ async function pair(link: string): Promise<void> {
   client = new OpencodeClient(config.baseUrl, config.token, config.directory)
   await permissions.init()
   await refreshModels()
+  await refreshAgents().catch(() => undefined)
   await refreshSessions()
   if (!activeSessionID && sessions[0]) {
     await selectSession(sessions[0].id)
@@ -205,6 +238,7 @@ async function unpair(): Promise<void> {
   busy = false
   backend = "unknown"
   defaultModel = null
+  agents = []
   statusMessage = null
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY)
   await updateBadge()
@@ -246,6 +280,20 @@ async function refreshModels(): Promise<void> {
   broadcastNow()
 }
 
+async function refreshAgents(): Promise<void> {
+  if (!client) return
+  agents = (await client.listAgents()).sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id))
+  if (config?.defaultAgent && !agents.some((agent) => agent.id === config?.defaultAgent)) {
+    config = { ...config, defaultAgent: undefined }
+    await setConfig(config)
+  }
+  if (!config?.defaultAgent && agents.some((agent) => agent.id === "build")) {
+    config = { ...config!, defaultAgent: "build" }
+    await setConfig(config)
+  }
+  broadcastNow()
+}
+
 async function refreshSessions(): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.")
   sessions = (await client.listSessions()).sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0))
@@ -268,10 +316,11 @@ function pickModel(explicit?: ModelRef): ModelRef | undefined {
     : undefined
 }
 
-async function createSession(model?: ModelRef): Promise<void> {
+async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.")
   const chosen = pickModel(model)
-  const session = await client.createSession(chosen)
+  const chosenAgent = agent ?? config?.defaultAgent ?? agents.find((item) => item.id === "build")?.id
+  const session = await client.createSession(chosen, chosenAgent)
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)]
   activeSessionID = session.id
   messages = []
@@ -378,6 +427,19 @@ async function switchModel(model: ModelRef): Promise<void> {
   await client.switchModel(activeSessionID, model)
   const session = sessions.find((item) => item.id === activeSessionID)
   if (session) session.model = model
+  broadcastNow()
+}
+
+async function switchAgent(agent: string): Promise<void> {
+  if (!client) throw new Error("OpenCode não configurado.")
+  if (activeSessionID) {
+    await client.switchAgent(activeSessionID, agent)
+    const session = sessions.find((item) => item.id === activeSessionID)
+    if (session) session.agent = agent
+  } else {
+    config = { ...config!, defaultAgent: agent }
+    await setConfig(config)
+  }
   broadcastNow()
 }
 
@@ -607,6 +669,7 @@ function onOpencodeEvent(event: { type: string; data?: Record<string, unknown> }
       for (const message of messages) {
         if (message.kind === "assistant") message.streaming = false
       }
+      if (ports.size === 0) playSound()
       scheduleBroadcast()
       break
     case "session.step.ended":
@@ -733,6 +796,36 @@ async function executeRelayTool(request: Extract<RelayInbound, { type: "tool_req
     },
     cursor: async (tabId, x, y) => {
       await chrome.tabs.sendMessage(tabId, { type: "indicator:cursor", x, y }).catch(() => undefined)
+    },
+    rank: async (query, candidates) => {
+      if (!client || (config?.findMode ?? "heuristic") !== "model") return null
+      const session = sessions.find((item) => item.id === activeSessionID)
+      const model = session?.model ?? config?.defaultModel ?? defaultModel ?? undefined
+      const list = candidates
+        .slice(0, 120)
+        .map((item) => `${item.ref} | ${item.role} | ${item.name}${item.type ? ` | ${item.type}` : ""}`)
+        .join("\n")
+      const prompt = [
+        "Você escolhe elementos de uma página web para uma consulta.",
+        `Consulta: ${query}`,
+        "",
+        "Elementos (ref | role | nome | tipo):",
+        list,
+        "",
+        "Responda SOMENTE com os refs mais relevantes, um por linha, no máximo 10, do mais relevante ao menos.",
+        "Se nenhum servir, responda NENHUM.",
+      ].join("\n")
+      try {
+        const text = await client.generate(prompt, model)
+        const refs = text
+          .split(/\s+/)
+          .map((token) => token.trim().replace(/[^A-Za-z0-9_]/g, ""))
+          .filter((token) => /^(f\d+_)?ref_\d+$/.test(token))
+        if (refs.length === 0) return null
+        return [...new Set(refs)].slice(0, 10)
+      } catch {
+        return null
+      }
     },
     ask: async (input) => (await permissions.check(input, sessionID)).allowed,
   }
@@ -886,12 +979,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 async function init(): Promise<void> {
   await permissions.init()
+  await tabs.cleanup().catch(() => undefined)
   config = await getConfig()
   if (config) {
     client = new OpencodeClient(config.baseUrl, config.token, config.directory)
     await refreshModels().catch(() => {
       backend = "offline"
     })
+    await refreshAgents().catch(() => undefined)
     await refreshSessions().catch(() => undefined)
     const stored = await chrome.storage.local.get(ACTIVE_SESSION_KEY)
     const wanted = typeof stored[ACTIVE_SESSION_KEY] === "string" ? stored[ACTIVE_SESSION_KEY] : null

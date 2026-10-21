@@ -258,6 +258,11 @@ a {
   max-width: none;
 }
 
+.agent-select {
+  flex: 0 1 auto;
+  max-width: 96px;
+}
+
 .chat {
   flex: 1;
   overflow-y: auto;

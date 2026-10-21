@@ -48,10 +48,12 @@ export type UiRequest =
   | { type: "unpair" }
   | { type: "models:refresh" }
   | { type: "sessions:list" }
-  | { type: "session:new"; model?: ModelRef }
+  | { type: "session:new"; model?: ModelRef; agent?: string }
   | { type: "session:select"; id: string }
   | { type: "session:delete"; id: string }
   | { type: "session:model"; model: ModelRef }
+  | { type: "session:agent"; agent: string }
+  | { type: "tabs:attach-current" }
   | { type: "prompt"; text: string }
   | { type: "interrupt" }
   | { type: "settings:update"; patch: Partial<OpencodeConfig> }

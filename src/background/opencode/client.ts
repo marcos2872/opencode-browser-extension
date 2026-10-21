@@ -1,4 +1,4 @@
-import type { ModelInfo, ModelRef, SessionInfo } from "../../shared/types"
+import type { AgentInfo, ModelInfo, ModelRef, SessionInfo } from "../../shared/types"
 import type { OpencodeEvent } from "../../shared/protocol"
 import { parseSse } from "./sse"
 
@@ -121,14 +121,35 @@ export class OpencodeClient {
     return { id: model.id, providerID: model.providerID }
   }
 
+  async listAgents(): Promise<AgentInfo[]> {
+    const payload = await this.request<{ data?: AgentInfo[] }>("/api/agent")
+    return (payload.data ?? []).filter((agent) => agent.mode !== "subagent" && agent.hidden !== true)
+  }
+
+  async switchAgent(id: string, agent: string): Promise<void> {
+    await this.request<void>(`/api/session/${encodeURIComponent(id)}/agent`, {
+      method: "POST",
+      body: JSON.stringify({ agent }),
+    })
+  }
+
+  async generate(prompt: string, model?: ModelRef): Promise<string> {
+    const payload = await this.request<{ data?: { text?: string } }>("/api/experimental/generate", {
+      method: "POST",
+      body: JSON.stringify({ prompt, ...(model ? { model } : {}) }),
+    })
+    return payload.data?.text ?? ""
+  }
+
   async listSessions(): Promise<SessionInfo[]> {
     const payload = await this.request<{ data?: SessionInfo[] }>("/api/session")
     return payload.data ?? []
   }
 
-  async createSession(model?: ModelRef): Promise<SessionInfo> {
+  async createSession(model?: ModelRef, agent?: string): Promise<SessionInfo> {
     const body: Record<string, unknown> = {}
     if (model) body.model = model
+    if (agent) body.agent = agent
     if (this.directory) body.location = { directory: this.directory }
     const payload = await this.request<{ data: SessionInfo }>("/api/session", {
       method: "POST",
