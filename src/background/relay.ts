@@ -1,5 +1,27 @@
-import { RELAY_PROTOCOL, RELAY_URL, type RelayInbound, type RelayOutbound } from "../shared/protocol"
+import { RELAY_PORT, RELAY_PROTOCOL, RELAY_URL, type RelayInbound, type RelayOutbound } from "../shared/protocol"
 import type { RelayState } from "../shared/types"
+
+const CANDIDATE_PORTS = [RELAY_PORT, RELAY_PORT + 1, RELAY_PORT + 2, RELAY_PORT + 3]
+
+/** O plugin pode precisar de outra porta quando um servidor antigo ainda ocupa 8799. */
+async function resolveRelayUrl(): Promise<string> {
+  for (const port of CANDIDATE_PORTS) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(700),
+        cache: "no-store",
+      })
+      if (!response.ok) continue
+      const data = (await response.json()) as { connected?: boolean }
+      if (data && typeof data === "object" && "connected" in data) {
+        return `ws://127.0.0.1:${port}`
+      }
+    } catch {
+      // porta sem o relay novo; tenta a próxima
+    }
+  }
+  return RELAY_URL
+}
 
 interface RelayHandlers {
   onTool: (request: Extract<RelayInbound, { type: "tool_request" }>) => void
@@ -20,13 +42,15 @@ export class RelayClient {
     return this.state
   }
 
-  connect(force = false): void {
+  async connect(force = false): Promise<void> {
     if (!force && this.socket && this.socket.readyState <= WebSocket.OPEN) return
     if (force) this.close()
-    this.setState({ ...this.state, connected: false, lastError: undefined })
+    const url = await resolveRelayUrl()
+    if (this.socket) return
+    this.setState({ ...this.state, connected: false, url, lastError: undefined })
     let socket: WebSocket
     try {
-      socket = new WebSocket(RELAY_URL)
+      socket = new WebSocket(url)
     } catch (error) {
       this.fail(error instanceof Error ? error.message : String(error))
       return
@@ -41,7 +65,7 @@ export class RelayClient {
         extensionId: chrome.runtime.id,
       }
       socket.send(JSON.stringify(hello))
-      this.setState({ connected: true, url: RELAY_URL })
+      this.setState({ connected: true, url })
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.pingTimer = setInterval(() => this.send({ type: "pong" }), 20_000)
     })
@@ -73,7 +97,7 @@ export class RelayClient {
       this.stopPing()
       this.setState({
         connected: false,
-        url: RELAY_URL,
+        url,
         lastError: event.reason || `Conexão encerrada (${event.code}).`,
       })
       this.schedule()
@@ -81,13 +105,13 @@ export class RelayClient {
 
     socket.addEventListener("error", () => {
       if (this.socket !== socket) return
-      this.setState({ connected: false, url: RELAY_URL, lastError: "Plugin do OpenCode não encontrado." })
+      this.setState({ connected: false, url, lastError: "Plugin do OpenCode não encontrado." })
     })
   }
 
   reconnect(): void {
     this.attempts = 0
-    this.connect(true)
+    void this.connect(true)
   }
 
   send(message: RelayOutbound): boolean {
@@ -111,7 +135,7 @@ export class RelayClient {
   }
 
   private fail(reason: string): void {
-    this.setState({ connected: false, url: RELAY_URL, lastError: reason })
+    this.setState({ connected: false, url: this.state.url, lastError: reason })
     this.schedule()
   }
 

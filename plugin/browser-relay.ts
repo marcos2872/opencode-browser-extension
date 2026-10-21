@@ -1,4 +1,7 @@
 import { Plugin } from "@opencode/plugin"
+import { readFileSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 /**
  * Ponte entre o OpenCode e a extensão OpenCode Browser.
@@ -8,6 +11,7 @@ import { Plugin } from "@opencode/plugin"
  */
 
 const PORT = Number(process.env.OPENCODE_BROWSER_RELAY_PORT ?? 8799)
+const PORT_CANDIDATES = [PORT, PORT + 1, PORT + 2, PORT + 3]
 const EXPECTED_EXTENSION_ID =
   process.env.OPENCODE_BROWSER_EXTENSION_ID ?? "meapihkmghapjefepmkckpikedpimhin"
 const ALLOW_ANY_EXTENSION = process.env.OPENCODE_BROWSER_ALLOW_ANY_EXTENSION === "1"
@@ -41,8 +45,39 @@ type Pending = {
 
 type SocketData = { origin: string; id: string }
 
-let active: Socket | null = null
-const pending = new Map<string, Pending>()
+interface RelayGlobal {
+  active: Socket | null
+  pending: Map<string, Pending>
+  server: { stop(force?: boolean): void } | null
+  serverVersion: number
+  port: number
+  instances: number
+}
+
+/** Incrementar quando o servidor do relay mudar de forma incompatível. */
+const SERVER_VERSION = 2
+
+type Carrier = typeof globalThis & { __opencodeBrowserRelay?: Partial<RelayGlobal> }
+
+// O OpenCode carrega o plugin várias vezes (uma por contexto/location) e cada
+// instância pode ter seu próprio globalThis. `process` é compartilhado pelo
+// processo, então guardamos o estado do relay nele.
+const carrier = ((globalThis as unknown as { process?: Carrier }).process ?? globalThis) as Carrier
+
+function relay(): RelayGlobal {
+  const existing = carrier.__opencodeBrowserRelay
+  if (existing && existing.pending instanceof Map) return existing as RelayGlobal
+  const created: RelayGlobal = {
+    active: existing?.active ?? null,
+    pending: new Map<string, Pending>(),
+    server: existing?.server ?? null,
+    serverVersion: existing?.serverVersion ?? 0,
+    port: existing?.port ?? PORT,
+    instances: existing?.instances ?? 0,
+  }
+  carrier.__opencodeBrowserRelay = created
+  return created
+}
 
 function log(message: string, error?: unknown): void {
   const suffix = error instanceof Error ? `: ${error.message}` : error ? `: ${String(error)}` : ""
@@ -66,12 +101,165 @@ function send(socket: Socket | null, payload: unknown): boolean {
 }
 
 function failPending(socket: Socket, reason: string): void {
-  for (const [id, item] of pending) {
+  for (const [id, item] of relay().pending) {
     if (item.socket !== socket) continue
     clearTimeout(item.timer)
-    pending.delete(id)
+    relay().pending.delete(id)
     item.reject(new Error(reason))
   }
+}
+
+const TOKEN_FILE = join(tmpdir(), "opencode-browser-relay.token")
+
+interface RelayInfo {
+  token: string
+  port: number
+}
+
+function readRelayInfo(): RelayInfo | null {
+  try {
+    const raw = readFileSync(TOKEN_FILE, "utf8").trim()
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<RelayInfo>
+    if (typeof parsed.token === "string" && parsed.token && typeof parsed.port === "number") {
+      return { token: parsed.token, port: parsed.port }
+    }
+  } catch {
+    // arquivo ausente ou legado
+  }
+  return null
+}
+
+function writeRelayInfo(info: RelayInfo): void {
+  try {
+    writeFileSync(TOKEN_FILE, JSON.stringify(info), { mode: 0o600 })
+  } catch {
+    // sem persistência; usa o valor local
+  }
+}
+
+function relayInfo(): RelayInfo {
+  const existing = readRelayInfo()
+  if (existing) return existing
+  const created: RelayInfo = { token: crypto.randomUUID(), port: relay().port || PORT }
+  writeRelayInfo(created)
+  return readRelayInfo() ?? created
+}
+
+function relayToken(): string {
+  return relayInfo().token
+}
+
+function publishPort(port: number): void {
+  const info = relayInfo()
+  writeRelayInfo({ token: info.token, port })
+}
+
+function relayHeaders(): Record<string, string> {
+  return { "content-type": "application/json", "x-relay-token": relayToken() }
+}
+
+async function callToolOverHttp(
+  tool: string,
+  args: Record<string, unknown>,
+  context: { sessionID: string; signal: AbortSignal },
+): Promise<ToolResponse> {
+  const id = `http_${crypto.randomUUID()}`
+  const target = relayInfo().port
+  const controller = new AbortController()
+  const onAbort = () => {
+    controller.abort()
+    void fetch(`http://127.0.0.1:${target}/cancel`, {
+      method: "POST",
+      headers: relayHeaders(),
+      body: JSON.stringify({ id }),
+    }).catch(() => undefined)
+  }
+  context.signal.addEventListener("abort", onAbort, { once: true })
+  try {
+    const response = await fetch(`http://127.0.0.1:${target}/tool`, {
+      method: "POST",
+      headers: relayHeaders(),
+      body: JSON.stringify({ id, tool, args, sessionID: context.sessionID }),
+      signal: controller.signal,
+    })
+    const data = (await response.json().catch(() => ({}))) as ToolResponse & { error?: string }
+    if (!response.ok) {
+      throw new Error(data.error ?? `Relay HTTP ${response.status}.`)
+    }
+    return data
+  } catch (error) {
+    if (context.signal.aborted) throw new Error("Execução cancelada.")
+    throw error instanceof Error ? error : new Error(String(error))
+  } finally {
+    context.signal.removeEventListener("abort", onAbort)
+  }
+}
+
+async function handleHttpTool(request: Request): Promise<Response> {
+  let body: { id?: string; tool?: string; args?: Record<string, unknown>; sessionID?: string }
+  try {
+    body = (await request.json()) as typeof body
+  } catch {
+    return Response.json({ ok: false, error: "JSON inválido." }, { status: 400 })
+  }
+  if (typeof body.tool !== "string" || body.tool.length === 0) {
+    return Response.json({ ok: false, error: "Parâmetro tool ausente." }, { status: 400 })
+  }
+  const socket = relay().active
+  if (!socket) {
+    return Response.json(
+      { ok: false, error: "A extensão OpenCode Browser não está conectada." },
+      { status: 503 },
+    )
+  }
+  const id = typeof body.id === "string" ? body.id : `http_${crypto.randomUUID()}`
+  try {
+    const result = await new Promise<ToolResponse>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        relay().pending.delete(id)
+        send(socket, { type: "cancel", id })
+        reject(new Error(`A extensão não respondeu em ${CALL_TIMEOUT_MS / 1000}s.`))
+      }, CALL_TIMEOUT_MS)
+      relay().pending.set(id, { socket, resolve, reject, timer })
+      const sent = send(socket, {
+        type: "tool_request",
+        id,
+        tool: body.tool as string,
+        args: body.args ?? {},
+        sessionID: body.sessionID,
+      })
+      if (!sent) {
+        relay().pending.delete(id)
+        clearTimeout(timer)
+        reject(new Error("Falha ao enviar o pedido para a extensão."))
+      }
+    })
+    return Response.json(result)
+  } catch (error) {
+    return Response.json(
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    )
+  }
+}
+
+async function handleHttpCancel(request: Request): Promise<Response> {
+  let body: { id?: string }
+  try {
+    body = (await request.json()) as typeof body
+  } catch {
+    return Response.json({ ok: true })
+  }
+  const id = body.id
+  const item = id ? relay().pending.get(id) : undefined
+  if (item && id) {
+    clearTimeout(item.timer)
+    relay().pending.delete(id)
+    send(item.socket, { type: "cancel", id })
+    item.reject(new Error("Execução cancelada."))
+  }
+  return Response.json({ ok: true })
 }
 
 function callTool(
@@ -79,22 +267,20 @@ function callTool(
   args: Record<string, unknown>,
   context: { sessionID: string; signal: AbortSignal; progress: Progress },
 ): Promise<ToolResponse> {
-  if (!active) {
-    throw new Error(
-      "A extensão OpenCode Browser não está conectada. Abra o side panel da extensão no Chrome e verifique o status do plugin.",
-    )
+  const socket = relay().active
+  if (!socket) {
+    return callToolOverHttp(tool, args, context)
   }
   const id = `call_${crypto.randomUUID()}`
-  const socket = active
 
   return new Promise<ToolResponse>((resolve, reject) => {
     const timer = setTimeout(() => {
-      pending.delete(id)
+      relay().pending.delete(id)
       send(socket, { type: "cancel", id })
       reject(new Error(`A extensão não respondeu em ${CALL_TIMEOUT_MS / 1000}s.`))
     }, CALL_TIMEOUT_MS)
 
-    pending.set(id, {
+    relay().pending.set(id, {
       socket,
       resolve,
       reject,
@@ -103,9 +289,9 @@ function callTool(
     })
 
     const onAbort = () => {
-      const item = pending.get(id)
+      const item = relay().pending.get(id)
       if (!item) return
-      pending.delete(id)
+      relay().pending.delete(id)
       clearTimeout(item.timer)
       send(socket, { type: "cancel", id })
       reject(new Error("Execução cancelada."))
@@ -120,7 +306,7 @@ function callTool(
       sessionID: context.sessionID,
     })
     if (!sent) {
-      pending.delete(id)
+      relay().pending.delete(id)
       clearTimeout(timer)
       reject(new Error("Falha ao enviar o pedido para a extensão."))
     }
@@ -420,13 +606,35 @@ const tools = [
 export default Plugin.define({
   id: "opencode.browser-relay",
   async setup(ctx) {
-    let server: { stop(force?: boolean): void } | null = null
-    try {
-      server = Bun.serve<SocketData>({
+    const state = relay()
+    state.instances += 1
+    let ownsServer = false
+    if (state.server && state.serverVersion !== SERVER_VERSION) {
+      try {
+        state.server.stop(true)
+      } catch {
+        // ignore
+      }
+      state.server = null
+      state.active = null
+    }
+    if (!state.server) {
+      for (const candidate of PORT_CANDIDATES) {
+        try {
+        const server = Bun.serve<SocketData>({
         hostname: "127.0.0.1",
-        port: PORT,
+        port: candidate,
         fetch(request, bunServer) {
           const url = new URL(request.url)
+          if (request.method === "POST" && (url.pathname === "/tool" || url.pathname === "/cancel")) {
+            if ((request.headers.get("x-relay-token") ?? "") !== relayToken()) {
+              return new Response("Forbidden", { status: 403 })
+            }
+            return url.pathname === "/cancel" ? handleHttpCancel(request) : handleHttpTool(request)
+          }
+          if (url.pathname === "/health") {
+            return Response.json({ connected: Boolean(relay().active) })
+          }
           if (url.pathname !== "/" && url.pathname !== "/ws") {
             return new Response("Not found", { status: 404 })
           }
@@ -442,14 +650,15 @@ export default Plugin.define({
         },
         websocket: {
           open(socket) {
-            if (active && active !== socket) {
+            const current = relay().active
+            if (current && current !== socket) {
               try {
-                active.close(1000, "Nova conexão da extensão")
+                current.close(1000, "Nova conexão da extensão")
               } catch {
                 // ignore
               }
             }
-            active = socket
+            relay().active = socket
             log(`extensão conectada (${socket.data.origin})`)
             send(socket, { type: "ready", v: 1 })
           },
@@ -470,7 +679,7 @@ export default Plugin.define({
             }
             if (message.type === "pong") return
             if (message.type === "progress" && typeof message.id === "string") {
-              const item = pending.get(message.id)
+              const item = relay().pending.get(message.id)
               if (item?.progress) {
                 void item.progress({
                   phase: message.phase ?? "running",
@@ -480,9 +689,9 @@ export default Plugin.define({
               return
             }
             if (message.type === "tool_result" && typeof message.id === "string") {
-              const item = pending.get(message.id)
+              const item = relay().pending.get(message.id)
               if (!item) return
-              pending.delete(message.id)
+              relay().pending.delete(message.id)
               clearTimeout(item.timer)
               if (message.ok === false) {
                 item.reject(new Error(typeof message.error === "string" ? message.error : "A extensão retornou um erro."))
@@ -500,15 +709,24 @@ export default Plugin.define({
             }
           },
           close(socket) {
-            if (active === socket) active = null
+            if (relay().active === socket) relay().active = null
             failPending(socket, "A extensão desconectou durante a execução.")
             log("extensão desconectada")
           },
         },
-      })
-      log(`relay ouvindo em ws://127.0.0.1:${PORT}`)
-    } catch (error) {
-      log(`não foi possível abrir o relay na porta ${PORT}`, error)
+        })
+        state.server = server
+        state.serverVersion = SERVER_VERSION
+        state.port = candidate
+        ownsServer = true
+        publishPort(candidate)
+        log(`relay ouvindo em ws://127.0.0.1:${candidate}`)
+        break
+        } catch (error) {
+          log(`porta ${candidate} indisponível`, error)
+        }
+      }
+      if (!state.server) log("não foi possível abrir o relay em nenhuma porta candidata")
     }
 
     await ctx.tool.transform((editor) => {
@@ -543,17 +761,23 @@ export default Plugin.define({
     })
 
     return () => {
-      for (const [id, item] of pending) {
+      const current = relay()
+      current.instances = Math.max(0, (current.instances ?? 0) - 1)
+      if (current.instances > 0) return
+      for (const [id, item] of current.pending ?? []) {
         clearTimeout(item.timer)
-        pending.delete(id)
+        current.pending?.delete(id)
         item.reject(new Error("O plugin do OpenCode foi encerrado."))
       }
-      try {
-        server?.stop(true)
-      } catch {
-        // ignore
+      if (ownsServer && current.server) {
+        try {
+          current.server.stop(true)
+        } catch {
+          // ignore
+        }
+        current.server = null
       }
-      active = null
+      current.active = null
     }
   },
 })
