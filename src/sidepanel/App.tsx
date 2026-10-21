@@ -136,8 +136,12 @@ export default function App() {
   async function send() {
     if (!draft.trim()) return
     const text = draft
+    const match = /^\/([^\s]+)\s*([\s\S]*)$/.exec(text.trim())
+    const command = match ? snapshot?.commands.find((item) => item.name === match[1]) : undefined
     setDraft("")
-    const response = await request({ type: "prompt", text })
+    const response = command
+      ? await request({ type: "command", name: command.name, text: match?.[2] ?? "" })
+      : await request({ type: "prompt", text })
     if (!response.ok) {
       showToast(response.error)
       setDraft(text)
@@ -234,6 +238,7 @@ export default function App() {
             busy={snapshot.busy}
             disabled={!snapshot.config}
             relayConnected={snapshot.relay.connected}
+            commands={snapshot.commands}
             onChange={setDraft}
             onSend={() => void send()}
             onStop={() => void request({ type: "interrupt" })}

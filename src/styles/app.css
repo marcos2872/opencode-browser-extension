@@ -258,7 +258,7 @@ a {
   max-width: none;
 }
 
-.agent-select {
+.session-bar .agent-select {
   flex: 0 1 auto;
   max-width: 96px;
 }
@@ -992,4 +992,46 @@ a {
   to {
     transform: rotate(360deg);
   }
+}
+
+.command-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  box-shadow: var(--shadow);
+  padding: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.command-menu button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.command-menu button:hover {
+  background: var(--bg-soft);
+}
+
+.command-name {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.command-desc {
+  font-size: 11.5px;
+  color: var(--muted);
 }

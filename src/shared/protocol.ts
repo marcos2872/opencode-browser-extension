@@ -55,6 +55,7 @@ export type UiRequest =
   | { type: "session:agent"; agent: string }
   | { type: "tabs:attach-current" }
   | { type: "prompt"; text: string }
+  | { type: "command"; name: string; text: string }
   | { type: "interrupt" }
   | { type: "settings:update"; patch: Partial<OpencodeConfig> }
   | { type: "open:options" }

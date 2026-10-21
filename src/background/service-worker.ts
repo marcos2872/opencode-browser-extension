@@ -22,6 +22,7 @@ import {
 import type {
   AgentInfo,
   AppSnapshot,
+  CommandInfo,
   ChatMessage,
   ImagePayload,
   ModelInfo,
@@ -51,6 +52,7 @@ let busy = false
 let backend: AppSnapshot["backend"] = "unknown"
 let defaultModel: ModelRef | null = null
 let agents: AgentInfo[] = []
+let commands: CommandInfo[] = []
 let relayState: RelayState = { connected: false, url: RELAY_URL }
 let statusMessage: string | null = null
 let sseAbort: AbortController | null = null
@@ -96,6 +98,7 @@ function snapshot(): AppSnapshot {
     backend,
     defaultModel,
     agents,
+    commands,
     statusMessage,
   }
 }
@@ -184,6 +187,9 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
     case "prompt":
       await sendPrompt(request.text)
       return { ok: true, snapshot: snapshot() }
+    case "command":
+      await runCommand(request.name, request.text)
+      return { ok: true, snapshot: snapshot() }
     case "interrupt":
       await interrupt()
       return { ok: true, snapshot: snapshot() }
@@ -216,6 +222,7 @@ async function pair(link: string): Promise<void> {
   await permissions.init()
   await refreshModels()
   await refreshAgents().catch(() => undefined)
+  await refreshCommands().catch(() => undefined)
   await refreshSessions()
   if (!activeSessionID && sessions[0]) {
     await selectSession(sessions[0].id)
@@ -239,6 +246,7 @@ async function unpair(): Promise<void> {
   backend = "unknown"
   defaultModel = null
   agents = []
+  commands = []
   statusMessage = null
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY)
   await updateBadge()
@@ -277,6 +285,12 @@ async function refreshModels(): Promise<void> {
     await setConfig(config)
   }
   backend = "online"
+  broadcastNow()
+}
+
+async function refreshCommands(): Promise<void> {
+  if (!client) return
+  commands = (await client.listCommands()).sort((a, b) => a.name.localeCompare(b.name))
   broadcastNow()
 }
 
@@ -428,6 +442,39 @@ async function switchModel(model: ModelRef): Promise<void> {
   const session = sessions.find((item) => item.id === activeSessionID)
   if (session) session.model = model
   broadcastNow()
+}
+
+async function runCommand(name: string, text: string): Promise<void> {
+  if (!client) throw new Error("OpenCode não configurado.")
+  if (!activeSessionID) await createSession()
+  if (!activeSessionID) throw new Error("Não foi possível criar a sessão.")
+  const sessionID = activeSessionID
+  messages.push({
+    kind: "user",
+    id: `local_${crypto.randomUUID()}`,
+    text: `/${name}${text ? ` ${text}` : ""}`,
+    time: Date.now(),
+  })
+  busy = true
+  backend = "online"
+  statusMessage = null
+  broadcastNow()
+  try {
+    await client.runCommand(sessionID, name, text)
+  } catch (error) {
+    busy = false
+    messages.push({
+      kind: "assistant",
+      id: `local_error_${crypto.randomUUID()}`,
+      text: "",
+      reasoning: "",
+      tools: [],
+      time: Date.now(),
+      streaming: false,
+      error: errorMessage(error),
+    })
+    broadcastNow()
+  }
 }
 
 async function switchAgent(agent: string): Promise<void> {
@@ -669,7 +716,20 @@ function onOpencodeEvent(event: { type: string; data?: Record<string, unknown> }
       for (const message of messages) {
         if (message.kind === "assistant") message.streaming = false
       }
-      if (ports.size === 0) playSound()
+      if (ports.size === 0) {
+        playSound()
+        if (config?.notifyEnabled !== false) {
+          const title = sessions.find((item) => item.id === activeSessionID)?.title ?? "Tarefa"
+          void chrome.notifications
+            .create(`oc-${Date.now()}`, {
+              type: "basic",
+              iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+              title: "OpenCode Browser",
+              message: `Concluído: ${title}`.slice(0, 180),
+            })
+            .catch(() => undefined)
+        }
+      }
       scheduleBroadcast()
       break
     case "session.step.ended":
@@ -987,6 +1047,7 @@ async function init(): Promise<void> {
       backend = "offline"
     })
     await refreshAgents().catch(() => undefined)
+    await refreshCommands().catch(() => undefined)
     await refreshSessions().catch(() => undefined)
     const stored = await chrome.storage.local.get(ACTIVE_SESSION_KEY)
     const wanted = typeof stored[ACTIVE_SESSION_KEY] === "string" ? stored[ACTIVE_SESSION_KEY] : null

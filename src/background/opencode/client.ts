@@ -1,4 +1,4 @@
-import type { AgentInfo, ModelInfo, ModelRef, SessionInfo } from "../../shared/types"
+import type { AgentInfo, CommandInfo, ModelInfo, ModelRef, SessionInfo } from "../../shared/types"
 import type { OpencodeEvent } from "../../shared/protocol"
 import { parseSse } from "./sse"
 
@@ -124,6 +124,18 @@ export class OpencodeClient {
   async listAgents(): Promise<AgentInfo[]> {
     const payload = await this.request<{ data?: AgentInfo[] }>("/api/agent")
     return (payload.data ?? []).filter((agent) => agent.mode !== "subagent" && agent.hidden !== true)
+  }
+
+  async listCommands(): Promise<CommandInfo[]> {
+    const payload = await this.request<{ data?: CommandInfo[] }>("/api/command")
+    return payload.data ?? []
+  }
+
+  async runCommand(id: string, name: string, text: string): Promise<void> {
+    await this.request(`/api/session/${encodeURIComponent(id)}/command`, {
+      method: "POST",
+      body: JSON.stringify({ name, text }),
+    })
   }
 
   async switchAgent(id: string, agent: string): Promise<void> {

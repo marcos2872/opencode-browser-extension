@@ -37,6 +37,7 @@ export default function App() {
   const [findMode, setFindMode] = useState<"heuristic" | "model">("heuristic")
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [notifyEnabled, setNotifyEnabled] = useState(true)
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -56,6 +57,7 @@ export default function App() {
         setFindMode(response.snapshot.config?.findMode ?? "heuristic")
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
+        setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
       }
     })
     void chrome.storage.local.get([ALLOW_KEY, DENY_KEY]).then((data) => {
@@ -97,6 +99,7 @@ export default function App() {
         findMode,
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
+        notifyEnabled,
       },
     })
     if (!response.ok) {
@@ -314,6 +317,15 @@ export default function App() {
             <span>
               Tocar um aviso sonoro quando o agente terminar ou pedir permissão com o painel fechado
             </span>
+          </label>
+
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={notifyEnabled}
+              onChange={(event) => setNotifyEnabled(event.target.checked)}
+            />
+            <span>Mostrar notificação do sistema quando o agente terminar com o painel fechado</span>
           </label>
 
           <div className="field">
