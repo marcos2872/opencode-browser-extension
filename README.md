@@ -83,3 +83,7 @@ então o reload é obrigatório.
 Automação de navegador é poderosa: revise os pedidos de permissão, mantenha a
 lista de sites bloqueados e evite o modo "permitir automaticamente" em sites
 sensíveis. Detalhes em [docs/security.md](docs/security.md).
+
+## Licença
+
+Distribuído sob a licença **MIT**. Veja [LICENSE](LICENSE) para o texto completo.
