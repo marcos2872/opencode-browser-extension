@@ -16,6 +16,7 @@
     "package": "npm run build && cd dist && zip -r ../opencode-browser-extension.zip ."
   },
   "dependencies": {
+    "gifenc": "^1.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",

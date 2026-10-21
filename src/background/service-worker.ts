@@ -1,9 +1,11 @@
 import { Cdp } from "./cdp"
 import { OpencodeClient, OpencodeError } from "./opencode/client"
 import { Permissions } from "./permissions"
+import { Recording } from "./recording"
 import { RelayClient } from "./relay"
 import { TabGroups } from "./tabGroups"
 import { computerTools } from "./tools/computer"
+import { gifTools } from "./tools/gif"
 import { pageTools } from "./tools/page"
 import { planTools } from "./tools/plan"
 import { uploadTools } from "./tools/upload"
@@ -36,7 +38,8 @@ import type {
 const ACTIVE_SESSION_KEY = "ui.activeSession"
 const cdp = new Cdp()
 const tabs = new TabGroups()
-const registry = new ToolRegistry([tabsTools, pageTools, computerTools, planTools, uploadTools])
+const recording = new Recording(cdp)
+const registry = new ToolRegistry([tabsTools, pageTools, computerTools, planTools, uploadTools, gifTools(recording)])
 const ports = new Set<chrome.runtime.Port>()
 const toolAborts = new Map<string, AbortController>()
 const toolNames = new Map<string, string>()
@@ -910,6 +913,10 @@ async function executeRelayTool(request: Extract<RelayInbound, { type: "tool_req
       images: result.images,
       metadata: result.metadata,
     })
+    if (recording.active && request.tool !== "gif_creator") {
+      const target = await tabs.resolveTab(sessionID).catch(() => null)
+      if (target) await recording.capture(target.tabId, request.tool)
+    }
     scheduleBroadcast()
   } catch (error) {
     const message = errorMessage(error)

@@ -36,7 +36,8 @@
     "activeTab",
     "alarms",
     "offscreen",
-    "notifications"
+    "notifications",
+    "downloads"
   ],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [

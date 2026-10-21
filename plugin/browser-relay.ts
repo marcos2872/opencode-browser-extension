@@ -378,6 +378,19 @@ const tools = [
     },
   },
   {
+    name: "gif_creator",
+    description:
+      "Grava as ações do agente como quadros (screenshot por ação) e exporta um GIF animado. Use action=start antes de navegar/interagir, action=stop ao terminar e action=export para gerar o arquivo.",
+    input: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["start", "stop", "export"] },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "browser_batch",
     description: "Executa até 20 ferramentas browser_* em sequência. Use para reduzir idas e voltas.",
     input: {

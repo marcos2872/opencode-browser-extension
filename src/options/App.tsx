@@ -24,6 +24,7 @@ const TOOLS = [
   ["resize_window", "redimensiona a janela"],
   ["update_plan", "pede aprovação de domínios"],
   ["upload_image", "envia arquivos para inputs/drop zones"],
+  ["gif_creator", "grava e exporta GIF das ações"],
   ["browser_batch", "executa várias ações em sequência"],
 ]
 
