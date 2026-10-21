@@ -234,9 +234,10 @@ describe("service-worker: sessões e conversa", () => {
 
   it("envia prompt e marca a sessão como ocupada", async () => {
     await loadWorker()
-    await pairWorker()
+    const paired = await pairWorker()
+    expect(paired.ok, paired.error).toBe(true)
     const response = await callWorker({ type: "prompt", text: "olá" })
-    expect(response.ok).toBe(true)
+    expect(response.ok, response.error).toBe(true)
     expect(response.snapshot.busy).toBe(true)
     expect(response.snapshot.messages[0]).toMatchObject({ kind: "user", text: "olá" })
     expect(apiCalls.some((call) => call.url.includes("/prompt"))).toBe(true)
@@ -244,9 +245,10 @@ describe("service-worker: sessões e conversa", () => {
 
   it("executa comando com barra", async () => {
     await loadWorker()
-    await pairWorker()
+    const paired = await pairWorker()
+    expect(paired.ok, paired.error).toBe(true)
     const response = await callWorker({ type: "command", name: "review", text: "tudo" })
-    expect(response.ok).toBe(true)
+    expect(response.ok, response.error).toBe(true)
     expect(response.snapshot.messages[0]).toMatchObject({ text: "/review tudo" })
     expect(apiCalls.some((call) => call.url.includes("/command"))).toBe(true)
   })
