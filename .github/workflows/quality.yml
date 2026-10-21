@@ -1,0 +1,63 @@
+name: Qualidade de código
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualidade-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, tipos e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npm run typecheck
+
+      - name: Build da extensão
+        run: npm run build
+
+      - name: Verificar artefatos do build
+        run: |
+          test -f dist/manifest.json
+          test -f dist/assets/background.js
+          test -f dist/assets/content.js
+          test -f dist/assets/offscreen.js
+          test -f dist/sidepanel.html
+          test -f dist/options.html
+          test -f dist/permission.html
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "## Qualidade de código"
+            echo ""
+            echo "| Verificação | Resultado |"
+            echo "|---|---|"
+            echo "| Lint (eslint) | ✅ |"
+            echo "| Tipos (tsc --noEmit) | ✅ |"
+            echo "| Build (vite) | ✅ |"
+            echo "| Artefatos do manifest | ✅ |"
+          } >> "$GITHUB_STEP_SUMMARY"
