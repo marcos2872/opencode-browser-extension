@@ -35,7 +35,7 @@ export class Recording {
 
   async take(): Promise<RecordedFrame[]> {
     await this.flush()
-    return this.frames
+    return [...this.frames]
   }
 
   async flush(): Promise<void> {

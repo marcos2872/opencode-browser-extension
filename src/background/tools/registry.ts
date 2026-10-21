@@ -47,7 +47,7 @@ export class ToolRegistry {
         item.input && typeof item.input === "object" && !Array.isArray(item.input)
           ? (item.input as Record<string, unknown>)
           : {}
-      if (!name || name === "browser_batch") {
+      if (!name || name === "browser_batch" || name === "batch") {
         results.push({ index, name, ok: false, error: "Nome de ação inválido." })
         continue
       }

@@ -1,5 +1,5 @@
 import { uploadFiles } from "./a11y"
-import { tabContext, withIndicator } from "./tabs"
+import { withIndicator } from "./tabs"
 import type { ToolContext, ToolMap, ToolResult } from "./types"
 import { requireString } from "./types"
 

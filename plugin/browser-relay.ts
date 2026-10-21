@@ -189,8 +189,8 @@ async function callToolOverHttp(
     }
     return data
   } catch (error) {
-    if (context.signal.aborted) throw new Error("Execução cancelada.")
-    throw error instanceof Error ? error : new Error(String(error))
+    if (context.signal.aborted) throw new Error("Execução cancelada.", { cause: error })
+    throw error instanceof Error ? error : new Error(String(error), { cause: error })
   } finally {
     context.signal.removeEventListener("abort", onAbort)
   }

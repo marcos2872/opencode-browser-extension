@@ -96,6 +96,8 @@ export class TabGroups {
             }
             return existing
           }
+          // Grupo vazio: descarta o registro antigo antes de recriar.
+          this.records = records.filter((record) => record !== existing)
         } catch {
           // Group is gone; recreate below.
           this.records = records.filter((record) => record !== existing)

@@ -12,12 +12,13 @@ export const planTools: ToolMap = {
     if (domains.length === 0 || approach.length === 0) {
       throw new Error("update_plan exige `domains` e `approach` como arrays não vazios.")
     }
+    const first = domains[0]
     const allowed = await ctx.ask({
       kind: "plan",
       tool: "update_plan",
       title: "Aprovar plano de navegação",
       detail: approach.join("\n"),
-      url: `https://${domains[0]}`,
+      url: /^https?:\/\//i.test(first) ? first : `https://${first}`,
       plan: { domains, approach },
     })
     if (!allowed) {
