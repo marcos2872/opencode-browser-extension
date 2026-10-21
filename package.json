@@ -1,0 +1,32 @@
+{
+  "name": "opencode-browser-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:ui && npm run build:bg && npm run build:content && npm run build:offscreen",
+    "build:ui": "vite build --config vite.config.ts",
+    "build:bg": "vite build --config vite.background.config.ts",
+    "build:content": "vite build --config vite.content.config.ts",
+    "build:offscreen": "vite build --config vite.offscreen.config.ts",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run build",
+    "install:plugin": "mkdir -p ~/.config/opencode/plugins && cp plugin/browser-relay.ts ~/.config/opencode/plugins/browser-relay.ts",
+    "package": "npm run build && cd dist && zip -r ../opencode-browser-extension.zip ."
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  }
+}

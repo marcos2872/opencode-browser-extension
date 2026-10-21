@@ -1,0 +1,181 @@
+import type { ToolContext, ToolMap, ToolResult } from "./types"
+
+export async function tabContext(ctx: ToolContext, tabId: number): Promise<string> {
+  const [tabs, groupId] = await Promise.all([ctx.tabs.list(ctx.sessionID), ctx.tabs.groupOf(ctx.sessionID)])
+  const validGroup = typeof groupId === "number" && Number.isFinite(groupId) ? groupId : null
+  return JSON.stringify(
+    {
+      currentTabId: tabId,
+      ...(validGroup !== null ? { tabGroupId: validGroup } : {}),
+      availableTabs: tabs.map((tab) => ({ tabId: tab.id, title: tab.title, url: tab.url })),
+      tabCount: tabs.length,
+    },
+    null,
+    2,
+  )
+}
+
+async function resolve(ctx: ToolContext, args: Record<string, unknown>): Promise<number> {
+  const requested = typeof args.tabId === "number" ? args.tabId : undefined
+  const { tabId } = await ctx.tabs.resolveTab(ctx.sessionID, requested)
+  return tabId
+}
+
+async function currentHost(ctx: ToolContext, tabId: number): Promise<string> {
+  const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+  return ctx.permissions.hostOf(tab?.url)
+}
+
+export const tabsTools: ToolMap = {
+  async tabs_context(args, ctx) {
+    const createIfEmpty = args.createIfEmpty === true || args.create_if_empty === true
+    let tabs = await ctx.tabs.list(ctx.sessionID)
+    if (tabs.length === 0 && createIfEmpty) {
+      await ctx.tabs.ensure(ctx.sessionID)
+      tabs = await ctx.tabs.list(ctx.sessionID)
+    }
+    const groupId = await ctx.tabs.groupOf(ctx.sessionID)
+    const active = tabs.find((tab) => tab.active) ?? tabs[0]
+    const output = JSON.stringify(
+      {
+        ...(groupId !== null ? { tabGroupId: groupId } : {}),
+        ...(active ? { currentTabId: active.id } : {}),
+        availableTabs: tabs.map((tab) => ({ tabId: tab.id, title: tab.title, url: tab.url })),
+        tabCount: tabs.length,
+      },
+      null,
+      2,
+    )
+    return { content: output }
+  },
+
+  async tabs_create(args, ctx) {
+    const url = typeof args.url === "string" && args.url.length > 0 ? args.url : "about:blank"
+    const tabId = await ctx.tabs.createTab(ctx.sessionID, url, args.active !== false)
+    return {
+      content: `Aba criada. Tab ID: ${tabId}\n\n${await tabContext(ctx, tabId)}`,
+      metadata: { tabId },
+    }
+  },
+
+  async tabs_close(args, ctx) {
+    const tabId = typeof args.tabId === "number" ? args.tabId : undefined
+    if (tabId === undefined) throw new Error("Parâmetro obrigatório ausente: tabId.")
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+    const allowed = await ctx.ask({
+      kind: "action",
+      tool: "tabs_close",
+      title: "Fechar aba",
+      detail: tab?.title ?? `Aba ${tabId}`,
+      url: tab?.url,
+    })
+    if (!allowed) return { content: "Ação negada pelo usuário. Nenhuma aba foi fechada." }
+    await ctx.tabs.closeTab(ctx.sessionID, tabId)
+    const tabs = await ctx.tabs.list(ctx.sessionID)
+    return {
+      content: `Aba ${tabId} fechada. ${tabs.length} aba(s) restante(s).\n\n${JSON.stringify(
+        { availableTabs: tabs.map((item) => ({ tabId: item.id, title: item.title, url: item.url })), tabCount: tabs.length },
+        null,
+        2,
+      )}`,
+    }
+  },
+
+  async navigate(args, ctx) {
+    const tabId = await resolve(ctx, args)
+    const direction = args.direction
+    if (direction === "back" || direction === "forward") {
+      const tab = await chrome.tabs.get(tabId)
+      if (direction === "back") await chrome.tabs.goBack(tabId)
+      else await chrome.tabs.goForward(tabId)
+      await waitForLoad(tabId).catch(() => undefined)
+      return { content: `Navegou ${direction === "back" ? "para trás" : "para frente"} a partir de ${tab.url ?? ""}.` }
+    }
+
+    let raw = typeof args.url === "string" ? args.url.trim() : ""
+    if (!raw) throw new Error("Informe `url` ou `direction` (back/forward).")
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(raw)) raw = `https://${raw}`
+    let url: URL
+    try {
+      url = new URL(raw)
+    } catch {
+      throw new Error(`URL inválida: ${raw}`)
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("Só é permitido navegar para http(s).")
+    }
+
+    const from = await currentHost(ctx, tabId)
+    const to = url.hostname
+    const allowed = await ctx.ask({
+      kind: from && to && from !== to ? "domain" : "action",
+      tool: "navigate",
+      title: from && to && from !== to ? `Navegar de ${from} para ${to}` : `Navegar para ${to}`,
+      detail: url.toString(),
+      url: url.toString(),
+      fromDomain: from || undefined,
+      toDomain: to,
+    })
+    if (!allowed) return { content: "Navegação negada pelo usuário." }
+
+    await chrome.tabs.update(tabId, { url: url.toString() })
+    await waitForLoad(tabId).catch(() => undefined)
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+    return {
+      content: `Navegou para ${tab?.url ?? url.toString()}\n\n${await tabContext(ctx, tabId)}`,
+    }
+  },
+
+  async resize_window(args, ctx) {
+    const tabId = await resolve(ctx, args)
+    const width = typeof args.width === "number" ? Math.round(args.width) : undefined
+    const height = typeof args.height === "number" ? Math.round(args.height) : undefined
+    if (!width || !height) throw new Error("Informe width e height.")
+    const tab = await chrome.tabs.get(tabId)
+    if (!tab.windowId) throw new Error("Aba sem janela.")
+    await chrome.windows.update(tab.windowId, { width, height })
+    return { content: `Janela redimensionada para ${width}x${height}.` }
+  },
+}
+
+function waitForLoad(tabId: number, timeoutMs = 15_000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener)
+      reject(new Error("Timeout aguardando o carregamento da página."))
+    }, timeoutMs)
+    const listener = (updatedId: number, info: { status?: string }) => {
+      if (updatedId !== tabId || info.status !== "complete") return
+      clearTimeout(timer)
+      chrome.tabs.onUpdated.removeListener(listener)
+      resolve()
+    }
+    chrome.tabs.onUpdated.addListener(listener)
+    chrome.tabs.get(tabId).then(
+      (tab) => {
+        if (tab.status === "complete") {
+          clearTimeout(timer)
+          chrome.tabs.onUpdated.removeListener(listener)
+          resolve()
+        }
+      },
+      () => undefined,
+    )
+  })
+}
+
+export async function withIndicator<T>(
+  ctx: ToolContext,
+  tabId: number,
+  status: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  await ctx.indicator(tabId, status, true)
+  try {
+    return await task()
+  } finally {
+    await ctx.hideIndicator(tabId)
+  }
+}
+
+export type { ToolResult }

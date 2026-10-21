@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "OpenCode Browser",
+  "version": "0.1.0",
+  "description": "Conecta o navegador aos modelos do OpenCode instalado na sua máquina.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAliKVb31quAN1zaZwyHaHaLJjluZOtQhGQzeyKeQ87xhr2bq9w4m/p18+l5xZXgP8EzwkUJ4YB4ekutCOv6vU4bsq/rMvEnX326mxXBA9ha+4YH7hVwKQKkvRWEg4dH6c7VpSoajhcqJV2eng68bzEOfN1O3AlzsUx2J9I8R/54MZzHK4GiWXcu6WHy+RZUehE89pSE/3ro4yFAL4rfT17AcuXF9WwlQHNLBi52G+fmmlf9H9ohlQSYHdRPNqs30atWSGBuou615X/9u5S0KVOYYg/hQayp250NPiC6PesS6dnTslHOXTOITdzeT4vWDJ0q2a+Fj6shKpCZrN1k8DZQIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Abrir OpenCode Browser",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_page": "options.html",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "tabGroups",
+    "scripting",
+    "debugger",
+    "activeTab",
+    "alarms",
+    "offscreen"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["assets/content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "commands": {
+    "toggle-side-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+O",
+        "mac": "Command+Shift+O"
+      },
+      "description": "Abrir/fechar o painel do OpenCode Browser"
+    }
+  }
+}
