@@ -49,6 +49,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -82,9 +83,10 @@ a {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-width: 320px;
-  overflow-x: hidden;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .header {
@@ -92,6 +94,7 @@ a {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
@@ -250,6 +253,7 @@ a {
   padding: 6px 10px;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
+  min-width: 0;
 }
 
 .session-bar .select {
@@ -264,8 +268,11 @@ a {
 }
 
 .chat {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px 12px 20px;
   display: flex;
   flex-direction: column;
@@ -321,6 +328,7 @@ a {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -337,6 +345,7 @@ a {
 
 .msg-assistant {
   align-self: stretch;
+  min-width: 0;
 }
 
 .msg-meta {
@@ -348,6 +357,8 @@ a {
 }
 
 .msg-body {
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
@@ -380,6 +391,7 @@ a {
   background: var(--bg-soft);
   border: 1px solid var(--line);
   border-radius: 10px;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -393,6 +405,9 @@ a {
 .msg-body table {
   border-collapse: collapse;
   width: 100%;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
   font-size: 12.5px;
   margin: 8px 0;
 }
@@ -410,6 +425,8 @@ a {
   padding: 7px 9px;
   font-size: 12px;
   color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .reasoning summary {
@@ -420,8 +437,11 @@ a {
 .reasoning div {
   margin-top: 6px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   max-height: 220px;
-  overflow: auto;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .tool-card {
@@ -432,6 +452,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .tool-head {
@@ -440,6 +462,8 @@ a {
   gap: 7px;
   font-size: 12.5px;
   font-weight: 600;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .tool-icon {
@@ -453,7 +477,16 @@ a {
   flex: 0 0 auto;
 }
 
+.tool-head .status {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
 .tool-status {
+  flex: 0 0 auto;
   font-size: 10.5px;
   font-weight: 650;
   padding: 2px 7px;
@@ -490,7 +523,9 @@ a {
   border-radius: 8px;
   padding: 7px 8px;
   max-height: 240px;
-  overflow: auto;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .tool-images {
@@ -613,8 +648,16 @@ a {
   font-size: 10.5px;
   color: var(--muted);
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.composer-hint .status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Onboarding */
