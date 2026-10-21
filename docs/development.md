@@ -27,6 +27,48 @@ Arquivos estáticos (`manifest.json`, ícones, `offscreen.html`) vêm de `public
 > build, clique em **Recarregar** na extensão ou feche e reabra o navegador de
 > teste.
 
+## Testes automatizados
+
+A suíte usa **Vitest** com ambiente `jsdom`, mock global das APIs do Chrome e
+cobertura via V8. Os testes ficam em `tests/` espelhando `src/`.
+
+```bash
+npm test                 # suíte completa
+npm run test:coverage    # cobertura com mínimo de 80% (linhas, funções, branches, instruções)
+npm run test:watch       # modo interativo
+```
+
+| Área | Cobertura de teste |
+|---|---|
+| `src/background/opencode` | Cliente da API, parser SSE e erros |
+| `src/background` | Permissões, grupos de abas, CDP, gravação e service worker |
+| `src/background/tools` | As 18 ferramentas, caminhos de erro e permissões |
+| `src/content` | Árvore de acessibilidade, ações de DOM e indicador |
+| `src/offscreen` | Keepalive, som e codificação de GIF |
+| `src/components`, `src/sidepanel`, `src/options`, `src/permission` | Componentes e fluxos de UI |
+
+Os helpers de teste ficam em `tests/helpers/`:
+
+| Helper | Papel |
+|---|---|
+| `chrome.ts` | Mock completo das APIs do Chrome (storage, tabs, tabGroups, debugger, …) |
+| `factories.ts` | Fábricas de modelos, sessões, agentes e do contexto de ferramenta |
+
+## Integração contínua
+
+| Workflow | Arquivo | O que roda |
+|---|---|---|
+| Testes | `.github/workflows/test.yml` | `npm run test:coverage`, resumo da cobertura no job e comentário na PR, artefato `coverage-report` |
+| Qualidade de código | `.github/workflows/quality.yml` | `npm run lint`, `npm run typecheck`, `npm run build` e verificação dos artefatos |
+
+Ambos rodam em toda `pull_request` para `main` e em `push` para `main`.
+
+A branch `main` é protegida por um ruleset do GitHub:
+
+- PR obrigatória antes do merge (sem aprovações obrigatórias, para uso solo).
+- Checks obrigatórios: **Testes e cobertura** e **Lint, tipos e build**.
+- Sem push direto, sem force-push e sem exclusão da branch.
+
 ## Checklist de testes manuais
 
 | # | Passo | Resultado esperado |
