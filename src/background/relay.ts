@@ -3,8 +3,19 @@ import type { RelayState } from "../shared/types"
 
 const CANDIDATE_PORTS = [RELAY_PORT, RELAY_PORT + 1, RELAY_PORT + 2, RELAY_PORT + 3]
 
-/** O plugin pode precisar de outra porta quando um servidor antigo ainda ocupa 8799. */
-async function resolveRelayUrl(): Promise<string> {
+interface RelayEndpoint {
+  url: string
+  workspace?: string
+}
+
+/**
+ * O plugin pode precisar de outra porta quando um servidor antigo ainda ocupa
+ * 8799. Preferimos a versão mais alta (servidor mais novo) e, em empate, a
+ * porta mais alta; assim um servidor órfão de código antigo não sequestra a
+ * extensão.
+ */
+async function resolveRelayEndpoint(): Promise<RelayEndpoint> {
+  let best: { url: string; version: number; port: number; workspace?: string } | null = null
   for (const port of CANDIDATE_PORTS) {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/health`, {
@@ -12,15 +23,30 @@ async function resolveRelayUrl(): Promise<string> {
         cache: "no-store",
       })
       if (!response.ok) continue
-      const data = (await response.json()) as { connected?: boolean }
-      if (data && typeof data === "object" && "connected" in data) {
-        return `ws://127.0.0.1:${port}`
+      const data = (await response.json()) as {
+        connected?: boolean
+        version?: number
+        workspace?: string
+      }
+      if (!data || typeof data !== "object" || !("connected" in data)) continue
+      const version = typeof data.version === "number" ? data.version : 0
+      if (
+        !best ||
+        version > best.version ||
+        (version === best.version && port > best.port)
+      ) {
+        best = {
+          url: `ws://127.0.0.1:${port}`,
+          version,
+          port,
+          workspace: typeof data.workspace === "string" ? data.workspace : undefined,
+        }
       }
     } catch {
       // porta sem o relay novo; tenta a próxima
     }
   }
-  return RELAY_URL
+  return best ? { url: best.url, workspace: best.workspace } : { url: RELAY_URL }
 }
 
 interface RelayHandlers {
@@ -46,7 +72,8 @@ export class RelayClient {
   async connect(force = false): Promise<void> {
     if (!force && this.socket && this.socket.readyState <= WebSocket.OPEN) return
     if (force) this.close()
-    const url = await resolveRelayUrl()
+    const endpoint = await resolveRelayEndpoint()
+    const url = endpoint.url
     if (this.socket) return
     this.setState({ ...this.state, connected: false, url, lastError: undefined })
     let socket: WebSocket
@@ -66,6 +93,7 @@ export class RelayClient {
         extensionId: chrome.runtime.id,
       }
       socket.send(JSON.stringify(hello))
+      if (endpoint.workspace) this.handlers.onReady?.({ workspace: endpoint.workspace })
       this.setState({ connected: true, url })
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.pingTimer = setInterval(() => this.send({ type: "pong" }), 20_000)

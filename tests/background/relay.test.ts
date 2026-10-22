@@ -158,13 +158,19 @@ describe("background/relay — descoberta de porta", () => {
     expect(client.current).toEqual({ connected: false, url: RELAY_URL })
   })
 
-  it("escolhe a primeira porta que responde /health com a chave connected", async () => {
+  it("escolhe a porta que responde /health com a chave connected", async () => {
     healthFetch({ 8799: async () => healthOk({ connected: false }) })
     const { client, states } = makeClient()
 
     await client.connect()
 
-    expect(healthUrls()).toEqual(["http://127.0.0.1:8799/health"])
+    // Sonda todas as portas candidatas para comparar versões.
+    expect(healthUrls()).toEqual([
+      "http://127.0.0.1:8799/health",
+      "http://127.0.0.1:8800/health",
+      "http://127.0.0.1:8801/health",
+      "http://127.0.0.1:8802/health",
+    ])
     const init = fetchMock.mock.calls[0][1] as RequestInit
     expect(init.cache).toBe("no-store")
     expect((init.signal as AbortSignal).aborted).toBe(false)
@@ -172,6 +178,41 @@ describe("background/relay — descoberta de porta", () => {
     expect(socketAt(0).url).toBe("ws://127.0.0.1:8799")
     expect(client.current).toMatchObject({ connected: false, url: "ws://127.0.0.1:8799" })
     expect(states.at(-1)).toMatchObject({ connected: false, url: "ws://127.0.0.1:8799" })
+  })
+
+  it("prefere o servidor de versão mais alta e lê o workspace do /health", async () => {
+    healthFetch({
+      8799: async () => healthOk({ connected: false, version: 2 }),
+      8800: async () =>
+        healthOk({
+          connected: false,
+          version: 3,
+          workspace: "/home/teste/.opencode-browser-extensions",
+        }),
+    })
+    const { client, onReady } = makeClient()
+
+    await client.connect()
+    const socket = socketAt(0)
+    socket.open()
+
+    expect(socket.url).toBe("ws://127.0.0.1:8800")
+    expect(client.current.url).toBe("ws://127.0.0.1:8800")
+    expect(onReady).toHaveBeenCalledWith({
+      workspace: "/home/teste/.opencode-browser-extensions",
+    })
+  })
+
+  it("desempata pela porta mais alta quando a versão é igual", async () => {
+    healthFetch({
+      8799: async () => healthOk({ connected: false, version: 1 }),
+      8801: async () => healthOk({ connected: false, version: 1 }),
+    })
+    const { client } = makeClient()
+
+    await client.connect()
+
+    expect(socketAt(0).url).toBe("ws://127.0.0.1:8801")
   })
 
   it("pula portas sem ok e corpos sem a chave connected", async () => {

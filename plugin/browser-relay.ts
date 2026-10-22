@@ -55,7 +55,7 @@ interface RelayGlobal {
 }
 
 /** Incrementar quando o servidor do relay mudar de forma incompatível. */
-const SERVER_VERSION = 2
+const SERVER_VERSION = 3
 
 type Carrier = typeof globalThis & { __opencodeBrowserRelay?: Partial<RelayGlobal> }
 
@@ -641,7 +641,11 @@ export default Plugin.define({
             return url.pathname === "/cancel" ? handleHttpCancel(request) : handleHttpTool(request)
           }
           if (url.pathname === "/health") {
-            return Response.json({ connected: Boolean(relay().active) })
+            return Response.json({
+              connected: Boolean(relay().active),
+              version: SERVER_VERSION,
+              workspace: WORKSPACE,
+            })
           }
           if (url.pathname !== "/" && url.pathname !== "/ws") {
             return new Response("Not found", { status: 404 })
