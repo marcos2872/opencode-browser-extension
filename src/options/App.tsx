@@ -39,6 +39,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
+  const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -59,6 +60,7 @@ export default function App() {
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
+        setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
     void chrome.storage.local.get([ALLOW_KEY, DENY_KEY]).then((data) => {
@@ -101,6 +103,7 @@ export default function App() {
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
         notifyEnabled,
+        directory: workspace.trim() || undefined,
       },
     })
     if (!response.ok) {
@@ -184,9 +187,23 @@ export default function App() {
                 <dd>{config.baseUrl}</dd>
                 <dt>Token</dt>
                 <dd>{config.token.slice(0, 6)}…{config.token.slice(-4)} (oculto)</dd>
-                <dt>Diretório</dt>
-                <dd>{config.directory ?? "padrão do servidor"}</dd>
               </dl>
+              <div className="field">
+                <label htmlFor="workspace">Pasta das conversas do navegador</label>
+                <input
+                  id="workspace"
+                  className="input"
+                  value={workspace}
+                  onChange={(event) => setWorkspace(event.target.value)}
+                  placeholder="~/.opencode-browser-extensions"
+                  spellCheck={false}
+                />
+                <p className="desc">
+                  As conversas criadas pela extensão ficam nesta pasta e a extensão só lista as
+                  que estiverem nela. O plugin cria a pasta e informa o caminho automaticamente
+                  (padrão: <code>~/.opencode-browser-extensions</code>).
+                </p>
+              </div>
               <div className="row">
                 <button className="btn danger" onClick={() => void unpair()}>
                   Desconectar

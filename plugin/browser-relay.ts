@@ -1,6 +1,6 @@
 import { Plugin } from "@opencode/plugin"
-import { readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 
 /**
@@ -110,6 +110,9 @@ function failPending(socket: Socket, reason: string): void {
 }
 
 const TOKEN_FILE = join(tmpdir(), "opencode-browser-relay.token")
+
+/** Pasta onde ficam as conversas criadas pela extensão. */
+const WORKSPACE = join(homedir(), ".opencode-browser-extensions")
 
 interface RelayInfo {
   token: string
@@ -606,6 +609,11 @@ const tools = [
 export default Plugin.define({
   id: "opencode.browser-relay",
   async setup(ctx) {
+    try {
+      mkdirSync(WORKSPACE, { recursive: true })
+    } catch (error) {
+      log(`não foi possível criar a pasta de conversas ${WORKSPACE}`, error)
+    }
     const state = relay()
     state.instances += 1
     let ownsServer = false
@@ -660,7 +668,7 @@ export default Plugin.define({
             }
             relay().active = socket
             log(`extensão conectada (${socket.data.origin})`)
-            send(socket, { type: "ready", v: 1 })
+            send(socket, { type: "ready", v: 1, home: homedir(), workspace: WORKSPACE })
           },
           message(socket, raw) {
             if (typeof raw !== "string") return

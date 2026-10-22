@@ -44,8 +44,14 @@ npm run build
    ```bash
    npm run install:plugin
    ```
+   O script é multiplataforma (Linux, macOS e Windows): resolve a pasta de
+   plugins do OpenCode, remove cópias antigas e cria a pasta das conversas.
 3. Rode `opencode pair` no terminal, copie o link e cole no onboarding do
    side panel (clique no ícone da extensão para abrir).
+
+As conversas criadas pela extensão ficam em `~/.opencode-browser-extensions`
+(no Windows, `%USERPROFILE%\.opencode-browser-extensions`) e a extensão lista
+apenas as que estão nessa pasta. O caminho é configurável nas opções.
 
 Pronto: escolha um modelo, crie uma conversa e peça algo como
 "abra o Hacker News e resuma as 5 principais notícias".

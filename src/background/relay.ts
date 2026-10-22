@@ -27,6 +27,7 @@ interface RelayHandlers {
   onTool: (request: Extract<RelayInbound, { type: "tool_request" }>) => void
   onCancel: (id: string) => void
   onState: (state: RelayState) => void
+  onReady?: (info: { home?: string; workspace?: string }) => void
 }
 
 export class RelayClient {
@@ -76,6 +77,10 @@ export class RelayClient {
       try {
         message = JSON.parse(event.data) as RelayInbound
       } catch {
+        return
+      }
+      if (message.type === "ready") {
+        this.handlers.onReady?.({ home: message.home, workspace: message.workspace })
         return
       }
       if (message.type === "ping") {

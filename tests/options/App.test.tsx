@@ -60,17 +60,33 @@ describe("options/App", () => {
     expect(screen.queryByText("Carregando...")).not.toBeInTheDocument()
   })
 
-  it("exibe servidor, token mascarado e diretório padrão", async () => {
+  it("exibe servidor, token mascarado e pasta das conversas vazia", async () => {
     await renderOptions(makeSnapshot())
 
     expect(screen.getByText("http://127.0.0.1:49374")).toBeInTheDocument()
     expect(screen.getByText("abcdef…3456 (oculto)")).toBeInTheDocument()
-    expect(screen.getByText("padrão do servidor")).toBeInTheDocument()
+    expect(screen.getByLabelText("Pasta das conversas do navegador")).toHaveValue("")
+    expect(screen.getByPlaceholderText("~/.opencode-browser-extensions")).toBeInTheDocument()
   })
 
-  it("exibe o diretório configurado", async () => {
-    await renderOptions(makeSnapshot({ config: makeConfig({ directory: "/home/marcos/projeto" }) }))
-    expect(screen.getByText("/home/marcos/projeto")).toBeInTheDocument()
+  it("exibe a pasta das conversas configurada", async () => {
+    await renderOptions(
+      makeSnapshot({ config: makeConfig({ directory: "/home/teste/.opencode-browser-extensions" }) }),
+    )
+    expect(screen.getByLabelText("Pasta das conversas do navegador")).toHaveValue(
+      "/home/teste/.opencode-browser-extensions",
+    )
+  })
+
+  it("salva a pasta das conversas informada", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const input = screen.getByLabelText("Pasta das conversas do navegador")
+    await user.clear(input)
+    await user.type(input, "/tmp/conversas")
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+
+    expect(sent("settings:update").patch.directory).toBe("/tmp/conversas")
   })
 
   it("exibe o estado da API e do plugin", async () => {
@@ -182,6 +198,7 @@ describe("options/App", () => {
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
+        directory: undefined,
       },
     })
     expect(await screen.findByText("Permissões salvas.")).toBeInTheDocument()

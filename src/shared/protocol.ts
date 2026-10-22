@@ -17,6 +17,13 @@ export const RELAY_PROTOCOL = 1
 /** Plugin -> extension */
 export type RelayInbound =
   | {
+      /** Handshake do plugin: informa o home e a pasta de conversas. */
+      type: "ready"
+      v?: number
+      home?: string
+      workspace?: string
+    }
+  | {
       type: "tool_request"
       id: string
       tool: string

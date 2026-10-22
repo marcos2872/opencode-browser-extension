@@ -80,6 +80,14 @@ capturado após cada ação.
 O botão **Parar** (injetado na página) envia `browser:stop`: aborta as execuções
 em andamento e interrompe a sessão no OpenCode.
 
+### Sessões e pasta das conversas
+
+O plugin anuncia no handshake uma pasta própria (`~/.opencode-browser-extensions`
+por padrão). A extensão a usa como `location` ao criar sessões e filtra a
+listagem por ela — só aparecem as conversas criadas ali. Se o usuário definir
+outro caminho nas opções, ele tem precedência. Sessões sem `location` continuam
+visíveis (defensivo).
+
 ### Grupos de abas
 
 Cada sessão do OpenCode ganha um grupo do Chrome com o título `OpenCode`, uma aba

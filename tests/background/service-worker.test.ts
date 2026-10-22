@@ -75,7 +75,7 @@ function pushEvent(type: string, data: Record<string, unknown>): void {
 
 const apiCalls: Array<{ url: string; method: string; body: unknown }> = []
 
-function installFetch(options: { models?: boolean } = {}): void {
+function installFetch(options: { sessions?: unknown[] } = {}): void {
   apiCalls.length = 0
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input)
@@ -86,22 +86,27 @@ function installFetch(options: { models?: boolean } = {}): void {
       body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
     })
 
-    if (url.includes("/health")) return new Response("{}", { status: 404 })
-    if (url.includes("/auth/connect/")) return jsonResponse({ token: "token-teste" })
-    if (url.endsWith("/api/model")) return jsonResponse({ data: [makeModel()] })
-    if (url.endsWith("/api/model/default")) return jsonResponse({ data: makeModel({ id: "model-1" }) })
-    if (url.endsWith("/api/agent")) return jsonResponse({ data: [makeAgent()] })
-    if (url.endsWith("/api/command")) return jsonResponse({ data: [makeCommand()] })
-    if (url.endsWith("/api/event")) return sseResponse()
-    if (url.endsWith("/api/session") && method === "GET") return jsonResponse({ data: [makeSession()] })
-    if (url.endsWith("/api/session") && method === "POST")
+    const pathname = new URL(url).pathname
+    if (pathname === "/health") return new Response("{}", { status: 404 })
+    if (pathname.startsWith("/auth/connect/")) return jsonResponse({ token: "token-teste" })
+    if (pathname === "/api/model") return jsonResponse({ data: [makeModel()] })
+    if (pathname === "/api/model/default") return jsonResponse({ data: makeModel({ id: "model-1" }) })
+    if (pathname === "/api/agent") return jsonResponse({ data: [makeAgent()] })
+    if (pathname === "/api/command") return jsonResponse({ data: [makeCommand()] })
+    if (pathname === "/api/event") return sseResponse()
+    if (pathname === "/api/experimental/generate") return jsonResponse({ data: { text: "ok" } })
+    if (pathname === "/api/session" && method === "GET") {
+      return jsonResponse({ data: options.sessions ?? [makeSession()] })
+    }
+    if (pathname === "/api/session" && method === "POST") {
       return jsonResponse({ data: makeSession({ id: "ses_nova", title: "Nova" }) })
-    if (url.includes("/context")) return jsonResponse({ data: [] })
-    if (url.includes("/prompt") || url.includes("/command") || url.includes("/interrupt")) return jsonResponse({})
-    if (url.includes("/model") || url.includes("/agent")) return jsonResponse({})
-    if (url.includes("/api/session/")) return jsonResponse({})
-    if (url.includes("/api/experimental/generate")) return jsonResponse({ data: { text: "ok" } })
-    void options
+    }
+    if (pathname.endsWith("/context")) return jsonResponse({ data: [] })
+    if (pathname.endsWith("/prompt") || pathname.endsWith("/command") || pathname.endsWith("/interrupt")) {
+      return jsonResponse({})
+    }
+    if (pathname.endsWith("/model") || pathname.endsWith("/agent")) return jsonResponse({})
+    if (pathname.startsWith("/api/session/")) return jsonResponse({})
     return jsonResponse({})
   })
   vi.stubGlobal("fetch", fetchMock)
@@ -303,6 +308,85 @@ describe("service-worker: sessões e conversa", () => {
     const response = await callWorker({ type: "nada:disso" })
     expect(response.ok).toBe(false)
     expect(response.error).toMatch(/Comando desconhecido/)
+  })
+})
+
+describe("service-worker: pasta das conversas", () => {
+  it("adota a pasta anunciada pelo plugin e passa a usá-la nas chamadas", async () => {
+    await loadWorker()
+    await pairWorker()
+    const socket = FakeWebSocket.instances[0]
+    socket.open()
+    await flush()
+    apiCalls.length = 0
+
+    socket.message({
+      type: "ready",
+      v: 1,
+      home: "/home/teste",
+      workspace: "/home/teste/.opencode-browser-extensions",
+    })
+    await flush(20)
+
+    const stored = await chrome.storage.local.get("opencode.config")
+    expect(stored["opencode.config"]).toMatchObject({
+      directory: "/home/teste/.opencode-browser-extensions",
+    })
+    expect(
+      apiCalls.some((call) =>
+        decodeURIComponent(call.url).includes("directory=/home/teste/.opencode-browser-extensions"),
+      ),
+    ).toBe(true)
+  })
+
+  it("não sobrescreve a pasta escolhida pelo usuário", async () => {
+    await loadWorker()
+    await pairWorker()
+    await callWorker({ type: "settings:update", patch: { directory: "/tmp/minha-pasta" } })
+    const socket = FakeWebSocket.instances[0]
+    socket.open()
+    await flush()
+
+    socket.message({ type: "ready", v: 1, workspace: "/home/teste/.opencode-browser-extensions" })
+    await flush(20)
+
+    const stored = await chrome.storage.local.get("opencode.config")
+    expect(stored["opencode.config"]).toMatchObject({ directory: "/tmp/minha-pasta" })
+  })
+
+  it("lista apenas sessões da pasta configurada", async () => {
+    installFetch({
+      sessions: [
+        makeSession({ id: "ses_dentro", location: { directory: "/tmp/ws" } }),
+        makeSession({ id: "ses_fora", location: { directory: "/home/marcos" } }),
+      ],
+    })
+    await loadWorker()
+    await pairWorker()
+    await callWorker({ type: "settings:update", patch: { directory: "/tmp/ws" } })
+    apiCalls.length = 0
+
+    const response = await callWorker({ type: "sessions:list" })
+
+    expect(response.snapshot.sessions.map((session: { id: string }) => session.id)).toEqual([
+      "ses_dentro",
+    ])
+    expect(
+      apiCalls.some((call) => decodeURIComponent(call.url).includes("/api/session?directory=/tmp/ws")),
+    ).toBe(true)
+  })
+
+  it("sessão sem location continua visível quando há pasta configurada", async () => {
+    installFetch({ sessions: [makeSession({ id: "ses_sem_location", location: undefined })] })
+    await loadWorker()
+    await pairWorker()
+    await callWorker({ type: "settings:update", patch: { directory: "/tmp/ws" } })
+
+    const response = await callWorker({ type: "sessions:list" })
+
+    expect(response.snapshot.sessions.map((session: { id: string }) => session.id)).toEqual([
+      "ses_sem_location",
+    ])
   })
 })
 
