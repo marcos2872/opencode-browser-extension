@@ -2,7 +2,12 @@
 
 Arquivo: `plugin/browser-relay.ts`
 Instalação: `npm run install:plugin` copia para
-`~/.config/opencode/plugins/opencode-browser.ts`.
+`~/.config/opencode/plugins/browser-relay.ts` (e remove a cópia antiga
+`opencode-browser.ts`, se existir).
+
+> Mantenha **apenas uma** cópia do plugin em `~/.config/opencode/plugins/`.
+> Duas cópias declaram o mesmo id `opencode.browser-relay` e o OpenCode
+> registra uma delas como falha.
 
 O OpenCode carrega plugins locais automaticamente e recarrega ao detectar
 mudanças no arquivo.
