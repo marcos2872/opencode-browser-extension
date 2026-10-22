@@ -1,8 +1,8 @@
 name: Testes
 
 on:
+  # Roda em toda PR aberta/atualizada, qualquer que seja a branch de base.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
@@ -52,8 +52,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # Em PRs de fork o token é somente-leitura; o comentário é ignorado.
       - name: Comentar cobertura na PR
-        if: github.event_name == 'pull_request' && always()
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
