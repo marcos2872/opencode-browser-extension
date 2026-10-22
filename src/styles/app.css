@@ -49,6 +49,12 @@ body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+/* Só o side panel gerencia o próprio scroll; opções e permissão rolam no documento. */
+html.sidepanel-page,
+html.sidepanel-page body,
+html.sidepanel-page #root {
   overflow: hidden;
 }
 
