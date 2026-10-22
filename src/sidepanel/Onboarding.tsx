@@ -40,7 +40,7 @@ export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
 
       <h1>Conecte o navegador ao OpenCode da sua máquina</h1>
       <p>
-        A extensão usa a API local do OpenCode (v2). O pareamento gera um token de uso único e expira
+        A extensão usa a API local do <a href="https://opencode.ai/download" target="_blank">OpenCode Terminal (v2)</a>. O pareamento gera um token de uso único e expira
         em 5 minutos. Nada sai do seu computador.
       </p>
 
