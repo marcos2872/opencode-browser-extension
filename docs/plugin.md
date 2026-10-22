@@ -15,11 +15,30 @@ mudanças no arquivo.
 ## O que ele faz
 
 1. Sobe um servidor WebSocket em loopback para receber a extensão.
-2. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
+2. Cria a pasta de conversas (`~/.opencode-browser-extensions`) e anuncia o
+   `home` e o `workspace` no handshake `ready`.
+3. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
    `codemode: false`, para aparecerem na lista nativa de tools do modelo).
-3. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
+4. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
    extensão e aguarda o `tool_result` (timeout de 180 s).
-4. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo.
+5. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo.
+
+## Plataformas
+
+O plugin usa apenas APIs do Node/Bun (`os.homedir()`, `os.tmpdir()`,
+`path.join`), então funciona igual em Linux, macOS e Windows. Os caminhos
+envolvidos:
+
+| Item | Linux | macOS | Windows |
+|---|---|---|---|
+| Plugins do OpenCode | `~/.config/opencode/plugins` | `~/.config/opencode/plugins` | `%USERPROFILE%\.config\opencode\plugins` |
+| Pasta das conversas | `~/.opencode-browser-extensions` | `~/.opencode-browser-extensions` | `%USERPROFILE%\.opencode-browser-extensions` |
+| Arquivo de token | `$TMPDIR/opencode-browser-relay.token` | `$TMPDIR/opencode-browser-relay.token` | `%TEMP%\opencode-browser-relay.token` |
+
+`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME` e `XDG_STATE_HOME` são
+respeitados quando definidos (em qualquer sistema). A instalação do plugin é
+feita por `npm run install:plugin` (`scripts/install-plugin.mjs`), que resolve
+esses caminhos sem depender de shell POSIX.
 
 ## Servidor local
 
@@ -107,7 +126,7 @@ Mensagens do plugin para a extensão:
 
 | Mensagem | Campos | Descrição |
 |---|---|---|
-| `ready` | `v` | Handshake concluído |
+| `ready` | `v`, `home`, `workspace` | Handshake concluído; informa o home e a pasta de conversas |
 | `tool_request` | `id`, `tool`, `args`, `sessionID?` | Pedido de execução |
 | `cancel` | `id` | Aborta uma execução |
 | `ping` | — | Verificação de vida |

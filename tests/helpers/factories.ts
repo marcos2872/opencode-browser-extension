@@ -19,6 +19,7 @@ export function makeSession(partial: Partial<SessionInfo> = {}): SessionInfo {
     model: { id: "model-1", providerID: "provider-1" },
     agent: "build",
     time: { created: 1, updated: 2 },
+    location: { directory: "/home/marcos" },
     ...partial,
   }
 }

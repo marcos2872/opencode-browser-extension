@@ -93,7 +93,9 @@ A branch `main` é protegida por um ruleset do GitHub:
 | Console do service worker | `chrome://extensions` → Detalhes → "service worker" |
 | Estado do relay | `curl http://127.0.0.1:8800/health` |
 | Token e porta | `cat /tmp/opencode-browser-relay.token` |
-| Log do OpenCode | `~/.local/share/opencode/log/opencode.log` (procure `opencode-browser`) |
+| Log do OpenCode | `~/.local/share/opencode/log/opencode.log` (Windows: `%USERPROFILE%\.local\share\opencode\log`); procure `browser-relay` |
+| Plugins do OpenCode | `~/.config/opencode/plugins` (Windows: `%USERPROFILE%\.config\opencode\plugins`) |
+| Pasta das conversas | `~/.opencode-browser-extensions` (criada pelo plugin) |
 | Testar tool direto | `POST /tool` com `x-relay-token` (ver [plugin.md](plugin.md)) |
 | Lista de tools | Harness com `Plugin.define` fake, ou `opencode plugin list` |
 

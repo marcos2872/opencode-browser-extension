@@ -12,7 +12,7 @@
     "build:offscreen": "vite build --config vite.offscreen.config.ts",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run build",
-    "install:plugin": "mkdir -p ~/.config/opencode/plugins && rm -f ~/.config/opencode/plugins/opencode-browser.ts && cp plugin/browser-relay.ts ~/.config/opencode/plugins/browser-relay.ts",
+    "install:plugin": "node scripts/install-plugin.mjs",
     "package": "npm run build && cd dist && zip -r ../opencode-browser-extension.zip .",
     "test": "vitest run",
     "test:watch": "vitest",

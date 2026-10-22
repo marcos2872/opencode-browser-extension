@@ -9,7 +9,7 @@ ou na página de opções.
 |---|---|---|---|---|---|
 | `baseUrl` | Origem do servidor local | string | — | Sim | Cliente da API |
 | `token` | Token de pareamento | string | — | Sim | Header Basic |
-| `directory` | Diretório enviado como location | string | vazio | Não | `?directory=` e `session.create` |
+| `directory` | Pasta das conversas da extensão (location das sessões) | string | anunciada pelo plugin (`~/.opencode-browser-extensions`) | Não | `?directory=` e `session.create` |
 | `defaultModel` | Modelo padrão | ModelRef | modelo padrão do servidor | Não | Criação de sessão |
 | `defaultAgent` | Agente padrão | string | `build` | Não | Criação de sessão |
 | `permissionMode` | Modo de permissão | `ask` \| `allow` \| `deny` | `ask` | Sim | Permissions |
@@ -25,6 +25,15 @@ ou na página de opções.
 | `ask` | Pede na primeira ação de cada domínio (recomendado) |
 | `allow` | Executa sem perguntar, respeitando a lista de bloqueio |
 | `deny` | Bloqueia ações; apenas ferramentas de leitura executam |
+
+## Pasta das conversas
+
+Por padrão, o plugin anuncia e cria a pasta `~/.opencode-browser-extensions`
+(equivalente em cada sistema, veja [plugin.md](plugin.md)). A extensão usa essa
+pasta como `location` das sessões e filtra a listagem por ela: só aparecem as
+conversas criadas ali. O campo "Pasta das conversas do navegador" nas opções
+permite trocar o caminho; um valor definido pelo usuário não é sobrescrito pelo
+anúncio do plugin.
 
 ## Listas de sites
 

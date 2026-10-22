@@ -58,6 +58,7 @@ let agents: AgentInfo[] = []
 let commands: CommandInfo[] = []
 let relayState: RelayState = { connected: false, url: RELAY_URL }
 let statusMessage: string | null = null
+let workspaceHint: string | null = null
 let sseAbort: AbortController | null = null
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null
 let hydrateToken = 0
@@ -82,6 +83,9 @@ const relay = new RelayClient({
   },
   onCancel: (id) => {
     toolAborts.get(id)?.abort()
+  },
+  onReady: (info) => {
+    void applyWorkspace(info.workspace)
   },
   onState: (state) => {
     relayState = state
@@ -210,13 +214,29 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
   }
 }
 
+async function applyWorkspace(workspace: string | undefined): Promise<void> {
+  if (!workspace) return
+  workspaceHint = workspace
+  if (!config || config.directory) return
+  config = { ...config, directory: workspace }
+  await setConfig(config)
+  client = new OpencodeClient(config.baseUrl, config.token, config.directory)
+  await refreshModels().catch(() => undefined)
+  await refreshAgents().catch(() => undefined)
+  await refreshCommands().catch(() => undefined)
+  await refreshSessions().catch(() => undefined)
+  if (!activeSessionID && sessions[0]) await selectSession(sessions[0].id)
+  startSse()
+  broadcastNow()
+}
+
 async function pair(link: string): Promise<void> {
   const previous = config
   const { baseUrl, token } = await OpencodeClient.pair(link)
   config = {
     baseUrl,
     token,
-    directory: previous?.directory,
+    directory: previous?.directory ?? workspaceHint ?? undefined,
     defaultModel: previous?.defaultModel,
     permissionMode: previous?.permissionMode ?? "ask",
   }
@@ -241,6 +261,7 @@ async function unpair(): Promise<void> {
   await setConfig(null)
   config = null
   client = null
+  workspaceHint = null
   models = []
   sessions = []
   activeSessionID = null
@@ -260,7 +281,10 @@ async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
   if (!config) throw new Error("Configure o pareamento primeiro.")
   const next: OpencodeConfig = { ...config, ...patch }
   if (!next.baseUrl || !next.token) throw new Error("Configuração inválida.")
-  const connectionChanged = next.baseUrl !== config.baseUrl || next.token !== config.token
+  const connectionChanged =
+    next.baseUrl !== config.baseUrl ||
+    next.token !== config.token ||
+    next.directory !== config.directory
   config = next
   await setConfig(config)
   if (connectionChanged) {
@@ -313,7 +337,10 @@ async function refreshAgents(): Promise<void> {
 
 async function refreshSessions(): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.")
-  sessions = (await client.listSessions()).sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0))
+  const directory = config?.directory
+  sessions = (await client.listSessions())
+    .filter((session) => !directory || !session.location?.directory || session.location.directory === directory)
+    .sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0))
   if (activeSessionID && !sessions.some((session) => session.id === activeSessionID)) {
     activeSessionID = null
     messages = []

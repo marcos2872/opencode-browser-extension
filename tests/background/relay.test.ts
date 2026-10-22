@@ -85,18 +85,20 @@ interface RelayHarness {
   onTool: ReturnType<typeof vi.fn>
   onCancel: ReturnType<typeof vi.fn>
   onState: ReturnType<typeof vi.fn>
+  onReady: ReturnType<typeof vi.fn>
   states: RelayState[]
 }
 
 function makeClient(): RelayHarness {
   const onTool = vi.fn()
   const onCancel = vi.fn()
+  const onReady = vi.fn()
   const states: RelayState[] = []
   const onState = vi.fn((state: RelayState) => {
     states.push(state)
   })
-  const client = new RelayClient({ onTool, onCancel, onState })
-  return { client, onTool, onCancel, onState, states }
+  const client = new RelayClient({ onTool, onCancel, onState, onReady })
+  return { client, onTool, onCancel, onReady, onState, states }
 }
 
 function healthOk(payload: unknown = { connected: true }): Response {
@@ -305,6 +307,24 @@ describe("background/relay — mensagens recebidas", () => {
     expect(onTool).toHaveBeenCalledTimes(1)
     expect(onTool).toHaveBeenCalledWith(request)
     expect(onCancel).not.toHaveBeenCalled()
+  })
+
+  it("entrega a pasta de conversas do ready para onReady", async () => {
+    const { socket, onReady } = await connectedClient()
+
+    socket.message(
+      JSON.stringify({
+        type: "ready",
+        v: 1,
+        home: "/home/teste",
+        workspace: "/home/teste/.opencode-browser-extensions",
+      }),
+    )
+
+    expect(onReady).toHaveBeenCalledWith({
+      home: "/home/teste",
+      workspace: "/home/teste/.opencode-browser-extensions",
+    })
   })
 
   it("entrega cancel para onCancel", async () => {
