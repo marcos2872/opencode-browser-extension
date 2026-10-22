@@ -1,8 +1,8 @@
 name: Qualidade de código
 
 on:
+  # Roda em toda PR aberta/atualizada, qualquer que seja a branch de base.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
