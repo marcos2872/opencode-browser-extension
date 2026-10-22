@@ -206,6 +206,11 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await tabs.addTab(sessionID, tab.id);
       return { ok: true, snapshot: snapshot() };
     }
+    case "tabs:list":
+      return { ok: true, tabs: await tabs.list(request.sessionID) };
+    case "tabs:detach":
+      await tabs.detachTab(request.sessionID, request.tabID);
+      return { ok: true, tabs: await tabs.list(request.sessionID) };
     case "prompt":
       await sendPrompt(request.text);
       return { ok: true, snapshot: snapshot() };

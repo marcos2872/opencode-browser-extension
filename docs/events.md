@@ -68,6 +68,8 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `session:model`       | `model`                 | Troca o modelo da sessão              |
 | `session:agent`       | `agent`                 | Troca o agente da sessão              |
 | `tabs:attach-current` | —                       | Move a aba ativa para o grupo         |
+| `tabs:list`           | `sessionID`             | Lista abas no contexto da sessão      |
+| `tabs:detach`         | `sessionID`, `tabID`    | Remove a aba do contexto sem fechá-la |
 | `prompt`              | `text`                  | Envia mensagem                        |
 | `command`             | `name`, `text`          | Executa comando `/`                   |
 | `interrupt`           | —                       | Interrompe a execução                 |

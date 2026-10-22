@@ -50,6 +50,13 @@ export interface SessionInfo {
   location?: { directory?: string };
 }
 
+export interface BrowserTabContext {
+  id: number;
+  title: string;
+  url: string;
+  active: boolean;
+}
+
 export interface ToolCallView {
   id: string;
   name: string;

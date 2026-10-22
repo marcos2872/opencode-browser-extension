@@ -370,6 +370,26 @@ describe("service-worker: sessões e conversa", () => {
     const response = await callWorker({ type: "tabs:attach-current" });
     expect(response.ok).toBe(true);
     expect(chrome.tabs.group).toHaveBeenCalled();
+    const context = await callWorker({
+      type: "tabs:list",
+      sessionID: "ses_test",
+    });
+    expect(context.tabs).toContainEqual({
+      id: 77,
+      title: "Example",
+      url: "https://exemplo.com/",
+      active: true,
+    });
+    const detached = await callWorker({
+      type: "tabs:detach",
+      sessionID: "ses_test",
+      tabID: 77,
+    });
+    expect(detached.ok).toBe(true);
+    expect(detached.tabs.some((tab: { id: number }) => tab.id === 77)).toBe(
+      false,
+    );
+    await expect(chrome.tabs.get(77)).resolves.toMatchObject({ id: 77 });
   });
 
   it("responde a comandos desconhecidos com erro", async () => {

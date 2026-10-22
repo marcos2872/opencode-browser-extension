@@ -24,7 +24,7 @@ function Harness({ initialValue = "", onChangeSpy, ...rest }: HarnessProps) {
       value={value}
       busy={rest.busy ?? false}
       disabled={rest.disabled}
-      relayConnected={rest.relayConnected ?? true}
+      relayConnected={rest.relayConnected ?? false}
       commands={rest.commands ?? []}
       onChange={(next) => {
         setValue(next)
@@ -42,7 +42,7 @@ function Controlled({ value, ...rest }: HarnessProps & { value: string }) {
       value={value}
       busy={rest.busy ?? false}
       disabled={rest.disabled}
-      relayConnected={rest.relayConnected ?? true}
+      relayConnected={rest.relayConnected ?? false}
       commands={rest.commands ?? []}
       onChange={rest.onChangeSpy ?? (() => {})}
       onSend={rest.onSend ?? (() => {})}
@@ -54,6 +54,17 @@ function Controlled({ value, ...rest }: HarnessProps & { value: string }) {
 describe("sidepanel/Composer", () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it("mostra no footer o estado das ferramentas com tooltip", () => {
+    const { rerender } = render(<Controlled value="" relayConnected />)
+    const status = screen.getByRole("status")
+    expect(status).toHaveTextContent("ferramentas conectadas")
+    expect(status).toHaveAttribute("title", "Plugin do navegador conectado; ferramentas disponíveis")
+    expect(status.querySelector(".dot")).toHaveClass("ok")
+
+    rerender(<Controlled value="" relayConnected={false} />)
+    expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
   })
 
   it("ajusta a altura do textarea conforme o conteúdo (auto-resize)", () => {
@@ -183,15 +194,9 @@ describe("sidepanel/Composer", () => {
     expect(document.querySelector(".command-menu")).toBeNull()
   })
 
-  it("mostra a dica de teclado e o status do relay conectado", () => {
-    render(<Harness relayConnected />)
+  it("mostra a dica de teclado e o status de conexão no footer", () => {
+    render(<Harness />)
     expect(screen.getByText("Enter envia · Shift+Enter quebra linha")).toBeInTheDocument()
-    expect(screen.getByText("ferramentas conectadas")).toBeInTheDocument()
-  })
-
-  it("mostra o status do relay desconectado", () => {
-    const { container } = render(<Harness relayConnected={false} />)
-    expect(screen.getByText("ferramentas offline")).toBeInTheDocument()
-    expect(container.querySelector(".composer-hint .dot")).toHaveClass("warn")
+    expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
   })
 })

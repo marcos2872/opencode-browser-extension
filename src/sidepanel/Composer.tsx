@@ -85,7 +85,15 @@ export function Composer({
       </div>
       <div className="composer-hint">
         <span>Enter envia · Shift+Enter quebra linha</span>
-        <span className="status">
+        <span
+          className="status"
+          role="status"
+          title={
+            relayConnected
+              ? "Plugin do navegador conectado; ferramentas disponíveis"
+              : "Plugin do navegador desconectado; ferramentas indisponíveis"
+          }
+        >
           <span className={`dot ${relayConnected ? "ok" : "warn"}`} />
           {relayConnected ? "ferramentas conectadas" : "ferramentas offline"}
         </span>
