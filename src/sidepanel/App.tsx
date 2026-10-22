@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { PORT_NAME, type UiEvent } from "../shared/protocol"
-import type { AppSnapshot, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
+import type { AppSnapshot, BrowserTabContext, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
 import { SettingsIcon, Logo } from "../components/icons"
 import { PermissionCard } from "../components/PermissionCard"
 import { Chat } from "./Chat"
@@ -9,6 +9,12 @@ import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
 import { SessionBar } from "./SessionBar"
 import { request } from "./api"
+
+async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> {
+  const response = await request({ type: "tabs:list", sessionID })
+  if (!response.ok) throw new Error(response.error)
+  return response.tabs ?? []
+}
 
 export default function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
@@ -19,6 +25,11 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState<ModelRef | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [contextResult, setContextResult] = useState<{
+    sessionID: string
+    tabs: BrowserTabContext[]
+    error: string | null
+  } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   function showToast(message: string) {
@@ -66,6 +77,31 @@ export default function App() {
   }, [])
 
   const activeSession = snapshot?.sessions.find((session) => session.id === snapshot.activeSessionID)
+  const hasCurrentContext = contextResult?.sessionID === snapshot?.activeSessionID
+  const contextTabs = hasCurrentContext ? contextResult?.tabs ?? [] : []
+  const contextError = hasCurrentContext ? contextResult?.error ?? null : null
+  const toolRevision = snapshot?.messages
+    .flatMap((message) => message.kind === "assistant" ? message.tools : [])
+    .map((tool) => `${tool.id}:${tool.status}`)
+    .join("|") ?? ""
+
+  useEffect(() => {
+    const sessionID = snapshot?.activeSessionID
+    if (!sessionID) return
+    let current = true
+    void listSessionTabs(sessionID).then((tabs) => {
+      if (!current) return
+      setContextResult({ sessionID, tabs, error: null })
+    }).catch((error: unknown) => {
+      if (!current) return
+      setContextResult({
+        sessionID,
+        tabs: [],
+        error: error instanceof Error ? error.message : String(error),
+      })
+    })
+    return () => { current = false }
+  }, [snapshot?.activeSessionID, toolRevision])
 
   useEffect(() => {
     if (!snapshot) return
@@ -124,6 +160,36 @@ export default function App() {
     if (!window.confirm("Excluir esta sessão? O histórico será removido do OpenCode.")) return
     const response = await request({ type: "session:delete", id: snapshot.activeSessionID })
     if (!response.ok) showToast(response.error)
+  }
+
+  async function attachCurrentTab() {
+    const sessionID = snapshot?.activeSessionID
+    if (!sessionID) return
+    const response = await request({ type: "tabs:attach-current" })
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
+    try {
+      setContextResult({ sessionID, tabs: await listSessionTabs(sessionID), error: null })
+    } catch (error) {
+      setContextResult({
+        sessionID,
+        tabs: [],
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  async function detachTab(tabID: number) {
+    const sessionID = snapshot?.activeSessionID
+    if (!sessionID) return
+    const response = await request({ type: "tabs:detach", sessionID, tabID })
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
+    setContextResult({ sessionID, tabs: response.tabs ?? [], error: null })
   }
 
   async function send() {
@@ -212,13 +278,16 @@ export default function App() {
             sessions={snapshot.sessions}
             activeID={snapshot.activeSessionID}
             busy={snapshot.busy}
+            contextTabs={contextTabs}
+            contextError={contextError}
             agents={snapshot.agents}
             agent={selectedAgent}
             onSelect={(id) => void request({ type: "session:select", id })}
             onNew={() => void newSession()}
             onDelete={() => void deleteSession()}
+            onAttach={() => void attachCurrentTab()}
+            onDetach={(tabID) => void detachTab(tabID)}
             onAgent={(agent) => void changeAgent(agent)}
-            onAttach={() => void request({ type: "tabs:attach-current" })}
           />
           <Chat messages={snapshot.messages} busy={snapshot.busy} onSuggestion={setDraft} bottomRef={bottomRef} />
           {snapshot.statusMessage ? (

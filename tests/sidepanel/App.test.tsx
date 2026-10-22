@@ -152,6 +152,40 @@ describe("sidepanel/App", () => {
     expect(screen.getByText("offline")).toBeInTheDocument()
   })
 
+  it("mostra as abas conectadas no botão de contexto e permite removê-las", async () => {
+    const { user } = await renderApp(
+      makeSnapshot({
+        backend: "offline",
+        relay: { connected: false, url: "ws://127.0.0.1:8799", lastError: "conexão recusada" },
+      }),
+      {
+        "tabs:list": {
+          ok: true,
+          tabs: [{ id: 9, title: "Portal do cliente", url: "https://example.com/dashboard?token=segredo", active: true }],
+        },
+      },
+    )
+
+    expect(screen.getByText("offline")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
+
+    await user.click(await screen.findByRole("button", { name: "Mostrar 1 aba conectada" }))
+    expect(screen.getByText("Portal do cliente")).toBeInTheDocument()
+    expect(screen.getByText("https://example.com")).toBeInTheDocument()
+    expect(screen.queryByText(/token=segredo/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Conectar nova aba" }))
+    expect(sent("tabs:attach-current")).toEqual({ type: "tabs:attach-current" })
+    expect(sent("tabs:list")).toEqual({ type: "tabs:list", sessionID: "ses_test" })
+
+    await user.click(screen.getByRole("button", { name: "Mostrar 1 aba conectada" }))
+    await user.click(screen.getByRole("button", { name: "Remover Portal do cliente do contexto" }))
+    expect(sent("tabs:detach")).toEqual({
+      type: "tabs:detach",
+      sessionID: "ses_test",
+      tabID: 9,
+    })
+  })
+
   it("envia o prompt pelo composer", async () => {
     const { user } = await renderApp(makeSnapshot())
     const textarea = screen.getByPlaceholderText("Peça algo ao OpenCode...")
@@ -278,7 +312,7 @@ describe("sidepanel/App", () => {
   it("anexa a aba atual ao grupo", async () => {
     const { user } = await renderApp(makeSnapshot())
 
-    await user.click(screen.getByTitle("Anexar a aba atual ao grupo"))
+    await user.click(screen.getByRole("button", { name: "Conectar aba atual" }))
     expect(sent("tabs:attach-current")).toEqual({ type: "tabs:attach-current" })
   })
 
@@ -405,11 +439,11 @@ describe("sidepanel/App", () => {
   it("atualiza o relay com o evento relay do port", async () => {
     const { port } = await renderApp(makeSnapshot())
 
-    expect(screen.getByText("ferramentas conectadas")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("ferramentas conectadas")
     act(() => {
       port.onMessage.emit({ type: "relay", relay: { connected: false, url: "ws://127.0.0.1:8799", lastError: "recusado" } })
     })
-    expect(await screen.findByText("ferramentas offline")).toBeInTheDocument()
+    expect(await screen.findByRole("status")).toHaveTextContent("ferramentas offline")
   })
 
   it("mostra toast de erro e devolve o texto ao rascunho", async () => {

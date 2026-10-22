@@ -1,17 +1,22 @@
+import { useState } from "react"
 import type { AgentInfo, SessionInfo } from "../shared/types"
-import { LinkIcon, PlusIcon, TrashIcon } from "../components/icons"
+import type { BrowserTabContext } from "../shared/types"
+import { LinkIcon, PlusIcon, TrashIcon, XIcon } from "../components/icons"
 
 interface Props {
   sessions: SessionInfo[]
   activeID: string | null
   busy: boolean
+  contextTabs: BrowserTabContext[]
+  contextError: string | null
   agents: AgentInfo[]
   agent: string | null
   onSelect: (id: string) => void
   onNew: () => void
   onDelete: () => void
-  onAgent: (agent: string) => void
   onAttach: () => void
+  onDetach: (tabID: number) => void
+  onAgent: (agent: string) => void
 }
 
 function titleOf(session: SessionInfo): string {
@@ -20,18 +25,32 @@ function titleOf(session: SessionInfo): string {
   return `Sessão ${session.id.slice(-6)}`
 }
 
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return url || "Aba sem endereço"
+  }
+}
+
 export function SessionBar({
   sessions,
   activeID,
   busy,
+  contextTabs,
+  contextError,
   agents,
   agent,
   onSelect,
   onNew,
   onDelete,
-  onAgent,
   onAttach,
+  onDetach,
+  onAgent,
 }: Props) {
+  const [contextMenuOpen, setContextMenuOpen] = useState(false)
+  const hasConnectedTabs = contextTabs.length > 0
+
   return (
     <div className="session-bar">
       <select
@@ -63,9 +82,70 @@ export function SessionBar({
           ))}
         </select>
       ) : null}
-      <button className="icon-btn" onClick={onAttach} disabled={busy} title="Anexar a aba atual ao grupo">
-        <LinkIcon size={15} />
-      </button>
+      <div className="session-attach-control">
+        <button
+          className={`icon-btn session-attach${hasConnectedTabs ? " connected" : ""}`}
+          onClick={() => {
+            if (!hasConnectedTabs) {
+              onAttach()
+              return
+            }
+            setContextMenuOpen((open) => !open)
+          }}
+          disabled={busy || !activeID}
+          title={
+            hasConnectedTabs
+              ? `${contextTabs.length} ${contextTabs.length === 1 ? "aba conectada" : "abas conectadas"}. Mostrar abas ou conectar nova`
+              : contextError
+                ? `${contextError}. Clique para conectar a aba atual`
+                : "Conectar aba atual"
+          }
+          aria-label={
+            hasConnectedTabs
+              ? `Mostrar ${contextTabs.length} ${contextTabs.length === 1 ? "aba conectada" : "abas conectadas"}`
+              : "Conectar aba atual"
+          }
+          aria-expanded={hasConnectedTabs ? contextMenuOpen : undefined}
+          aria-controls={hasConnectedTabs ? "session-attach-menu" : undefined}
+        >
+          <LinkIcon size={15} />
+        </button>
+        {contextMenuOpen && hasConnectedTabs ? (
+          <div className="session-attach-menu" id="session-attach-menu" aria-label="Abas conectadas">
+            <ul>
+              {contextTabs.map((tab) => (
+                <li key={tab.id}>
+                  <div className="context-tab-info">
+                    <span className="context-tab-title">{tab.title || "Aba sem título"}</span>
+                    <span className="context-tab-url">{originOf(tab.url)}</span>
+                  </div>
+                  <button
+                    className="context-remove"
+                    onClick={() => {
+                      onDetach(tab.id)
+                      setContextMenuOpen(false)
+                    }}
+                    title={`Remover ${tab.title || "aba"} do contexto`}
+                    aria-label={`Remover ${tab.title || "aba"} do contexto`}
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              className="session-attach-add"
+              onClick={() => {
+                setContextMenuOpen(false)
+                onAttach()
+              }}
+              disabled={busy}
+            >
+              <LinkIcon size={14} /> Conectar nova aba
+            </button>
+          </div>
+        ) : null}
+      </div>
       <button className="icon-btn" onClick={onNew} disabled={busy} title="Nova conversa">
         <PlusIcon size={16} />
       </button>
