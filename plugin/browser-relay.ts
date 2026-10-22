@@ -1,4 +1,3 @@
-import { Plugin } from "@opencode/plugin"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
@@ -606,7 +605,11 @@ const tools = [
   },
 ] as const
 
-export default Plugin.define({
+// Não importe `@opencode/plugin` aqui: este arquivo é copiado para
+// ~/.config/opencode/plugins e versões antigas do serviço não resolvem esse
+// pacote. `Plugin.define` é apenas um helper de identidade; o objeto abaixo já
+// é um plugin V2 válido (id + setup).
+export default {
   id: "opencode.browser-relay",
   async setup(ctx) {
     try {
@@ -792,4 +795,4 @@ export default Plugin.define({
       current.active = null
     }
   },
-})
+}
