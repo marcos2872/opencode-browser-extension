@@ -1,5 +1,5 @@
 import type { RefObject } from "react"
-import type { ChatMessage } from "../shared/types"
+import type { ChatMessage, TokenUsage } from "../shared/types"
 import { Markdown } from "../components/Markdown"
 import { ToolCard } from "./ToolCard"
 
@@ -16,6 +16,18 @@ const SUGGESTIONS = [
   "Investigue os erros do console e as requisições de rede desta página.",
   "Pesquise o preço de um produto em três lojas e compare em uma tabela.",
 ]
+
+function usageLabel(usage: TokenUsage): string {
+  const formatter = new Intl.NumberFormat("pt-BR")
+  const total = usage.total ?? (usage.input ?? 0) + (usage.output ?? 0)
+  const parts = [`${formatter.format(total)} tokens`]
+  if (usage.input !== undefined) parts.push(`${formatter.format(usage.input)} entrada`)
+  if (usage.output !== undefined) parts.push(`${formatter.format(usage.output)} saída`)
+  if (usage.cost !== undefined) {
+    parts.push(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD", maximumFractionDigits: 6 }).format(usage.cost))
+  }
+  return parts.join(" · ")
+}
 
 export function Chat({ messages, busy, onSuggestion, bottomRef }: Props) {
   if (messages.length === 0) {
@@ -58,6 +70,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef }: Props) {
           <div className="msg msg-assistant" key={message.id}>
             <div className="row">
               <span className="msg-meta">OpenCode</span>
+              {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
               {message.streaming ? (
                 <span className="thinking">
                   <span />
