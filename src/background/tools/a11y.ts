@@ -131,7 +131,7 @@ export function listElements(tabId: number, frameId: number): Promise<A11yElemen
   return call<A11yElement[]>(tabId, frameId, "elements", [])
 }
 
-export function resolveRef(tabId: number, ref: string): Promise<A11yElement | null> {
+export async function resolveRef(tabId: number, ref: string): Promise<A11yElement | null> {
   const { frameId, localRef } = parseRef(ref)
   if (frameId !== 0) {
     throw new Error(
@@ -252,9 +252,10 @@ export async function pageTextFrames(
     [maxChars],
   )
   if (results.length === 0) throw new Error("A página não tem texto legível.")
-  const main = results.find((item) => item.frameId === 0)?.result ?? results[0].result
+  const mainEntry = results.find((item) => item.frameId === 0) ?? results[0]
+  const main = mainEntry.result
   const extras = results
-    .filter((item) => item.frameId !== 0 && item.result.text.trim())
+    .filter((item) => item !== mainEntry && item.result.text.trim())
     .map((item) => `[frame ${item.frameId}: ${item.result.url}]\n${item.result.text}`)
   const text = [main.text, ...extras].filter(Boolean).join("\n\n---\n\n")
   return { ...main, text }

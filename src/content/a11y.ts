@@ -160,8 +160,12 @@ function accessibleName(element: Element): string {
 }
 
 function isVisible(element: Element): boolean {
-  const style = window.getComputedStyle(element)
-  if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false
+  let current: Element | null = element
+  for (let depth = 0; current && depth < 10; depth += 1) {
+    const style = window.getComputedStyle(current)
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false
+    current = current.parentElement
+  }
   const rect = element.getBoundingClientRect()
   return rect.width > 0 || rect.height > 0 || element.children.length > 0
 }
@@ -228,6 +232,9 @@ function install(): void {
       info.value = element.selectedOptions[0]?.textContent?.trim().slice(0, 80)
       info.disabled = element.disabled
     }
+    if (element instanceof HTMLButtonElement) {
+      info.disabled = element.disabled
+    }
     if ((element as HTMLElement).isContentEditable) info.role = "textbox"
     return info
   }
@@ -247,10 +254,6 @@ function install(): void {
     if (!includeHidden && !isVisible(node)) return
     const role = roleOf(node)
     const interactive = isInteractive(node, role)
-    const interesting =
-      interactive ||
-      role !== "generic" ||
-      ["p", "span", "div", "td", "th", "pre", "code"].includes(tag)
     if (filter === "all" || interactive) {
       const info = describe(node)
       collected.push(info)
@@ -386,8 +389,9 @@ function install(): void {
     const source = candidates.find((item) => (item.innerText ?? "").trim().length > 200) ?? candidates[0]
     if (!source) return { text: "", title: document.title, url: location.href, source: "body" }
     const text = (source.innerText ?? "").replace(/\n{3,}/g, "\n\n").trim()
+    const cut = text.lastIndexOf("\n", maxChars)
     const truncated =
-      text.length > maxChars ? `${text.slice(0, text.lastIndexOf("\n", maxChars) || maxChars)}\n\n[truncado]` : text
+      text.length > maxChars ? `${text.slice(0, cut > 0 ? cut : maxChars)}\n\n[truncado]` : text
     return { text: truncated, title: document.title, url: location.href, source: source.tagName.toLowerCase() }
   }
 

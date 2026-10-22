@@ -1,0 +1,61 @@
+name: Testes
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Testes e cobertura
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar testes com cobertura
+        run: npm run test:coverage
+
+      - name: Gerar resumo da cobertura
+        if: always()
+        run: |
+          node scripts/coverage-summary.mjs coverage/coverage-summary.json > coverage-summary.md
+          if [ ! -s coverage-summary.md ]; then echo "Sem cobertura." > coverage-summary.md; fi
+
+      - name: Publicar resumo no job
+        if: always()
+        run: cat coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar artefato de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Comentar cobertura na PR
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file coverage-summary.md --edit-last --create-if-none \
+            || gh pr comment "${{ github.event.pull_request.number }}" --body-file coverage-summary.md

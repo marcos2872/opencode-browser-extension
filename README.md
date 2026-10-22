@@ -1,5 +1,9 @@
 # OpenCode Browser
 
+[![Testes](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/test.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/test.yml)
+[![Qualidade de código](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+
 > Extensão MV3 que conecta o Chrome ao OpenCode instalado na sua máquina: usa os
 > modelos locais para conversar e dá ao agente um grupo de abas isolado para
 > navegar, ler e interagir com páginas — sempre com confirmação do usuário.
@@ -55,6 +59,9 @@ Pronto: escolha um modelo, crie uma conversa e peça algo como
 | `npm run build:bg` | Apenas o service worker |
 | `npm run build:content` | Apenas o content script |
 | `npm run build:offscreen` | Apenas o documento offscreen |
+| `npm test` | Roda a suíte de testes (Vitest) |
+| `npm run test:coverage` | Testes com cobertura e mínimo de 80% |
+| `npm run lint` | ESLint (qualidade de código) |
 | `npm run typecheck` | Checagem de tipos (sem emitir) |
 | `npm run verify` | `typecheck` + build completo |
 | `npm run install:plugin` | Copia `plugin/browser-relay.ts` para `~/.config/opencode/plugins/` |
@@ -76,7 +83,7 @@ então o reload é obrigatório.
 | [docs/tools.md](docs/tools.md) | As 18 ferramentas `browser_*` |
 | [docs/api.md](docs/api.md) | Endpoints da API v2 do OpenCode usados |
 | [docs/security.md](docs/security.md) | Pareamento, tokens, permissões e riscos |
-| [docs/development.md](docs/development.md) | Build, testes manuais e fluxo de trabalho |
+| [docs/development.md](docs/development.md) | Build, testes automatizados, CI e fluxo de trabalho |
 
 ## Segurança em uma linha
 

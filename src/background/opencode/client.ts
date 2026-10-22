@@ -8,8 +8,9 @@ export class OpencodeError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    options?: { cause?: unknown },
   ) {
-    super(message)
+    super(message, options)
     this.name = "OpencodeError"
   }
 }
@@ -41,10 +42,19 @@ export class OpencodeClient {
 
   static async pair(link: string): Promise<{ baseUrl: string; token: string }> {
     const { baseUrl, code } = OpencodeClient.parsePairLink(link)
-    const response = await fetch(`${baseUrl}/auth/connect/${code}`, {
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    })
+    let response: Response
+    try {
+      response = await fetch(`${baseUrl}/auth/connect/${code}`, {
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      })
+    } catch (error) {
+      throw new OpencodeError(
+        `Não foi possível falar com o OpenCode em ${baseUrl}. Ele está rodando?`,
+        undefined,
+        { cause: error },
+      )
+    }
     if (!response.ok) {
       throw new OpencodeError(
         response.status === 401
@@ -87,6 +97,7 @@ export class OpencodeClient {
       throw new OpencodeError(
         `Não foi possível falar com o OpenCode em ${this.baseUrl}. Ele está rodando?`,
         undefined,
+        { cause: error },
       )
     }
     if (!response.ok) {
@@ -105,8 +116,8 @@ export class OpencodeClient {
 
   async listModels(): Promise<ModelInfo[]> {
     const payload = await this.request<{ data?: ModelInfo[] } | ModelInfo[]>("/api/model")
-    const models = Array.isArray(payload) ? payload : payload.data
-    return (models ?? []).filter((model) => !model.disabled)
+    const models = Array.isArray(payload) ? payload : (payload?.data ?? [])
+    return models.filter((model) => !model.disabled)
   }
 
   async defaultModel(): Promise<ModelRef | null> {
@@ -123,12 +134,12 @@ export class OpencodeClient {
 
   async listAgents(): Promise<AgentInfo[]> {
     const payload = await this.request<{ data?: AgentInfo[] }>("/api/agent")
-    return (payload.data ?? []).filter((agent) => agent.mode !== "subagent" && agent.hidden !== true)
+    return (payload?.data ?? []).filter((agent) => agent.mode !== "subagent" && agent.hidden !== true)
   }
 
   async listCommands(): Promise<CommandInfo[]> {
     const payload = await this.request<{ data?: CommandInfo[] }>("/api/command")
-    return payload.data ?? []
+    return payload?.data ?? []
   }
 
   async runCommand(id: string, name: string, text: string): Promise<void> {
@@ -155,7 +166,7 @@ export class OpencodeClient {
 
   async listSessions(): Promise<SessionInfo[]> {
     const payload = await this.request<{ data?: SessionInfo[] }>("/api/session")
-    return payload.data ?? []
+    return payload?.data ?? []
   }
 
   async createSession(model?: ModelRef, agent?: string): Promise<SessionInfo> {
@@ -167,7 +178,7 @@ export class OpencodeClient {
       method: "POST",
       body: JSON.stringify(body),
     })
-    if (!payload.data?.id) throw new OpencodeError("Sessão criada sem id.")
+    if (!payload?.data?.id) throw new OpencodeError("Sessão criada sem id.")
     return payload.data
   }
 
@@ -186,7 +197,7 @@ export class OpencodeClient {
     const payload = await this.request<{ data?: unknown[] }>(
       `/api/session/${encodeURIComponent(id)}/context`,
     )
-    return payload.data ?? []
+    return payload?.data ?? []
   }
 
   async prompt(id: string, text: string): Promise<void> {

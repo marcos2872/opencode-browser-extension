@@ -204,7 +204,7 @@ export class Cdp {
       fromSurface: true,
       ...(options.clip ? { clip: options.clip } : {}),
     })
-    if (!result.data) throw new Error("O Chrome não retornou a imagem.")
+    if (!result?.data) throw new Error("O Chrome não retornou a imagem.")
     return result.data
   }
 

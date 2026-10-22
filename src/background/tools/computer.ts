@@ -1,5 +1,5 @@
 import { clickRef, focusRef, hoverRef, isMainFrameRef, resolveRef, scrollRef } from "./a11y"
-import { tabContext, withIndicator } from "./tabs"
+import { withIndicator } from "./tabs"
 import type { ToolContext, ToolMap, ToolResult } from "./types"
 import { num, requireString, truncate } from "./types"
 
@@ -166,7 +166,7 @@ export const computerTools: ToolMap = {
       } catch (error) {
         if (!ref) throw error
         const fallback = await clickRef(tabId, ref)
-        if (!fallback.ok) throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).")
+        if (!fallback.ok) throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).", { cause: error })
       }
       await sleep(250)
       const adopted = await adoptOpenerTabs(ctx, tabId)
@@ -192,7 +192,7 @@ export const computerTools: ToolMap = {
       } catch (error) {
         if (!ref) throw error
         const fallback = await hoverRef(tabId, ref)
-        if (!fallback.ok) throw new Error(fallback.error ?? "Falha no hover (DevTools aberto?).")
+        if (!fallback.ok) throw new Error(fallback.error ?? "Falha no hover (DevTools aberto?).", { cause: error })
       }
       return { content: `Hover em (${Math.round(point.x)}, ${Math.round(point.y)}).` }
     }
@@ -237,6 +237,9 @@ export const computerTools: ToolMap = {
 
     if (action === "scroll") {
       const direction = typeof args.scroll_direction === "string" ? args.scroll_direction : "down"
+      if (!["up", "down", "left", "right"].includes(direction)) {
+        throw new Error(`Direção de scroll inválida: ${direction}. Use up, down, left ou right.`)
+      }
       const amount = Math.min(Math.max(num(args.scroll_amount) ?? 600, 50), 5000)
       if (typeof args.ref === "string" && !isMainFrameRef(args.ref)) {
         await ctx.indicator(tabId, "Rolando", true)

@@ -361,6 +361,7 @@ async function hydrate(id: string): Promise<void> {
   try {
     const raw = await client.context(id)
     if (token !== hydrateToken || activeSessionID !== id) return
+    if (busy) return
     messages = mapContext(raw)
     busy = messages.some((message) => message.kind === "assistant" && message.streaming)
     broadcastNow()

@@ -1,9 +1,4 @@
-import type {
-  PermissionDecision,
-  PermissionMode,
-  PermissionRequest,
-  PermissionScope,
-} from "../shared/types"
+import type { PermissionDecision, PermissionMode, PermissionRequest } from "../shared/types"
 import { getAllowList, getDenyList, setAllowList, setDenyList } from "../shared/storage"
 
 const READ_ONLY = new Set([
@@ -109,11 +104,11 @@ export class Permissions {
     if (host && this.deny.includes(host)) {
       return { allowed: false }
     }
-    if (this.mode() === "deny") {
-      return { allowed: false }
-    }
     if (this.isReadOnly(input.tool)) {
       return { allowed: true, scope: "once" }
+    }
+    if (this.mode() === "deny") {
+      return { allowed: false }
     }
     if (this.mode() === "allow") {
       return { allowed: true, scope: "once" }

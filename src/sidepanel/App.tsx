@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import type { RefObject } from "react"
 import { PORT_NAME, type UiEvent } from "../shared/protocol"
-import type {
-  AppSnapshot,
-  ChatMessage,
-  ModelRef,
-  PermissionDecision,
-  PermissionRequest,
-} from "../shared/types"
+import type { AppSnapshot, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
 import { SettingsIcon, Logo } from "../components/icons"
 import { PermissionCard } from "../components/PermissionCard"
 import { Chat } from "./Chat"
@@ -166,6 +159,7 @@ export default function App() {
             <span /> carregando
           </div>
         </div>
+        {toast ? <div className="toast">{toast}</div> : null}
       </div>
     )
   }
