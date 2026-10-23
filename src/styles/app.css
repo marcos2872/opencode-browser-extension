@@ -725,6 +725,148 @@ a {
   border: 1px solid var(--line);
 }
 
+/* Perguntas interativas (tool `question`) */
+.question-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+
+.question-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.question-list strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.question-multiple {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11.5px;
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  padding: 10px;
+}
+
+.form-card h4 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field-title {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.form-field .sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.form-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.form-option:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+.form-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.form-option:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.form-option-label {
+  font-size: 12.5px;
+}
+
+.form-option-desc {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.form-input {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+}
+
+.form-external {
+  color: var(--accent);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.form-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
 .thinking {
   display: inline-flex;
   align-items: center;

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   makeAgent,
   makeCommand,
+  makeForm,
   makeModel,
   makeSession,
 } from "../helpers/factories";
@@ -87,7 +88,7 @@ function pushEvent(type: string, data: Record<string, unknown>): void {
 
 const apiCalls: Array<{ url: string; method: string; body: unknown }> = [];
 
-function installFetch(options: { sessions?: unknown[] } = {}): void {
+function installFetch(options: { sessions?: unknown[]; formError?: boolean } = {}): void {
   apiCalls.length = 0;
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
@@ -129,6 +130,8 @@ function installFetch(options: { sessions?: unknown[] } = {}): void {
     }
     if (pathname.endsWith("/model") || pathname.endsWith("/agent"))
       return jsonResponse({});
+    if (options.formError && pathname.endsWith("/form"))
+      return jsonResponse({ message: "falha ao listar forms" }, 500);
     if (pathname.startsWith("/api/session/")) return jsonResponse({});
     return jsonResponse({});
   });
@@ -397,6 +400,66 @@ describe("service-worker: sessões e conversa", () => {
     const response = await callWorker({ type: "nada:disso" });
     expect(response.ok).toBe(false);
     expect(response.error).toMatch(/Comando desconhecido/);
+  });
+
+  it("carrega os forms pendentes ao selecionar a sessão", async () => {
+    await loadWorker();
+    await pairWorker();
+    expect(
+      apiCalls.some(
+        (call) => call.method === "GET" && call.url.includes("/ses_test/form"),
+      ),
+    ).toBe(true);
+  });
+
+  it("ignora falha ao carregar os forms pendentes", async () => {
+    installFetch({ formError: true });
+    await loadWorker();
+    const response = await pairWorker();
+    expect(response.ok, response.error).toBe(true);
+    expect(response.snapshot.forms).toEqual([]);
+  });
+
+  it("responde e cancela um formulário pendente", async () => {
+    await loadWorker();
+    await pairWorker();
+
+    const respond = await callWorker({
+      type: "form:respond",
+      sessionID: "ses_test",
+      formID: "frm_1",
+      answer: { q0: "Sim" },
+    });
+    expect(respond.ok, respond.error).toBe(true);
+    const reply = apiCalls.find((call) =>
+      call.url.includes("/form/frm_1/reply"),
+    );
+    expect(reply?.method).toBe("POST");
+    expect(reply?.body).toEqual({ answer: { q0: "Sim" } });
+
+    const cancel = await callWorker({
+      type: "form:cancel",
+      sessionID: "ses_test",
+      formID: "frm_1",
+      message: "depois",
+    });
+    expect(cancel.ok, cancel.error).toBe(true);
+    const removed = apiCalls.find(
+      (call) => call.method === "DELETE" && call.url.includes("/form/frm_1"),
+    );
+    expect(removed?.url).toContain("message=depois");
+  });
+
+  it("recusa forms sem configuração do OpenCode", async () => {
+    await loadWorker();
+    const response = await callWorker({
+      type: "form:respond",
+      sessionID: "ses_test",
+      formID: "frm_1",
+      answer: {},
+    });
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/não configurado/i);
   });
 });
 
@@ -681,6 +744,52 @@ describe("service-worker: eventos SSE", () => {
       response.snapshot.sessions.find((item: any) => item.id === "ses_test")
         .title,
     ).toBe("Novo título");
+  });
+
+  it("exibe o formulário de pergunta e o remove quando respondido", async () => {
+    await withSse();
+    const form = makeForm();
+    pushEvent("form.created", { form });
+    await flush();
+
+    let response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.forms).toHaveLength(1);
+    expect(response.snapshot.forms[0]).toMatchObject({ id: "frm_1" });
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: "PLAY_NOTIFICATION",
+    });
+    expect(chrome.notifications.create).toHaveBeenCalled();
+
+    // Form duplicado ou de outra sessão não entra na lista.
+    pushEvent("form.created", { form });
+    pushEvent("form.created", {
+      form: { ...form, id: "frm_outro", sessionID: "ses_outro" },
+    });
+    await flush();
+    response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.forms).toHaveLength(1);
+
+    pushEvent("form.replied", { id: "frm_1" });
+    await flush();
+    response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.forms).toHaveLength(0);
+  });
+
+  it("aceita o form embutido em form.cancelled e ignora ids desconhecidos", async () => {
+    await withSse();
+    const form = makeForm({ id: "frm_2" });
+    pushEvent("form.created", { form });
+    await flush();
+
+    pushEvent("form.cancelled", { form: { ...form } });
+    await flush();
+    let response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.forms).toHaveLength(0);
+
+    pushEvent("form.replied", { id: "frm_inexistente" });
+    await flush();
+    response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.forms).toHaveLength(0);
   });
 });
 

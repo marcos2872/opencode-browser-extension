@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../src/sidepanel/App"
 import type { AppSnapshot, ChatMessage, PermissionRequest } from "../../src/shared/types"
 import type { FakePort } from "../helpers/chrome"
-import { makeAgent, makeCommand, makeMessage, makeModel, makeSession } from "../helpers/factories"
+import { makeAgent, makeCommand, makeForm, makeMessage, makeModel, makeSession } from "../helpers/factories"
 
 function makeSnapshot(partial: Partial<AppSnapshot> = {}): AppSnapshot {
   return {
@@ -17,6 +17,7 @@ function makeSnapshot(partial: Partial<AppSnapshot> = {}): AppSnapshot {
     sessions: [makeSession()],
     activeSessionID: "ses_test",
     messages: [],
+    forms: [],
     relay: { connected: true, url: "ws://127.0.0.1:8799" },
     busy: false,
     backend: "online",
@@ -35,6 +36,27 @@ const PERMISSION: PermissionRequest = {
   title: "Navegar para example.com",
   host: "example.com",
 }
+
+const QUESTION_MESSAGE: ChatMessage = makeMessage({
+  id: "a1",
+  tools: [
+    {
+      id: "t1",
+      name: "question",
+      status: "running",
+      input: {
+        questions: [
+          {
+            header: "Escopo",
+            question: "Apagar tudo?",
+            multiple: false,
+            options: [{ label: "Sim" }, { label: "Não" }],
+          },
+        ],
+      },
+    },
+  ],
+})
 
 function mockSendMessage(snapshot: AppSnapshot | null, overrides: Record<string, unknown> = {}) {
   chrome.runtime.sendMessage.mockImplementation(async (message: { type: string }) => {
@@ -457,6 +479,60 @@ describe("sidepanel/App", () => {
 
     expect(await screen.findByText("backend fora do ar")).toBeInTheDocument()
     await waitFor(() => expect(textarea).toHaveValue("oi"))
+  })
+
+  it("responde uma pergunta do agente pelo card da tool", async () => {
+    const { user } = await renderApp(
+      makeSnapshot({ forms: [makeForm()], messages: [QUESTION_MESSAGE] }),
+    )
+
+    expect(await screen.findByText("Escopo da limpeza")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /Sim/ }))
+    await user.click(screen.getByRole("button", { name: /Responder/ }))
+
+    expect(sent("form:respond")).toEqual({
+      type: "form:respond",
+      sessionID: "ses_test",
+      formID: "frm_1",
+      answer: { q0: "Sim" },
+    })
+  })
+
+  it("cancela uma pergunta do agente", async () => {
+    const { user } = await renderApp(
+      makeSnapshot({ forms: [makeForm()], messages: [QUESTION_MESSAGE] }),
+    )
+
+    await user.click(await screen.findByRole("button", { name: /Cancelar/ }))
+    expect(sent("form:cancel")).toEqual({
+      type: "form:cancel",
+      sessionID: "ses_test",
+      formID: "frm_1",
+    })
+  })
+
+  it("mostra toast quando responder a pergunta falha", async () => {
+    const { user } = await renderApp(
+      makeSnapshot({ forms: [makeForm()], messages: [QUESTION_MESSAGE] }),
+      { "form:respond": { ok: false, error: "form expirado" } },
+    )
+
+    await user.click(await screen.findByRole("button", { name: /Sim/ }))
+    await user.click(screen.getByRole("button", { name: /Responder/ }))
+    expect(await screen.findByText("form expirado")).toBeInTheDocument()
+  })
+
+  it("mostra a pergunta quando um novo snapshot traz o form", async () => {
+    const { port } = await renderApp(makeSnapshot({ messages: [QUESTION_MESSAGE] }))
+
+    expect(screen.queryByText("Escopo da limpeza")).not.toBeInTheDocument()
+    act(() => {
+      port.onMessage.emit({
+        type: "snapshot",
+        snapshot: makeSnapshot({ forms: [makeForm()], messages: [QUESTION_MESSAGE] }),
+      })
+    })
+    expect(await screen.findByText("Escopo da limpeza")).toBeInTheDocument()
   })
 
   it("reconecta o port quando ele desconecta", async () => {

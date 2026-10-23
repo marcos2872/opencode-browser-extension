@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { Chat } from "../../src/sidepanel/Chat"
 import type { ChatMessage } from "../../src/shared/types"
-import { makeMessage } from "../helpers/factories"
+import { makeForm, makeMessage } from "../helpers/factories"
 
 function userMessage(text: string): ChatMessage {
   return { kind: "user", id: `user-${text}`, text, time: 1 }
@@ -144,5 +144,51 @@ describe("sidepanel/Chat", () => {
 
     expect(bottomRef.current).not.toBeNull()
     expect(bottomRef.current).toBe(container.querySelector(".chat > div:last-child"))
+  })
+
+  it("renderiza um form sem tool question visível (elicitation) e responde", async () => {
+    const form = makeForm({ metadata: undefined })
+    const onFormSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Chat
+        messages={[userMessage("oi")]}
+        busy={false}
+        onSuggestion={vi.fn()}
+        forms={[form]}
+        onFormSubmit={onFormSubmit}
+      />,
+    )
+
+    expect(screen.getByText("Escopo da limpeza")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /Sim/ }))
+    await user.click(screen.getByRole("button", { name: /Responder/ }))
+    expect(onFormSubmit).toHaveBeenCalledWith(form, { q0: "Sim" })
+  })
+
+  it("mostra o form órfão mesmo sem mensagens", () => {
+    render(
+      <Chat messages={[]} busy={false} onSuggestion={vi.fn()} forms={[makeForm({ metadata: undefined })]} />,
+    )
+    expect(screen.queryByRole("heading", { name: "Seu navegador, com os modelos do OpenCode" })).not.toBeInTheDocument()
+    expect(screen.getByText("Escopo da limpeza")).toBeInTheDocument()
+  })
+
+  it("não duplica um form que já tem card de question", () => {
+    const form = makeForm()
+    render(
+      <Chat
+        messages={[
+          makeMessage({
+            tools: [{ id: "t1", name: "question", status: "running", input: { questions: [] } }],
+          }),
+        ]}
+        busy={false}
+        onSuggestion={vi.fn()}
+        forms={[form]}
+        onFormSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getAllByText("Escopo da limpeza")).toHaveLength(1)
   })
 })

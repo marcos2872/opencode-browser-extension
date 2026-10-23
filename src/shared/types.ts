@@ -67,6 +67,81 @@ export interface ToolCallView {
   metadata?: Record<string, unknown>;
 }
 
+export interface FormOption {
+  value: string
+  label: string
+  description?: string
+}
+
+interface FormFieldBase {
+  key: string
+  title?: string
+  description?: string
+  required?: boolean
+  hidden?: boolean
+}
+
+export interface FormStringField extends FormFieldBase {
+  type: "string"
+  options?: FormOption[]
+  custom?: boolean
+  placeholder?: string
+  format?: "email" | "uri" | "date" | "date-time"
+  minLength?: number
+  maxLength?: number
+  pattern?: string
+  default?: string
+}
+
+export interface FormNumberField extends FormFieldBase {
+  type: "number" | "integer"
+  minimum?: number
+  maximum?: number
+  default?: number
+}
+
+export interface FormBooleanField extends FormFieldBase {
+  type: "boolean"
+  default?: boolean
+}
+
+export interface FormMultiselectField extends FormFieldBase {
+  type: "multiselect"
+  options: FormOption[]
+  custom?: boolean
+  minItems?: number
+  maxItems?: number
+  default?: string[]
+}
+
+export interface FormExternalField extends FormFieldBase {
+  type: "external"
+  url: string
+}
+
+export type FormField =
+  | FormStringField
+  | FormNumberField
+  | FormBooleanField
+  | FormMultiselectField
+  | FormExternalField
+
+export type FormValue = string | number | boolean | string[]
+
+export type FormAnswer = Record<string, FormValue>
+
+/**
+ * Formulário pendente criado pelo OpenCode (perguntas interativas e
+ * elicitation de MCP). A tool `question` vira um form com a chave `q0`, `q1`, …
+ */
+export interface FormInfo {
+  id: string
+  sessionID: string
+  title: string
+  metadata?: Record<string, unknown>
+  fields: FormField[]
+}
+
 export interface TokenUsage {
   total?: number;
   input?: number;
@@ -152,6 +227,7 @@ export interface AppSnapshot {
   sessions: SessionInfo[];
   activeSessionID: string | null;
   messages: ChatMessage[];
+  forms: FormInfo[];
   relay: RelayState;
   busy: boolean;
   backend: "unknown" | "online" | "offline";

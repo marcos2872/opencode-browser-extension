@@ -1,13 +1,17 @@
 import type { RefObject } from "react"
-import type { ChatMessage, TokenUsage } from "../shared/types"
+import type { ChatMessage, FormAnswer, FormInfo, TokenUsage } from "../shared/types"
 import { Markdown } from "../components/Markdown"
-import { ToolCard } from "./ToolCard"
+import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
 
 interface Props {
   messages: ChatMessage[]
   busy: boolean
   onSuggestion: (text: string) => void
   bottomRef?: RefObject<HTMLDivElement | null>
+  forms?: FormInfo[]
+  busyFormID?: string | null
+  onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
+  onFormCancel?: (form: FormInfo) => void
 }
 
 const SUGGESTIONS = [
@@ -29,8 +33,22 @@ function usageLabel(usage: TokenUsage): string {
   return parts.join(" · ")
 }
 
-export function Chat({ messages, busy, onSuggestion, bottomRef }: Props) {
-  if (messages.length === 0) {
+export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel }: Props) {
+  const matchedToolIDs = new Set(
+    messages.flatMap((message) =>
+      message.kind === "assistant"
+        ? message.tools.filter((tool) => tool.name === "question").map((tool) => tool.id)
+        : [],
+    ),
+  )
+  // Forms que não têm um card de tool `question` visível (ex.: elicitation de
+  // MCP) precisam de um lugar para serem respondidos, senão a sessão trava.
+  const orphanForms = (forms ?? []).filter((form) => {
+    const id = questionToolID(form)
+    return !id || !matchedToolIDs.has(id)
+  })
+
+  if (messages.length === 0 && orphanForms.length === 0) {
     return (
       <div className="chat">
         <div className="empty">
@@ -87,7 +105,14 @@ export function Chat({ messages, busy, onSuggestion, bottomRef }: Props) {
             ) : null}
             {message.text ? <Markdown text={message.text} /> : null}
             {message.tools.map((tool) => (
-              <ToolCard key={tool.id} tool={tool} />
+              <ToolCard
+                key={tool.id}
+                tool={tool}
+                forms={forms}
+                busyFormID={busyFormID}
+                onFormSubmit={onFormSubmit}
+                onFormCancel={onFormCancel}
+              />
             ))}
             {message.error ? <div className="error-banner">{message.error}</div> : null}
             {!message.text && message.tools.length === 0 && message.streaming ? (
@@ -107,6 +132,15 @@ export function Chat({ messages, busy, onSuggestion, bottomRef }: Props) {
           <span /> aguardando o OpenCode
         </div>
       ) : null}
+      {orphanForms.map((form) => (
+        <PendingFormCard
+          key={form.id}
+          form={form}
+          busy={busyFormID === form.id}
+          onSubmit={(answer) => onFormSubmit?.(form, answer)}
+          onCancel={onFormCancel ? () => onFormCancel(form) : undefined}
+        />
+      ))}
       <div ref={bottomRef} />
     </div>
   )

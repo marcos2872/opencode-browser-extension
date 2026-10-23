@@ -718,3 +718,61 @@ describe("OpencodeClient.subscribe", () => {
     expect(headers.authorization).toBe(expectedAuth());
   });
 });
+
+describe("OpencodeClient.listForms", () => {
+  it("devolve os forms pendentes da sessão", async () => {
+    const form = {
+      id: "frm_1",
+      sessionID: "ses_1",
+      title: "Questions",
+      fields: [{ key: "q0", type: "string" }],
+    };
+    fetchMock.mockResolvedValue(jsonResponse({ data: [form] }));
+
+    await expect(makeClient().listForms("ses_1")).resolves.toEqual([form]);
+    expect(new URL(lastCall().url).pathname).toBe("/api/session/ses_1/form");
+  });
+
+  it("devolve lista vazia quando o corpo não traz data", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}));
+    await expect(makeClient().listForms("ses_1")).resolves.toEqual([]);
+  });
+});
+
+describe("OpencodeClient.replyForm", () => {
+  it("faz POST com a resposta no body", async () => {
+    fetchMock.mockResolvedValue(response({ status: 204 }));
+
+    await expect(
+      makeClient().replyForm("ses_1", "frm_1", { q0: "Sim", q1: ["a", "b"] }),
+    ).resolves.toBeUndefined();
+
+    const { url, init } = lastCall();
+    expect(init.method).toBe("POST");
+    expect(new URL(url).pathname).toBe("/api/session/ses_1/form/frm_1/reply");
+    expect(JSON.parse(init.body as string)).toEqual({
+      answer: { q0: "Sim", q1: ["a", "b"] },
+    });
+  });
+});
+
+describe("OpencodeClient.cancelForm", () => {
+  it("faz DELETE sem mensagem", async () => {
+    fetchMock.mockResolvedValue(response({ status: 204 }));
+    await expect(
+      makeClient().cancelForm("ses_1", "frm_1"),
+    ).resolves.toBeUndefined();
+    const { url, init } = lastCall();
+    expect(init.method).toBe("DELETE");
+    expect(new URL(url).pathname).toBe("/api/session/ses_1/form/frm_1");
+    expect(new URL(url).search).toBe("");
+  });
+
+  it("faz DELETE com ?message= codificado", async () => {
+    fetchMock.mockResolvedValue(response({ status: 204 }));
+    await expect(
+      makeClient().cancelForm("ses_1", "frm_1", "não agora"),
+    ).resolves.toBeUndefined();
+    expect(new URL(lastCall().url).searchParams.get("message")).toBe("não agora");
+  });
+});
