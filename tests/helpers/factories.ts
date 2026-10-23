@@ -1,6 +1,6 @@
 import { vi } from "vitest"
 import type { ToolContext } from "../../src/background/tools/types"
-import type { AgentInfo, ChatMessage, CommandInfo, ModelInfo, SessionInfo } from "../../src/shared/types"
+import type { AgentInfo, ChatMessage, CommandInfo, FormInfo, ModelInfo, SessionInfo } from "../../src/shared/types"
 
 export function makeModel(partial: Partial<ModelInfo> = {}): ModelInfo {
   return {
@@ -41,6 +41,29 @@ export function makeMessage(partial: Partial<Extract<ChatMessage, { kind: "assis
     tools: [],
     time: 1,
     streaming: false,
+    ...partial,
+  }
+}
+
+export function makeForm(partial: Partial<FormInfo> = {}): FormInfo {
+  return {
+    id: "frm_1",
+    sessionID: "ses_test",
+    title: "Questions",
+    metadata: { kind: "question", tool: { messageID: "msg_1", id: "t1" } },
+    fields: [
+      {
+        key: "q0",
+        type: "string",
+        title: "Escopo da limpeza",
+        description: "Apagar tudo da caixa de entrada?",
+        options: [
+          { value: "Sim", label: "Sim", description: "Apagar tudo" },
+          { value: "Não", label: "Não" },
+        ],
+        custom: true,
+      },
+    ],
     ...partial,
   }
 }

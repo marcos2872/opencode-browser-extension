@@ -107,6 +107,16 @@ export function XIcon(props: IconProps) {
   )
 }
 
+export function QuestionIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.6a2.4 2.4 0 1 1 3.5 2.1c-.6.3-1.1.8-1.1 1.5v.3" />
+      <path d="M12 17h.01" />
+    </svg>
+  )
+}
+
 export function TerminalIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

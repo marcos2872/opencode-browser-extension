@@ -30,6 +30,8 @@ import type {
   AppSnapshot,
   CommandInfo,
   ChatMessage,
+  FormAnswer,
+  FormInfo,
   ImagePayload,
   ModelInfo,
   ModelRef,
@@ -63,6 +65,7 @@ let models: ModelInfo[] = [];
 let sessions: SessionInfo[] = [];
 let activeSessionID: string | null = null;
 let messages: ChatMessage[] = [];
+let forms: FormInfo[] = [];
 let busy = false;
 let backend: AppSnapshot["backend"] = "unknown";
 let defaultModel: ModelRef | null = null;
@@ -114,6 +117,7 @@ function snapshot(): AppSnapshot {
     sessions,
     activeSessionID,
     messages,
+    forms,
     relay: relayState,
     busy,
     backend,
@@ -220,6 +224,12 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
     case "interrupt":
       await interrupt();
       return { ok: true, snapshot: snapshot() };
+    case "form:respond":
+      await respondForm(request.sessionID, request.formID, request.answer);
+      return { ok: true, snapshot: snapshot() };
+    case "form:cancel":
+      await cancelForm(request.sessionID, request.formID, request.message);
+      return { ok: true, snapshot: snapshot() };
     case "settings:update":
       await updateSettings(request.patch);
       return { ok: true, snapshot: snapshot() };
@@ -286,6 +296,7 @@ async function unpair(): Promise<void> {
   sessions = [];
   activeSessionID = null;
   messages = [];
+  forms = [];
   busy = false;
   backend = "unknown";
   defaultModel = null;
@@ -387,6 +398,7 @@ async function refreshSessions(): Promise<void> {
   ) {
     activeSessionID = null;
     messages = [];
+    forms = [];
   }
   broadcastNow();
 }
@@ -423,10 +435,52 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
 async function selectSession(id: string): Promise<void> {
   activeSessionID = id;
   messages = [];
+  forms = [];
   busy = false;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: id });
   broadcastNow();
   void hydrate(id);
+  void loadForms(id);
+}
+
+async function loadForms(id: string): Promise<void> {
+  if (!client) return;
+  const known = new Set(forms.map((form) => form.id));
+  try {
+    const pending = await client.listForms(id);
+    if (activeSessionID !== id) return;
+    // Preserva forms criados por SSE enquanto a listagem estava em voo.
+    const arrived = forms.filter((form) => !known.has(form.id));
+    const missing = arrived.filter(
+      (form) => !pending.some((item) => item.id === form.id),
+    );
+    forms = [...pending, ...missing];
+    broadcastNow();
+  } catch {
+    // A sessão pode ter sido removida; mantém os forms que já estão na tela.
+  }
+}
+
+async function respondForm(
+  sessionID: string,
+  formID: string,
+  answer: FormAnswer,
+): Promise<void> {
+  if (!client) throw new Error("OpenCode não configurado.");
+  await client.replyForm(sessionID, formID, answer);
+  forms = forms.filter((form) => form.id !== formID);
+  broadcastNow();
+}
+
+async function cancelForm(
+  sessionID: string,
+  formID: string,
+  message?: string,
+): Promise<void> {
+  if (!client) throw new Error("OpenCode não configurado.");
+  await client.cancelForm(sessionID, formID, message);
+  forms = forms.filter((form) => form.id !== formID);
+  broadcastNow();
 }
 
 async function hydrate(id: string): Promise<void> {
@@ -525,6 +579,7 @@ async function deleteSession(id: string): Promise<void> {
   if (activeSessionID === id) {
     activeSessionID = sessions[0]?.id ?? null;
     messages = [];
+    forms = [];
     if (activeSessionID) await selectSession(activeSessionID);
   }
   broadcastNow();
@@ -687,6 +742,46 @@ function onOpencodeEvent(event: {
     "active=",
     activeSessionID ?? "",
   );
+
+  if (event.type === "form.created") {
+    const form = data.form as FormInfo | undefined;
+    if (form?.id && form.sessionID === activeSessionID) {
+      if (!forms.some((item) => item.id === form.id)) {
+        forms = [...forms, form];
+        playSound();
+        if (ports.size === 0 && config?.notifyEnabled !== false) {
+          void chrome.notifications
+            .create(`oc-form-${form.id}`, {
+              type: "basic",
+              iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+              title: "OpenCode Browser",
+              message: (form.title
+                ? `O agente precisa de uma resposta: ${form.title}`
+                : "O agente precisa de uma resposta."
+              ).slice(0, 180),
+            })
+            .catch(() => undefined);
+        }
+        scheduleBroadcast();
+      }
+    }
+    return;
+  }
+
+  if (event.type === "form.replied" || event.type === "form.cancelled") {
+    const replied = data.form as FormInfo | undefined;
+    const formID =
+      typeof data.id === "string"
+        ? data.id
+        : typeof replied?.id === "string"
+          ? replied.id
+          : undefined;
+    if (formID && forms.some((item) => item.id === formID)) {
+      forms = forms.filter((item) => item.id !== formID);
+      scheduleBroadcast();
+    }
+    return;
+  }
 
   if (event.type === "session.created" && sessionID) {
     const title = typeof data.title === "string" ? data.title : undefined;

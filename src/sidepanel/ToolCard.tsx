@@ -1,5 +1,6 @@
-import type { ToolCallView } from "../shared/types"
-import { BrowserIcon, CheckIcon, TerminalIcon, XIcon } from "../components/icons"
+import type { FormAnswer, FormInfo, ToolCallView } from "../shared/types"
+import { FormCard } from "../components/FormCard"
+import { BrowserIcon, CheckIcon, QuestionIcon, TerminalIcon, XIcon } from "../components/icons"
 
 const LABELS: Record<string, string> = {
   tabs_context: "Abas do grupo",
@@ -17,6 +18,65 @@ const LABELS: Record<string, string> = {
   resize_window: "Redimensionar",
   update_plan: "Plano",
   browser_batch: "Lote de ações",
+}
+
+interface ToolCardProps {
+  tool: ToolCallView
+  forms?: FormInfo[]
+  busyFormID?: string | null
+  onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
+  onFormCancel?: (form: FormInfo) => void
+}
+
+/** O form da tool `question` guarda o id da chamada em `metadata.tool.id`. */
+export function questionToolID(form: FormInfo): string | undefined {
+  const metadata = form.metadata
+  if (!metadata || typeof metadata.tool !== "object" || metadata.tool === null) return undefined
+  const id = (metadata.tool as Record<string, unknown>).id
+  return typeof id === "string" ? id : undefined
+}
+
+interface QuestionOption {
+  label: string
+  description?: string
+}
+
+interface QuestionItem {
+  header?: string
+  question: string
+  multiple: boolean
+  options: QuestionOption[]
+}
+
+export function readQuestions(input: unknown): QuestionItem[] {
+  if (!input || typeof input !== "object") return []
+  const list = (input as Record<string, unknown>).questions
+  if (!Array.isArray(list)) return []
+  return list.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return []
+    const value = entry as Record<string, unknown>
+    const options = Array.isArray(value.options)
+      ? value.options.flatMap((option) => {
+          if (!option || typeof option !== "object") return []
+          const item = option as Record<string, unknown>
+          if (typeof item.label !== "string") return []
+          return [
+            {
+              label: item.label,
+              description: typeof item.description === "string" ? item.description : undefined,
+            },
+          ]
+        })
+      : []
+    return [
+      {
+        header: typeof value.header === "string" ? value.header : undefined,
+        question: typeof value.question === "string" ? value.question : "",
+        multiple: value.multiple === true,
+        options,
+      },
+    ]
+  })
 }
 
 function summary(tool: ToolCallView): string {
@@ -39,10 +99,116 @@ function summary(tool: ToolCallView): string {
   return ""
 }
 
-export function ToolCard({ tool }: { tool: ToolCallView }) {
+function statusLabel(tool: ToolCallView): string {
+  if (tool.status === "ok") return "ok"
+  if (tool.status === "error") return "erro"
+  return "rodando"
+}
+
+/** Card de um form pendente; usado pela tool `question` e por forms órfãos. */
+export function PendingFormCard({
+  form,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  form: FormInfo
+  busy: boolean
+  onSubmit: (answer: FormAnswer) => void
+  onCancel?: () => void
+}) {
+  return (
+    <div className="tool-card tool-card-question">
+      <div className="tool-head">
+        <span className="tool-icon">
+          <QuestionIcon size={13} />
+        </span>
+        <span>{form.title && form.title !== "Questions" ? form.title : "Pergunta"}</span>
+        <span className="spacer" />
+        <span className="tool-status running">aguardando</span>
+      </div>
+      <FormCard key={form.id} form={form} busy={busy} onSubmit={onSubmit} onCancel={onCancel} />
+    </div>
+  )
+}
+
+function QuestionCard({
+  tool,
+  form,
+  busy,
+  onFormSubmit,
+  onFormCancel,
+}: {
+  tool: ToolCallView
+  form?: FormInfo
+  busy: boolean
+  onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
+  onFormCancel?: (form: FormInfo) => void
+}) {
+  // O form pendente é a fonte de verdade: a tool pode já aparecer como "ok" no
+  // histórico hidratado mesmo com o servidor ainda esperando a resposta.
+  if (form && onFormSubmit) {
+    return (
+      <PendingFormCard
+        form={form}
+        busy={busy}
+        onSubmit={(answer) => onFormSubmit(form, answer)}
+        onCancel={onFormCancel ? () => onFormCancel(form) : undefined}
+      />
+    )
+  }
+
+  const label = statusLabel(tool)
+  const questions = readQuestions(tool.input)
+
+  return (
+    <div className="tool-card tool-card-question">
+      <div className="tool-head">
+        <span className="tool-icon">
+          <QuestionIcon size={13} />
+        </span>
+        <span>Pergunta</span>
+        <span className="spacer" />
+        <span className={`tool-status ${label === "ok" ? "ok" : label === "erro" ? "error" : "running"}`}>
+          {label === "ok" ? <CheckIcon size={11} /> : label === "erro" ? <XIcon size={11} /> : null} {label}
+        </span>
+      </div>
+
+      {questions.length ? (
+        <ul className="question-list">
+          {questions.map((item, index) => (
+            <li key={index}>
+              {item.header ? <strong>{item.header}</strong> : null}
+              <span>
+                {item.question}
+                {item.multiple ? <em className="question-multiple"> · múltipla escolha</em> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {tool.output ? <div className="tool-output">{tool.output}</div> : null}
+    </div>
+  )
+}
+
+export function ToolCard({ tool, forms, busyFormID, onFormSubmit, onFormCancel }: ToolCardProps) {
+  if (tool.name === "question") {
+    const form = forms?.find((item) => questionToolID(item) === tool.id)
+    return (
+      <QuestionCard
+        tool={tool}
+        form={form}
+        busy={Boolean(form) && busyFormID === form?.id}
+        onFormSubmit={onFormSubmit}
+        onFormCancel={onFormCancel}
+      />
+    )
+  }
+
   const label = LABELS[tool.name] ?? tool.name
   const detail = summary(tool)
-  const statusLabel = tool.status === "ok" ? "ok" : tool.status === "error" ? "erro" : "rodando"
+  const state = statusLabel(tool)
 
   return (
     <div className="tool-card">
@@ -53,9 +219,8 @@ export function ToolCard({ tool }: { tool: ToolCallView }) {
         <span>{label}</span>
         {detail ? <span className="status">{detail.slice(0, 80)}</span> : null}
         <span className="spacer" />
-        <span className={`tool-status ${statusLabel === "ok" ? "ok" : statusLabel === "erro" ? "error" : "running"}`}>
-          {statusLabel === "ok" ? <CheckIcon size={11} /> : statusLabel === "erro" ? <XIcon size={11} /> : null}{" "}
-          {statusLabel}
+        <span className={`tool-status ${state === "ok" ? "ok" : state === "erro" ? "error" : "running"}`}>
+          {state === "ok" ? <CheckIcon size={11} /> : state === "erro" ? <XIcon size={11} /> : null} {state}
         </span>
       </div>
 

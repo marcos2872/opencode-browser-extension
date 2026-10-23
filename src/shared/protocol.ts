@@ -1,6 +1,7 @@
 import type {
   AppSnapshot,
   BrowserTabContext,
+  FormAnswer,
   ImagePayload,
   ModelInfo,
   ModelRef,
@@ -74,6 +75,18 @@ export type UiRequest =
       type: "permission:respond";
       requestId: string;
       decision: PermissionDecision;
+    }
+  | {
+      type: "form:respond";
+      sessionID: string;
+      formID: string;
+      answer: FormAnswer;
+    }
+  | {
+      type: "form:cancel";
+      sessionID: string;
+      formID: string;
+      message?: string;
     }
   | { type: "relay:reconnect" };
 

@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
-import { ToolCard } from "../../src/sidepanel/ToolCard"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
+import { ToolCard, questionToolID, readQuestions } from "../../src/sidepanel/ToolCard"
 import type { ToolCallView } from "../../src/shared/types"
+import { makeForm } from "../helpers/factories"
 
 function makeTool(partial: Partial<ToolCallView> = {}): ToolCallView {
   return { id: "t1", name: "navigate", status: "running", ...partial }
@@ -141,5 +143,172 @@ describe("sidepanel/ToolCard", () => {
   it("esconde o resultado quando não há output", () => {
     render(<ToolCard tool={makeTool({ output: undefined })} />)
     expect(screen.queryByText("Resultado")).not.toBeInTheDocument()
+  })
+})
+
+const QUESTION_INPUT = {
+  questions: [
+    {
+      header: "Escopo",
+      question: "Apagar tudo?",
+      multiple: false,
+      options: [{ label: "Sim" }, { label: "Não" }],
+    },
+  ],
+}
+
+describe("sidepanel/ToolCard: questionToolID", () => {
+  it("lê o id da tool em metadata.tool.id", () => {
+    expect(questionToolID(makeForm())).toBe("t1")
+  })
+
+  it("devolve undefined quando o metadata não aponta para uma tool", () => {
+    expect(questionToolID(makeForm({ metadata: undefined }))).toBeUndefined()
+    expect(questionToolID(makeForm({ metadata: {} }))).toBeUndefined()
+    expect(questionToolID(makeForm({ metadata: { tool: null } }))).toBeUndefined()
+    expect(questionToolID(makeForm({ metadata: { tool: { id: 5 } } }))).toBeUndefined()
+  })
+})
+
+describe("sidepanel/ToolCard: readQuestions", () => {
+  it("tolera entradas inválidas", () => {
+    expect(readQuestions(undefined)).toEqual([])
+    expect(readQuestions({})).toEqual([])
+    expect(readQuestions({ questions: "x" })).toEqual([])
+  })
+
+  it("normaliza perguntas e opções", () => {
+    expect(
+      readQuestions({
+        questions: [
+          null,
+          "texto",
+          { question: "solto" },
+          {
+            header: "H",
+            question: "q",
+            multiple: true,
+            options: [null, "x", { description: "sem rótulo" }, { label: "L", description: "D" }],
+          },
+        ],
+      }),
+    ).toEqual([
+      { question: "solto", multiple: false, options: [] },
+      { header: "H", question: "q", multiple: true, options: [{ label: "L", description: "D" }] },
+    ])
+  })
+})
+
+describe("sidepanel/ToolCard: pergunta do agente", () => {
+  it("mostra as opções clicáveis e envia a resposta", async () => {
+    const form = makeForm()
+    const onFormSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "running", input: QUESTION_INPUT }}
+        forms={[form]}
+        onFormSubmit={onFormSubmit}
+      />,
+    )
+
+    expect(screen.getByText("Pergunta")).toBeInTheDocument()
+    expect(screen.getByText("aguardando")).toBeInTheDocument()
+    expect(screen.getByText("Escopo da limpeza")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /Sim/ }))
+    await user.click(screen.getByRole("button", { name: /Responder/ }))
+    expect(onFormSubmit).toHaveBeenCalledWith(form, { q0: "Sim" })
+  })
+
+  it("desabilita o formulário enquanto a resposta é enviada", () => {
+    const form = makeForm()
+    render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "running", input: QUESTION_INPUT }}
+        forms={[form]}
+        busyFormID="frm_1"
+        onFormSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole("button", { name: /Responder/ })).toBeDisabled()
+  })
+
+  it("oferece cancelar quando há callback", async () => {
+    const form = makeForm()
+    const onFormCancel = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "running", input: QUESTION_INPUT }}
+        forms={[form]}
+        onFormSubmit={vi.fn()}
+        onFormCancel={onFormCancel}
+      />,
+    )
+    await user.click(screen.getByRole("button", { name: /Cancelar/ }))
+    expect(onFormCancel).toHaveBeenCalledWith(form)
+  })
+
+  it("lista a pergunta em texto enquanto o form não chegou", () => {
+    const { container } = render(
+      <ToolCard tool={{ id: "t9", name: "question", status: "running", input: QUESTION_INPUT }} />,
+    )
+    expect(screen.getByText("rodando")).toBeInTheDocument()
+    expect(screen.getByText("Escopo")).toBeInTheDocument()
+    expect(screen.getByText("Apagar tudo?")).toBeInTheDocument()
+    expect(container.querySelector(".form-card")).toBeNull()
+  })
+
+  it("mostra o resultado depois de respondida", () => {
+    const { container } = render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "ok", input: QUESTION_INPUT, output: "Resposta: Sim" }}
+      />,
+    )
+    expect(screen.getByText("ok")).toBeInTheDocument()
+    expect(screen.getByText("Resposta: Sim")).toBeInTheDocument()
+    expect(container.querySelector(".form-card")).toBeNull()
+    expect(screen.queryByText("Parâmetros")).not.toBeInTheDocument()
+  })
+
+  it("prioriza o form pendente mesmo com o card já marcado como ok", () => {
+    const form = makeForm()
+    const onFormSubmit = vi.fn()
+    render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "ok", input: QUESTION_INPUT, output: "antigo" }}
+        forms={[form]}
+        onFormSubmit={onFormSubmit}
+      />,
+    )
+    expect(screen.getByText("aguardando")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Responder/ })).toBeInTheDocument()
+    expect(screen.queryByText("antigo")).not.toBeInTheDocument()
+  })
+
+  it("reinicia o rascunho quando o form muda de id", async () => {
+    const user = userEvent.setup()
+    const simpleForm = (id: string) =>
+      makeForm({ id, fields: [{ key: "q0", type: "string", placeholder: "resposta" }] })
+    const { rerender } = render(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "running", input: QUESTION_INPUT }}
+        forms={[simpleForm("frm_1")]}
+        onFormSubmit={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByPlaceholderText("resposta"), "texto antigo")
+    expect(screen.getByPlaceholderText("resposta")).toHaveValue("texto antigo")
+
+    rerender(
+      <ToolCard
+        tool={{ id: "t1", name: "question", status: "running", input: QUESTION_INPUT }}
+        forms={[simpleForm("frm_2")]}
+        onFormSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getByPlaceholderText("resposta")).toHaveValue("")
   })
 })

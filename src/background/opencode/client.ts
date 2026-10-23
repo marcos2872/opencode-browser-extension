@@ -1,6 +1,8 @@
 import type {
   AgentInfo,
   CommandInfo,
+  FormAnswer,
+  FormInfo,
   ModelInfo,
   ModelRef,
   SessionInfo,
@@ -315,6 +317,36 @@ export class OpencodeClient {
       method: "POST",
       body: JSON.stringify({ text }),
     });
+  }
+
+  async listForms(sessionID: string): Promise<FormInfo[]> {
+    const payload = await this.request<{ data?: FormInfo[] }>(
+      `/api/session/${encodeURIComponent(sessionID)}/form`,
+    );
+    return payload?.data ?? [];
+  }
+
+  async replyForm(
+    sessionID: string,
+    formID: string,
+    answer: FormAnswer,
+  ): Promise<void> {
+    await this.request<void>(
+      `/api/session/${encodeURIComponent(sessionID)}/form/${encodeURIComponent(formID)}/reply`,
+      { method: "POST", body: JSON.stringify({ answer }) },
+    );
+  }
+
+  async cancelForm(
+    sessionID: string,
+    formID: string,
+    message?: string,
+  ): Promise<void> {
+    const query = message ? `?message=${encodeURIComponent(message)}` : "";
+    await this.request<void>(
+      `/api/session/${encodeURIComponent(sessionID)}/form/${encodeURIComponent(formID)}${query}`,
+      { method: "DELETE" },
+    );
   }
 
   async interrupt(id: string): Promise<void> {

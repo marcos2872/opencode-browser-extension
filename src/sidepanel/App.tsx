@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { PORT_NAME, type UiEvent } from "../shared/protocol"
-import type { AppSnapshot, BrowserTabContext, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
+import type { AppSnapshot, BrowserTabContext, FormAnswer, FormInfo, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
 import { SettingsIcon, Logo } from "../components/icons"
 import { PermissionCard } from "../components/PermissionCard"
 import { Chat } from "./Chat"
@@ -19,6 +19,7 @@ async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> 
 export default function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
   const [permission, setPermission] = useState<PermissionRequest | null>(null)
+  const [formBusyID, setFormBusyID] = useState<string | null>(null)
   const [pairError, setPairError] = useState<string | null>(null)
   const [pairBusy, setPairBusy] = useState(false)
   const [draft, setDraft] = useState("")
@@ -215,6 +216,29 @@ export default function App() {
     if (!response.ok) showToast(response.error)
   }
 
+  async function respondForm(form: FormInfo, answer: FormAnswer) {
+    setFormBusyID(form.id)
+    const response = await request({
+      type: "form:respond",
+      sessionID: form.sessionID,
+      formID: form.id,
+      answer,
+    })
+    setFormBusyID(null)
+    if (!response.ok) showToast(response.error)
+  }
+
+  async function cancelForm(form: FormInfo) {
+    setFormBusyID(form.id)
+    const response = await request({
+      type: "form:cancel",
+      sessionID: form.sessionID,
+      formID: form.id,
+    })
+    setFormBusyID(null)
+    if (!response.ok) showToast(response.error)
+  }
+
   if (!snapshot) {
     return (
       <div className="app">
@@ -289,7 +313,16 @@ export default function App() {
             onDetach={(tabID) => void detachTab(tabID)}
             onAgent={(agent) => void changeAgent(agent)}
           />
-          <Chat messages={snapshot.messages} busy={snapshot.busy} onSuggestion={setDraft} bottomRef={bottomRef} />
+          <Chat
+            messages={snapshot.messages}
+            busy={snapshot.busy}
+            onSuggestion={setDraft}
+            bottomRef={bottomRef}
+            forms={snapshot.forms}
+            busyFormID={formBusyID}
+            onFormSubmit={(form, answer) => void respondForm(form, answer)}
+            onFormCancel={(form) => void cancelForm(form)}
+          />
           {snapshot.statusMessage ? (
             <div className="status-banner">
               <span className="spinner" />
