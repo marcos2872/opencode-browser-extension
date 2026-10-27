@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 /**
  * Ponte entre o OpenCode e a extensão OpenCode Browser.
@@ -16,8 +17,16 @@ const EXPECTED_EXTENSION_ID =
 const ALLOW_ANY_EXTENSION = process.env.OPENCODE_BROWSER_ALLOW_ANY_EXTENSION === "1"
 const CALL_TIMEOUT_MS = 180_000
 const AGENT_ID = "opencode-browser"
-const AGENT_VERSION = 1
-const AGENT_MARKER = `<!-- opencode-browser-agent v${AGENT_VERSION} -->`
+
+/** Caminho do template do agente ao lado deste arquivo (robusto no Vitest). */
+function agentTemplatePath(): string {
+  const url = import.meta.url
+  if (url.startsWith("file:")) {
+    return join(fileURLToPath(new URL(".", url)), "opencode-browser.agent.md")
+  }
+  // Vitest transforma o módulo em uma URL que não é `file:`.
+  return join(process.cwd(), "plugin", "opencode-browser.agent.md")
+}
 
 type ImagePayload = { name: string; mime: string; data: string }
 
@@ -68,66 +77,32 @@ function opencodeConfigHome(): string {
 }
 
 function agentMarkdown(): string {
-  return `---
-description: Opera o navegador do usuário pela extensão OpenCode Browser.
-mode: primary
-permissions:
-  - action: "*"
-    resource: "*"
-    effect: deny
-  - action: "browser"
-    resource: "*"
-    effect: allow
-  - action: "browser_*"
-    resource: "*"
-    effect: allow
-  - action: question
-    resource: "*"
-    effect: allow
-  - action: doom_loop
-    resource: "*"
-    effect: ask
----
-
-${AGENT_MARKER}
-
-Você é o agente de navegador da extensão OpenCode Browser. Seu trabalho é
-operar o navegador do usuário pelas ferramentas \`browser_*\` e responder ao
-pedido feito no painel.
-
-Regras:
-- Comece por \`browser_tabs_context\` e reutilize a aba que já está no grupo.
-  Só use \`browser_tabs_create\` quando não houver aba adequada.
-- Trabalhe apenas nas abas do grupo desta sessão; não toque em outras janelas.
-- Use \`browser_batch\` para sequências de ações independentes.
-- Depois de navegar, clicar ou preencher, confirme com \`browser_read_page\`,
-  \`browser_get_page_text\`, \`browser_read_console_messages\` ou
-  \`browser_read_network_requests\` antes de concluir.
-- Prefira \`browser_find\` e refs da árvore de acessibilidade a coordenadas.
-- Peça confirmação antes de ações destrutivas ou que enviem dados reais.
-- Não leia, escreva ou edite arquivos; não execute comandos; não use dados da
-  máquina que não estejam visíveis na página.
-- Se faltar uma ferramenta para a tarefa, explique a limitação em vez de
-  improvisar outro caminho.
-`
+  const template = agentTemplatePath()
+  try {
+    return readFileSync(template, "utf8")
+  } catch {
+    throw new Error(
+      `Template do agente não encontrado em ${template}. Rode \`npm run install:plugin\`.`,
+    )
+  }
 }
 
 /**
- * Grava o agente do navegador na configuração global do OpenCode
- * (`~/.config/opencode/agents`, ou `$XDG_CONFIG_HOME/opencode/agents`).
+ * Cria o agente do navegador na configuração global do OpenCode
+ * (`~/.config/opencode/agents`, ou `$XDG_CONFIG_HOME/opencode/agents`) a partir
+ * do template, apenas se ele ainda não existir. Depois disso o arquivo é do
+ * usuário: edições manuais não são sobrescritas.
  */
 export function ensureAgentFile(configHome = opencodeConfigHome()): string {
-  const dir = join(configHome, "opencode", "agents")
-  mkdirSync(dir, { recursive: true })
-  const file = join(dir, `${AGENT_ID}.md`)
-  const content = agentMarkdown()
-  let current = ""
+  const file = join(configHome, "opencode", "agents", `${AGENT_ID}.md`)
   try {
-    current = readFileSync(file, "utf8")
+    readFileSync(file)
+    return file
   } catch {
-    // arquivo ainda não existe
+    // ainda não existe: cria a partir do template
   }
-  if (current !== content) writeFileSync(file, content, "utf8")
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, agentMarkdown(), "utf8")
   return file
 }
 

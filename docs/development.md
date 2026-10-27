@@ -20,8 +20,9 @@ Arquivos estáticos (`manifest.json`, ícones, `offscreen.html`) vêm de `public
 1. Edite o código em `src/` ou `plugin/`.
 2. `npm run verify` (typecheck + build).
 3. Recarregue a extensão em `chrome://extensions`.
-4. Para o plugin: `npm run install:plugin` (o OpenCode recarrega ao detectar a
-   mudança; confirme com `curl http://127.0.0.1:8800/health`).
+4. Para o plugin: `npm run install:plugin` (copia `browser-relay.ts` e o template
+   `opencode-browser.agent.md`; o OpenCode recarrega ao detectar a mudança;
+   confirme com `curl http://127.0.0.1:8800/health`).
 
 > O Chrome mantém o service worker em cache. Se o comportamento não mudar após o
 > build, clique em **Recarregar** na extensão ou feche e reabra o navegador de

@@ -17,9 +17,10 @@ mudanças no arquivo.
 1. Sobe um servidor WebSocket em loopback para receber a extensão.
 2. Cria a pasta de conversas (`~/.opencode-browser-extensions`) e anuncia o
    `home` e o `workspace` no handshake `ready`.
-3. Grava o agente `opencode-browser` na configuração global do OpenCode
-   (`~/.config/opencode/agents/`), com instruções de navegador e permissão
-   apenas para `browser_*` (veja [Agente do navegador](#agente-do-navegador)).
+3. Cria o agente `opencode-browser` na configuração global do OpenCode
+   (`~/.config/opencode/agents/`) a partir do template
+   `plugin/opencode-browser.agent.md`, se ele ainda não existir (veja
+   [Agente do navegador](#agente-do-navegador)).
 4. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
    `codemode: false`, para aparecerem na lista nativa de tools do modelo).
 5. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
@@ -28,8 +29,12 @@ mudanças no arquivo.
 
 ## Agente do navegador
 
-O plugin grava (de forma idempotente) um agente primário chamado
-`opencode-browser` na configuração global do OpenCode:
+O plugin cria o agente primário `opencode-browser` na configuração global do
+OpenCode a partir do template `plugin/opencode-browser.agent.md`, que é
+instalado ao lado do plugin. O arquivo só é criado se ainda não existir; depois
+disso ele é do usuário e **não é sobrescrito**. Para personalizar, edite
+`~/.config/opencode/agents/opencode-browser.md`; para restaurar o padrão, apague
+o arquivo e reinicie o OpenCode.
 
 ```text
 ~/.config/opencode/agents/opencode-browser.md            (Linux/macOS)

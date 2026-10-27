@@ -104,13 +104,15 @@ listagem por ela — só aparecem as conversas criadas ali. Se o usuário defini
 outro caminho nas opções, ele tem precedência. Sessões sem `location` continuam
 visíveis (defensivo).
 
-Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin grava
-o agente `opencode-browser`. Quando o servidor lista esse agente, as novas
-sessões passam a usá-lo (`browserAgentDefault`, ligado por padrão; desligar nas
-opções volta a usar o agente padrão escolhido). Ele restringe as ferramentas a
-`browser_*` e `question` — o agente não lê arquivos, não executa comandos e não
-acessa dados da máquina. Por ser global, ele aparece em todos os projetos do
-OpenCode, não só nas conversas da extensão.
+Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin cria
+o agente `opencode-browser` a partir do template
+`plugin/opencode-browser.agent.md`. Depois de criado, o arquivo não é
+sobrescrito — edite-o para personalizar. Quando o servidor lista esse agente, as
+novas sessões passam a usá-lo (`browserAgentDefault`, ligado por padrão;
+desligar nas opções volta a usar o agente padrão escolhido). Ele restringe as
+ferramentas a `browser_*` e `question` — o agente não lê arquivos, não executa
+comandos e não acessa dados da máquina. Por ser global, ele aparece em todos os
+projetos do OpenCode, não só nas conversas da extensão.
 
 ### Grupos de abas
 
