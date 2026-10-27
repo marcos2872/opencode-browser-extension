@@ -381,7 +381,7 @@ async function applyWorkspace(workspace: string | undefined): Promise<void> {
 async function ensureBrowserAgent(): Promise<void> {
   if (!relayState.connected) return;
   try {
-    await relay.ensureAgent(config?.directory ?? workspaceHint ?? undefined);
+    await relay.ensureAgent();
   } catch {
     // plugin antigo ou sem resposta: seguimos com os agentes existentes
   }

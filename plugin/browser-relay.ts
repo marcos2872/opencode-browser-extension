@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { isAbsolute, join } from "node:path"
+import { join } from "node:path"
 
 /**
  * Ponte entre o OpenCode e a extensão OpenCode Browser.
@@ -61,6 +61,12 @@ function expandHome(value: string): string {
   return value
 }
 
+/** Configuração do OpenCode: respeita XDG_CONFIG_HOME como o resto do plugin. */
+function opencodeConfigHome(): string {
+  const xdg = process.env.XDG_CONFIG_HOME?.trim()
+  return xdg ? expandHome(xdg) : join(homedir(), ".config")
+}
+
 function agentMarkdown(): string {
   return `---
 description: Opera o navegador do usuário pela extensão OpenCode Browser.
@@ -95,11 +101,12 @@ Regras:
 `
 }
 
-/** Grava o agente do navegador no `.opencode/agents` do diretório da sessão. */
-export function ensureAgentFile(directory?: string): string {
-  const raw = directory && directory.trim() ? expandHome(directory.trim()) : WORKSPACE
-  const base = isAbsolute(raw) ? raw : WORKSPACE
-  const dir = join(base, ".opencode", "agents")
+/**
+ * Grava o agente do navegador na configuração global do OpenCode
+ * (`~/.config/opencode/agents`, ou `$XDG_CONFIG_HOME/opencode/agents`).
+ */
+export function ensureAgentFile(configHome = opencodeConfigHome()): string {
+  const dir = join(configHome, "opencode", "agents")
   mkdirSync(dir, { recursive: true })
   const file = join(dir, `${AGENT_ID}.md`)
   const content = agentMarkdown()
@@ -683,7 +690,7 @@ export default {
   async setup(ctx) {
     try {
       mkdirSync(WORKSPACE, { recursive: true })
-      ensureAgentFile(WORKSPACE)
+      ensureAgentFile()
     } catch (error) {
       log(`não foi possível criar a pasta de conversas ${WORKSPACE}`, error)
     }
@@ -779,9 +786,7 @@ export default {
               const id = typeof message.id === "string" ? message.id : ""
               if (!id) return
               try {
-                const path = ensureAgentFile(
-                  typeof message.directory === "string" ? message.directory : undefined,
-                )
+                const path = ensureAgentFile()
                 send(socket, { type: "ensure_agent_result", id, ok: true, path })
               } catch (error) {
                 send(socket, {

@@ -689,16 +689,12 @@ describe("background/relay — agente do navegador", () => {
   it("envia ensure_agent com o diretório e resolve com o path", async () => {
     const { client, socket } = await connectedClient()
 
-    const promise = client.ensureAgent("/tmp/conv")
+    const promise = client.ensureAgent()
     const sent = socket.sentJson().at(-1) as {
       type: string
       id: string
-      directory?: string
     }
-    expect(sent).toMatchObject({
-      type: "ensure_agent",
-      directory: "/tmp/conv",
-    })
+    expect(sent).toMatchObject({ type: "ensure_agent" })
 
     socket.message(
       JSON.stringify({
@@ -717,7 +713,7 @@ describe("background/relay — agente do navegador", () => {
   it("rejeita quando o plugin devolve erro", async () => {
     const { client, socket } = await connectedClient()
 
-    const promise = client.ensureAgent("/tmp/conv")
+    const promise = client.ensureAgent()
     const sent = socket.sentJson().at(-1) as { id: string }
     socket.message(
       JSON.stringify({
@@ -739,7 +735,7 @@ describe("background/relay — agente do navegador", () => {
   it("rejeita pendentes quando o socket cai", async () => {
     const { client, socket } = await connectedClient()
 
-    const promise = client.ensureAgent("/tmp/conv")
+    const promise = client.ensureAgent()
     socket.drop(1006)
 
     await expect(promise).rejects.toThrow(/desconectou/)

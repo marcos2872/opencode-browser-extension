@@ -17,9 +17,9 @@ mudanças no arquivo.
 1. Sobe um servidor WebSocket em loopback para receber a extensão.
 2. Cria a pasta de conversas (`~/.opencode-browser-extensions`) e anuncia o
    `home` e o `workspace` no handshake `ready`.
-3. Grava o agente `opencode-browser` em `<pasta de conversas>/.opencode/agents/`,
-   com instruções de navegador e permissão apenas para `browser_*` (veja
-   [Agente do navegador](#agente-do-navegador)).
+3. Grava o agente `opencode-browser` na configuração global do OpenCode
+   (`~/.config/opencode/agents/`), com instruções de navegador e permissão
+   apenas para `browser_*` (veja [Agente do navegador](#agente-do-navegador)).
 4. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
    `codemode: false`, para aparecerem na lista nativa de tools do modelo).
 5. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
@@ -29,10 +29,12 @@ mudanças no arquivo.
 ## Agente do navegador
 
 O plugin grava (de forma idempotente) um agente primário chamado
-`opencode-browser` no diretório da sessão:
+`opencode-browser` na configuração global do OpenCode:
 
 ```text
-<workspace>/.opencode/agents/opencode-browser.md
+~/.config/opencode/agents/opencode-browser.md            (Linux/macOS)
+%USERPROFILE%\.config\opencode\agents\opencode-browser.md (Windows)
+$XDG_CONFIG_HOME/opencode/agents/opencode-browser.md      (quando definido)
 ```
 
 O arquivo usa o frontmatter V2 do OpenCode:
@@ -53,13 +55,13 @@ das páginas. O corpo do Markdown traz as instruções de operação (reutilizar
 aba do grupo, validar com `read_page`/console/rede, pedir confirmação antes de
 ações destrutivas).
 
-A extensão pede a gravação por `ensure_agent` sempre que o relay conecta ou o
-diretório muda e, quando o agente aparece em `GET /api/agent`, passa a usá-lo
+A extensão pede a gravação por `ensure_agent` sempre que o relay conecta ou a
+configuração muda e, quando o agente aparece em `GET /api/agent`, passa a usá-lo
 como padrão (`defaultAgent`) se o usuário ainda não escolheu outro.
 
-> A descoberta de agentes é feita pelo OpenCode a partir do
-> `location.directory` da sessão. Se o servidor não recarregar a lista sozinho,
-> reinicie o `opencode` depois de atualizar o plugin.
+> Por ser global, o agente aparece em todos os projetos do OpenCode, não só nas
+> conversas da extensão. Se o servidor não recarregar a lista sozinho, reinicie
+> o `opencode` depois de atualizar o plugin.
 
 ## Plataformas
 
@@ -70,6 +72,7 @@ envolvidos:
 | Item | Linux | macOS | Windows |
 |---|---|---|---|
 | Plugins do OpenCode | `~/.config/opencode/plugins` | `~/.config/opencode/plugins` | `%USERPROFILE%\.config\opencode\plugins` |
+| Agentes do OpenCode | `~/.config/opencode/agents` | `~/.config/opencode/agents` | `%USERPROFILE%\.config\opencode\agents` |
 | Pasta das conversas | `~/.opencode-browser-extensions` | `~/.opencode-browser-extensions` | `%USERPROFILE%\.opencode-browser-extensions` |
 | Arquivo de token | `$TMPDIR/opencode-browser-relay.token` | `$TMPDIR/opencode-browser-relay.token` | `%TEMP%\opencode-browser-relay.token` |
 

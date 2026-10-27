@@ -198,8 +198,8 @@ export class RelayClient {
     }
   }
 
-  /** Pede ao plugin para gravar o agente do navegador no diretório da sessão. */
-  ensureAgent(directory?: string): Promise<{ path?: string }> {
+  /** Pede ao plugin para gravar o agente do navegador na configuração global. */
+  ensureAgent(): Promise<{ path?: string }> {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error("Plugin do OpenCode não conectado."))
     }
@@ -210,7 +210,7 @@ export class RelayClient {
         reject(new Error("O plugin não respondeu ao instalar o agente."))
       }, 5_000)
       this.agentPending.set(id, { resolve, reject, timer })
-      if (!this.send({ type: "ensure_agent", id, directory })) {
+      if (!this.send({ type: "ensure_agent", id })) {
         clearTimeout(timer)
         this.agentPending.delete(id)
         reject(new Error("Falha ao enviar o pedido ao plugin."))

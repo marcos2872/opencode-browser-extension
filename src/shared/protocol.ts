@@ -58,7 +58,7 @@ export type RelayOutbound =
     }
   | { type: "progress"; id: string; phase: string; detail?: string }
   | { type: "pong" }
-  | { type: "ensure_agent"; id: string; directory?: string };
+  | { type: "ensure_agent"; id: string };
 
 export type UiRequest =
   | { type: "state:get" }

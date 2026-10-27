@@ -17,13 +17,13 @@ afterEach(() => {
 })
 
 describe("plugin: agente do navegador", () => {
-  it("grava o agente no .opencode/agents do diretório informado", () => {
+  it("grava o agente na configuração global do OpenCode", () => {
     const directory = tempDir()
 
     const path = ensureAgentFile(directory)
 
     expect(path).toBe(
-      join(directory, ".opencode", "agents", "opencode-browser.md"),
+      join(directory, "opencode", "agents", "opencode-browser.md"),
     )
     const content = readFileSync(path, "utf8")
     expect(content.startsWith("---\n")).toBe(true)
