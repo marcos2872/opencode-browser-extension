@@ -17,11 +17,49 @@ mudanças no arquivo.
 1. Sobe um servidor WebSocket em loopback para receber a extensão.
 2. Cria a pasta de conversas (`~/.opencode-browser-extensions`) e anuncia o
    `home` e o `workspace` no handshake `ready`.
-3. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
+3. Grava o agente `opencode-browser` em `<pasta de conversas>/.opencode/agents/`,
+   com instruções de navegador e permissão apenas para `browser_*` (veja
+   [Agente do navegador](#agente-do-navegador)).
+4. Registra as 18 ferramentas `browser_*` no namespace `browser` (com
    `codemode: false`, para aparecerem na lista nativa de tools do modelo).
-4. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
+5. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
    extensão e aguarda o `tool_result` (timeout de 180 s).
-5. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo.
+6. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo.
+
+## Agente do navegador
+
+O plugin grava (de forma idempotente) um agente primário chamado
+`opencode-browser` no diretório da sessão:
+
+```text
+<workspace>/.opencode/agents/opencode-browser.md
+```
+
+O arquivo usa o frontmatter V2 do OpenCode:
+
+```yaml
+mode: primary
+permissions:
+  "*": deny
+  "browser_*": allow
+  question: allow
+  doom_loop: ask
+```
+
+Na prática, o agente só enxerga as ferramentas do navegador e `question`:
+`read`, `edit`, `bash`, `glob`, `grep`, `webfetch`, `task` e afins ficam
+bloqueados, então ele não consegue mexer em arquivos ou dados da máquina fora
+das páginas. O corpo do Markdown traz as instruções de operação (reutilizar a
+aba do grupo, validar com `read_page`/console/rede, pedir confirmação antes de
+ações destrutivas).
+
+A extensão pede a gravação por `ensure_agent` sempre que o relay conecta ou o
+diretório muda e, quando o agente aparece em `GET /api/agent`, passa a usá-lo
+como padrão (`defaultAgent`) se o usuário ainda não escolheu outro.
+
+> A descoberta de agentes é feita pelo OpenCode a partir do
+> `location.directory` da sessão. Se o servidor não recarregar a lista sozinho,
+> reinicie o `opencode` depois de atualizar o plugin.
 
 ## Plataformas
 
@@ -121,6 +159,7 @@ Mensagens da extensão para o plugin:
 | `tool_result` | `id`, `ok`, `content?`, `images?`, `error?`, `metadata?` | Resultado da ferramenta |
 | `progress` | `id`, `phase`, `detail?` | Progresso exibido no OpenCode |
 | `pong` | — | Resposta ao `ping`; prova de vida |
+| `ensure_agent` | `id`, `directory?` | Pede para gravar o agente `opencode-browser` no diretório da sessão |
 
 Mensagens do plugin para a extensão:
 
@@ -130,6 +169,7 @@ Mensagens do plugin para a extensão:
 | `tool_request` | `id`, `tool`, `args`, `sessionID?` | Pedido de execução |
 | `cancel` | `id` | Aborta uma execução |
 | `ping` | — | Verificação de vida a cada 20 s; o plugin fecha o socket após 60 s sem `pong` |
+| `ensure_agent_result` | `id`, `ok`, `path?`, `error?` | Confirma (ou não) a gravação do agente |
 
 A extensão só arma o watchdog de silêncio depois de receber o primeiro `ping`,
 então plugins antigos (que não pingam) continuam compatíveis. Quando armado, o

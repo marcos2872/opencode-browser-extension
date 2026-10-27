@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { join } from "node:path"
+import { isAbsolute, join } from "node:path"
 
 /**
  * Ponte entre o OpenCode e a extensão OpenCode Browser.
@@ -15,6 +15,9 @@ const EXPECTED_EXTENSION_ID =
   process.env.OPENCODE_BROWSER_EXTENSION_ID ?? "meapihkmghapjefepmkckpikedpimhin"
 const ALLOW_ANY_EXTENSION = process.env.OPENCODE_BROWSER_ALLOW_ANY_EXTENSION === "1"
 const CALL_TIMEOUT_MS = 180_000
+const AGENT_ID = "opencode-browser"
+const AGENT_VERSION = 1
+const AGENT_MARKER = `<!-- opencode-browser-agent v${AGENT_VERSION} -->`
 
 type ImagePayload = { name: string; mime: string; data: string }
 
@@ -48,6 +51,66 @@ type SocketData = {
   /** Timestamp do último pong; prova de vida da extensão. */
   lastPong: number
   pingTimer?: ReturnType<typeof setInterval>
+}
+
+function expandHome(value: string): string {
+  if (value === "~") return homedir()
+  if (value.startsWith("~/") || value.startsWith("~\\")) {
+    return join(homedir(), value.slice(2))
+  }
+  return value
+}
+
+function agentMarkdown(): string {
+  return `---
+description: Opera o navegador do usuário pela extensão OpenCode Browser.
+mode: primary
+permissions:
+  "*": deny
+  "browser_*": allow
+  question: allow
+  doom_loop: ask
+---
+
+${AGENT_MARKER}
+
+Você é o agente de navegador da extensão OpenCode Browser. Seu trabalho é
+operar o navegador do usuário pelas ferramentas \`browser_*\` e responder ao
+pedido feito no painel.
+
+Regras:
+- Comece por \`browser_tabs_context\` e reutilize a aba que já está no grupo.
+  Só use \`browser_tabs_create\` quando não houver aba adequada.
+- Trabalhe apenas nas abas do grupo desta sessão; não toque em outras janelas.
+- Use \`browser_batch\` para sequências de ações independentes.
+- Depois de navegar, clicar ou preencher, confirme com \`browser_read_page\`,
+  \`browser_get_page_text\`, \`browser_read_console_messages\` ou
+  \`browser_read_network_requests\` antes de concluir.
+- Prefira \`browser_find\` e refs da árvore de acessibilidade a coordenadas.
+- Peça confirmação antes de ações destrutivas ou que enviem dados reais.
+- Não leia, escreva ou edite arquivos; não execute comandos; não use dados da
+  máquina que não estejam visíveis na página.
+- Se faltar uma ferramenta para a tarefa, explique a limitação em vez de
+  improvisar outro caminho.
+`
+}
+
+/** Grava o agente do navegador no `.opencode/agents` do diretório da sessão. */
+export function ensureAgentFile(directory?: string): string {
+  const raw = directory && directory.trim() ? expandHome(directory.trim()) : WORKSPACE
+  const base = isAbsolute(raw) ? raw : WORKSPACE
+  const dir = join(base, ".opencode", "agents")
+  mkdirSync(dir, { recursive: true })
+  const file = join(dir, `${AGENT_ID}.md`)
+  const content = agentMarkdown()
+  let current = ""
+  try {
+    current = readFileSync(file, "utf8")
+  } catch {
+    // arquivo ainda não existe
+  }
+  if (current !== content) writeFileSync(file, content, "utf8")
+  return file
 }
 
 interface RelayGlobal {
@@ -620,6 +683,7 @@ export default {
   async setup(ctx) {
     try {
       mkdirSync(WORKSPACE, { recursive: true })
+      ensureAgentFile(WORKSPACE)
     } catch (error) {
       log(`não foi possível criar a pasta de conversas ${WORKSPACE}`, error)
     }
@@ -708,6 +772,24 @@ export default {
               if (!ALLOW_ANY_EXTENSION && message.extensionId !== EXPECTED_EXTENSION_ID) {
                 socket.close(1008, "Extensão não autorizada")
                 return
+              }
+              return
+            }
+            if (message.type === "ensure_agent") {
+              const id = typeof message.id === "string" ? message.id : ""
+              if (!id) return
+              try {
+                const path = ensureAgentFile(
+                  typeof message.directory === "string" ? message.directory : undefined,
+                )
+                send(socket, { type: "ensure_agent_result", id, ok: true, path })
+              } catch (error) {
+                send(socket, {
+                  type: "ensure_agent_result",
+                  id,
+                  ok: false,
+                  error: error instanceof Error ? error.message : String(error),
+                })
               }
               return
             }

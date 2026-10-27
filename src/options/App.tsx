@@ -58,7 +58,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
-  const [showToolDetails, setShowToolDetails] = useState(false)
+  const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full">("grouped")
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -80,7 +80,7 @@ export default function App() {
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
-        setShowToolDetails(response.snapshot.config?.showToolDetails === true)
+        setToolDisplay(response.snapshot.config?.toolDisplay ?? "grouped")
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -133,7 +133,7 @@ export default function App() {
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
         notifyEnabled,
-        showToolDetails,
+        toolDisplay,
         directory: workspace.trim() || undefined,
       },
     })
@@ -390,17 +390,25 @@ export default function App() {
             <span>Mostrar notificação do sistema quando o agente terminar com o painel fechado</span>
           </label>
 
-          <label className="row" style={{ gap: 8, fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={showToolDetails}
-              onChange={(event) => setShowToolDetails(event.target.checked)}
-            />
-            <span>
-              Mostrar parâmetros e resultado das ferramentas no chat (desligado mostra só o
-              nome e o status; a linha continua expandível)
-            </span>
-          </label>
+          <div className="field">
+            <label htmlFor="tool-display">Ferramentas no chat</label>
+            <select
+              id="tool-display"
+              className="select"
+              value={toolDisplay}
+              onChange={(event) =>
+                setToolDisplay(event.target.value as "grouped" | "rows" | "full")
+              }
+            >
+              <option value="grouped">Agrupadas (abrem em um modal)</option>
+              <option value="rows">Linhas compactas, uma por chamada</option>
+              <option value="full">Cards completos, com parâmetros e resultado</option>
+            </select>
+            <p className="desc">
+              No modo agrupado, uma linha resume a execução e abre a lista completa de tools;
+              só a ferramenta em execução fica no chat.
+            </p>
+          </div>
 
           <div className="field">
             <label htmlFor="allow">Sites sempre permitidos (um por linha)</label>

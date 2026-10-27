@@ -46,6 +46,7 @@ import type {
 } from "../shared/types";
 
 const ACTIVE_SESSION_KEY = "ui.activeSession";
+const BROWSER_AGENT_ID = "opencode-browser";
 const cdp = new Cdp();
 const tabs = new TabGroups();
 const recording = new Recording(cdp);
@@ -355,10 +356,15 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
 async function applyWorkspace(workspace: string | undefined): Promise<void> {
   if (!workspace) return;
   workspaceHint = workspace;
-  if (!config || config.directory) return;
-  config = { ...config, directory: workspace };
-  await setConfig(config);
-  client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+  if (!config) return;
+  const firstDirectory = !config.directory;
+  if (firstDirectory) {
+    config = { ...config, directory: workspace };
+    await setConfig(config);
+    client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+  }
+  ensureBrowserAgentInBackground();
+  if (!firstDirectory) return;
   await refreshModels().catch(() => undefined);
   await refreshAgents().catch(() => undefined);
   await refreshCommands().catch(() => undefined);
@@ -366,6 +372,28 @@ async function applyWorkspace(workspace: string | undefined): Promise<void> {
   if (!activeSessionID && sessions[0]) await selectSession(sessions[0].id);
   startSse();
   broadcastNow();
+}
+
+/**
+ * O plugin grava o agente `opencode-browser` no `.opencode/agents` do diretório
+ * da sessão. É idempotente e silencioso quando o plugin não está disponível.
+ */
+async function ensureBrowserAgent(): Promise<void> {
+  if (!relayState.connected) return;
+  try {
+    await relay.ensureAgent(config?.directory ?? workspaceHint ?? undefined);
+  } catch {
+    // plugin antigo ou sem resposta: seguimos com os agentes existentes
+  }
+}
+
+/** Instala o agente sem bloquear o fluxo e recarrega a lista quando terminar. */
+function ensureBrowserAgentInBackground(): void {
+  if (!relayState.connected) return;
+  void ensureBrowserAgent().then(async () => {
+    await refreshAgents().catch(() => undefined);
+    broadcastNow();
+  });
 }
 
 async function pair(link: string): Promise<void> {
@@ -389,6 +417,7 @@ async function pair(link: string): Promise<void> {
   });
   try {
     await refreshModels();
+    ensureBrowserAgentInBackground();
     await refreshAgents().catch(() => undefined);
     await refreshCommands().catch(() => undefined);
     await refreshSessions();
@@ -458,6 +487,7 @@ async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
         detail: errorMessage(error),
       });
     });
+    ensureBrowserAgentInBackground();
   }
   broadcastNow();
 }
@@ -517,9 +547,16 @@ async function refreshAgents(): Promise<void> {
     config = { ...config, defaultAgent: undefined };
     await setConfig(config);
   }
-  if (!config?.defaultAgent && agents.some((agent) => agent.id === "build")) {
-    config = { ...config!, defaultAgent: "build" };
-    await setConfig(config);
+  if (!config?.defaultAgent) {
+    const preferred = agents.some((agent) => agent.id === BROWSER_AGENT_ID)
+      ? BROWSER_AGENT_ID
+      : agents.some((agent) => agent.id === "build")
+        ? "build"
+        : undefined;
+    if (preferred) {
+      config = { ...config!, defaultAgent: preferred };
+      await setConfig(config);
+    }
   }
   broadcastNow();
 }
@@ -978,6 +1015,7 @@ async function reconnectBackend(): Promise<void> {
   config = stored;
   client = new OpencodeClient(config.baseUrl, config.token, config.directory);
   if (!wasOnline) resetStreaming();
+  ensureBrowserAgentInBackground();
   startSse();
   await syncAfterReconnect();
   await updateBadge();
@@ -1183,6 +1221,7 @@ function onOpencodeEvent(event: {
           input: data.input,
           status: "running",
           images: toolImages.get(id),
+          startedAt: Date.now(),
         });
       }
       scheduleBroadcast();
@@ -1205,6 +1244,7 @@ function onOpencodeEvent(event: {
         tool.output = contentText(data.content);
         tool.metadata = data.metadata as Record<string, unknown>;
         tool.images = toolImages.get(data.id) ?? tool.images;
+        tool.finishedAt = Date.now();
         scheduleBroadcast();
       }
       break;
@@ -1216,6 +1256,7 @@ function onOpencodeEvent(event: {
         tool.status = "error";
         tool.output =
           formatOpencodeError(data.error) || contentText(data.content);
+        tool.finishedAt = Date.now();
         scheduleBroadcast();
       }
       break;
@@ -1356,6 +1397,7 @@ function ensureTool(
     name: toolNames.get(id) ?? "tool",
     status: "running",
     images: toolImages.get(id),
+    startedAt: Date.now(),
   };
   message.tools.push(tool);
   return tool;

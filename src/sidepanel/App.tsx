@@ -354,7 +354,7 @@ export default function App() {
             busyFormID={formBusyID}
             onFormSubmit={(form, answer) => void respondForm(form, answer)}
             onFormCancel={(form) => void cancelForm(form)}
-            showToolDetails={snapshot.config?.showToolDetails === true}
+            toolDisplay={snapshot.config?.toolDisplay ?? "grouped"}
           />
           {snapshot.statusMessage ? (
             <div className="status-banner">

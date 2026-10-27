@@ -36,6 +36,21 @@ class FakeWebSocket {
 
   send(data: string): void {
     this.sent.push(data);
+    try {
+      const message = JSON.parse(data) as { type?: string; id?: string };
+      if (message.type === "ensure_agent" && message.id) {
+        queueMicrotask(() =>
+          this.message({
+            type: "ensure_agent_result",
+            id: message.id,
+            ok: true,
+            path: "/tmp/opencode-browser-agent.md",
+          }),
+        );
+      }
+    } catch {
+      // payload não-JSON: ignora
+    }
   }
 
   close(): void {
@@ -96,6 +111,7 @@ function installFetch(
     sseHang?: boolean;
     failPrompt?: boolean;
     agentStatus?: number;
+    agents?: unknown[];
   } = {},
 ): void {
   apiCalls.length = 0;
@@ -118,7 +134,7 @@ function installFetch(
     if (pathname === "/api/agent")
       return options.agentStatus
         ? jsonResponse({ message: "agente indisponível" }, options.agentStatus)
-        : jsonResponse({ data: [makeAgent()] });
+        : jsonResponse({ data: options.agents ?? [makeAgent()] });
     if (pathname === "/api/command")
       return jsonResponse({ data: [makeCommand()] });
     if (pathname === "/api/event") {
@@ -460,6 +476,37 @@ describe("service-worker: conexão e reconexão", () => {
     expect(
       state.snapshot.messages.find((item: any) => item.id === "a2").streaming,
     ).toBe(false);
+  });
+
+  it("pede ao plugin o agente do navegador ao conectar", async () => {
+    await loadWorker();
+    await pairWorker();
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    socket.message({
+      type: "ready",
+      v: 1,
+      workspace: "/home/teste/.opencode-browser-extensions",
+    });
+    await flush();
+
+    expect(
+      socket.sentJson().some((message: any) => message.type === "ensure_agent"),
+    ).toBe(true);
+  });
+
+  it("prefere o agente do navegador quando ele existe", async () => {
+    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.config.defaultAgent).toBe("opencode-browser");
   });
 
   it("volta a offline quando o stream termina", async () => {    await loadWorker();
@@ -832,6 +879,19 @@ describe("service-worker: eventos SSE", () => {
     await flush();
   }
 
+  /** Aguarda o estado refletir um evento sem depender do número de ticks. */
+  async function waitForSnapshot(
+    check: (snapshot: any) => boolean,
+  ): Promise<any> {
+    let snapshot: any = null;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      snapshot = (await callWorker({ type: "state:get" })).snapshot;
+      if (check(snapshot)) return snapshot;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    return snapshot;
+  }
+
   it("acompanha texto, raciocínio e ferramentas", async () => {
     await withSse();
     pushEvent("session.text.started", {
@@ -997,11 +1057,13 @@ describe("service-worker: eventos SSE", () => {
       sessionID: "ses_test",
       title: "Novo título",
     });
-    await flush();
-    const response = await callWorker({ type: "state:get" });
+    const snapshot = await waitForSnapshot((state) =>
+      state.sessions.some(
+        (item: any) => item.id === "ses_test" && item.title === "Novo título",
+      ),
+    );
     expect(
-      response.snapshot.sessions.find((item: any) => item.id === "ses_test")
-        .title,
+      snapshot.sessions.find((item: any) => item.id === "ses_test").title,
     ).toBe("Novo título");
   });
 
@@ -1009,11 +1071,9 @@ describe("service-worker: eventos SSE", () => {
     await withSse();
     const form = makeForm();
     pushEvent("form.created", { form });
-    await flush();
 
-    let response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(1);
-    expect(response.snapshot.forms[0]).toMatchObject({ id: "frm_1" });
+    let snapshot = await waitForSnapshot((state) => state.forms.length === 1);
+    expect(snapshot.forms[0]).toMatchObject({ id: "frm_1" });
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: "PLAY_NOTIFICATION",
     });
@@ -1025,30 +1085,28 @@ describe("service-worker: eventos SSE", () => {
       form: { ...form, id: "frm_outro", sessionID: "ses_outro" },
     });
     await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(1);
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.forms).toHaveLength(1);
 
     pushEvent("form.replied", { id: "frm_1" });
-    await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    snapshot = await waitForSnapshot((state) => state.forms.length === 0);
+    expect(snapshot.forms).toHaveLength(0);
   });
 
   it("aceita o form embutido em form.cancelled e ignora ids desconhecidos", async () => {
     await withSse();
     const form = makeForm({ id: "frm_2" });
     pushEvent("form.created", { form });
-    await flush();
+    await waitForSnapshot((state) => state.forms.length === 1);
 
     pushEvent("form.cancelled", { form: { ...form } });
-    await flush();
-    let response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    let snapshot = await waitForSnapshot((state) => state.forms.length === 0);
+    expect(snapshot.forms).toHaveLength(0);
 
     pushEvent("form.replied", { id: "frm_inexistente" });
     await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.forms).toHaveLength(0);
   });
 });
 

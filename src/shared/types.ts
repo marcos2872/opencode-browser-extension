@@ -65,6 +65,8 @@ export interface ToolCallView {
   output?: string;
   images?: ImagePayload[];
   metadata?: Record<string, unknown>;
+  startedAt?: number;
+  finishedAt?: number;
 }
 
 export interface FormOption {
@@ -188,8 +190,8 @@ export interface OpencodeConfig {
   findMode?: "heuristic" | "model";
   soundEnabled?: boolean;
   notifyEnabled?: boolean;
-  /** Mostra parâmetros e resultado das tools no chat. Padrão: compacto. */
-  showToolDetails?: boolean;
+  /** Como as tools aparecem no chat. Padrão: agrupadas em um modal. */
+  toolDisplay?: "grouped" | "rows" | "full";
 }
 
 export interface PermissionRequest {

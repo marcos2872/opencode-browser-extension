@@ -104,6 +104,12 @@ listagem por ela — só aparecem as conversas criadas ali. Se o usuário defini
 outro caminho nas opções, ele tem precedência. Sessões sem `location` continuam
 visíveis (defensivo).
 
+Na mesma pasta, o plugin grava o agente `opencode-browser` em
+`.opencode/agents/`. Quando o servidor lista esse agente, ele vira o padrão de
+novas sessões (o usuário pode trocar no seletor) e restringe as ferramentas a
+`browser_*` e `question` — o agente não lê arquivos, não executa comandos e não
+acessa dados da máquina.
+
 ### Grupos de abas
 
 Cada sessão do OpenCode ganha um grupo do Chrome com o título `OpenCode`, uma aba

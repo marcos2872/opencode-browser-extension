@@ -23,7 +23,7 @@ pareamento.
 | `findMode` | `heuristic` \| `model` | Não | Ranking do `find` |
 | `soundEnabled` | boolean | Não | Aviso sonoro (padrão true) |
 | `notifyEnabled` | boolean | Não | Notificação do sistema (padrão true) |
-| `showToolDetails` | boolean | Não | Mostra parâmetros/resultado das tools no chat (padrão false) |
+| `toolDisplay` | `grouped` \| `rows` \| `full` | Não | Exibição das tools no chat (padrão `grouped`) |
 
 ## Modelos e sessões
 

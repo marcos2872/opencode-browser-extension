@@ -82,6 +82,18 @@ export function readQuestions(input: unknown): QuestionItem[] {
   })
 }
 
+export function toolLabel(tool: ToolCallView): string {
+  return LABELS[tool.name] ?? tool.name
+}
+
+export function toolSummary(tool: ToolCallView): string {
+  return summary(tool)
+}
+
+export function toolStatus(tool: ToolCallView): string {
+  return statusLabel(tool)
+}
+
 function summary(tool: ToolCallView): string {
   const input = (tool.input ?? {}) as Record<string, unknown>
   if (typeof input.url === "string") return input.url
@@ -107,7 +119,6 @@ function statusLabel(tool: ToolCallView): string {
   if (tool.status === "error") return "erro"
   return "rodando"
 }
-
 /** Card de um form pendente; usado pela tool `question` e por forms órfãos. */
 export function PendingFormCard({
   form,
@@ -301,7 +312,7 @@ function ToolHead({
   )
 }
 
-function ToolBody({ tool }: { tool: ToolCallView }) {
+export function ToolBody({ tool }: { tool: ToolCallView }) {
   return (
     <>
       {tool.images?.length ? (
@@ -334,7 +345,7 @@ function ToolBody({ tool }: { tool: ToolCallView }) {
   )
 }
 
-function firstLine(text: string): string {
+export function firstLine(text: string): string {
   const line = text.split("\n").find((item) => item.trim()) ?? ""
   return line.length > 160 ? `${line.slice(0, 160)}…` : line
 }

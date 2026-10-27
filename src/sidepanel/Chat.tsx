@@ -1,7 +1,10 @@
-import type { RefObject } from "react"
-import type { ChatMessage, FormAnswer, FormInfo, TokenUsage } from "../shared/types"
+import { useState, type RefObject } from "react"
+import type { ChatMessage, FormAnswer, FormInfo, ToolCallView, TokenUsage } from "../shared/types"
 import { Markdown } from "../components/Markdown"
 import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
+import { ToolRun, ToolsModal } from "./ToolsModal"
+
+export type ToolDisplay = "grouped" | "rows" | "full"
 
 interface Props {
   messages: ChatMessage[]
@@ -12,8 +15,8 @@ interface Props {
   busyFormID?: string | null
   onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
   onFormCancel?: (form: FormInfo) => void
-  /** Mostra parâmetros e resultado das tools; padrão é a linha compacta. */
-  showToolDetails?: boolean
+  /** Agrupadas no modal (padrão), linhas compactas ou cards completos. */
+  toolDisplay?: ToolDisplay
 }
 
 const SUGGESTIONS = [
@@ -35,7 +38,34 @@ function usageLabel(usage: TokenUsage): string {
   return parts.join(" · ")
 }
 
-export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, showToolDetails }: Props) {
+/** Índice da primeira mensagem de assistente do run que contém `index`. */
+function runStartIndex(messages: ChatMessage[], index: number): number {
+  let start = index
+  while (start > 0 && messages[start - 1].kind === "assistant") start -= 1
+  return start
+}
+
+/** Todas as tools (sem `question`) de cada run, indexadas pelo início dele. */
+function collectRunTools(messages: ChatMessage[]): Map<number, ToolCallView[]> {
+  const runs = new Map<number, ToolCallView[]>()
+  messages.forEach((message, index) => {
+    if (message.kind === "user") return
+    const start = runStartIndex(messages, index)
+    const list = runs.get(start) ?? []
+    list.push(...message.tools.filter((tool) => tool.name !== "question"))
+    runs.set(start, list)
+  })
+  return runs
+}
+
+export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, toolDisplay = "grouped" }: Props) {
+  const [openRunID, setOpenRunID] = useState<string | null>(null)
+  const runTools = collectRunTools(messages)
+  const openStart = openRunID
+    ? messages.findIndex((message) => message.id === openRunID)
+    : -1
+  const openTools = openStart >= 0 ? runTools.get(openStart) ?? [] : []
+
   const matchedToolIDs = new Set(
     messages.flatMap((message) =>
       message.kind === "assistant"
@@ -80,71 +110,114 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
   }
 
   return (
-    <div className="chat">
-      {messages.map((message) =>
-        message.kind === "user" ? (
-          <div className="msg msg-user" key={message.id}>
-            {message.text}
-          </div>
-        ) : (
-          <div className="msg msg-assistant" key={message.id}>
-            <div className="row">
-              <span className="msg-meta">OpenCode</span>
-              {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
-              {message.streaming ? (
-                <span className="thinking">
+    <>
+      <div className="chat">
+        {messages.map((message, index) => {
+          if (message.kind === "user") {
+            return (
+              <div className="msg msg-user" key={message.id}>
+                {message.text}
+              </div>
+            )
+          }
+
+          const start = runStartIndex(messages, index)
+          const tools = runTools.get(start) ?? []
+          const runEnds =
+            index === messages.length - 1 || messages[index + 1].kind === "user"
+          const inlineTools =
+            toolDisplay === "grouped"
+              ? message.tools.filter(
+                  (tool) => tool.name === "question" || tool.status === "running",
+                )
+              : message.tools
+
+          return (
+            <div className="msg msg-assistant" key={message.id}>
+              <div className="row">
+                <span className="msg-meta">OpenCode</span>
+                {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
+                {message.streaming ? (
+                  <span className="thinking">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : null}
+              </div>
+              {message.reasoning ? (
+                <details className="reasoning">
+                  <summary>Raciocínio</summary>
+                  <div>{message.reasoning}</div>
+                </details>
+              ) : null}
+              {message.text ? <Markdown text={message.text} /> : null}
+              {inlineTools.map((tool) => (
+                <ToolCard
+                  key={tool.id}
+                  tool={tool}
+                  forms={forms}
+                  busyFormID={busyFormID}
+                  onFormSubmit={onFormSubmit}
+                  onFormCancel={onFormCancel}
+                  detailed={toolDisplay === "full"}
+                />
+              ))}
+              {message.error ? <div className="error-banner">{message.error}</div> : null}
+              {!message.text && message.tools.length === 0 && message.streaming ? (
+                <div className="thinking">
                   <span />
                   <span />
-                  <span />
-                </span>
+                  <span /> trabalhando
+                </div>
+              ) : null}
+              {toolDisplay === "grouped" && runEnds ? (
+                tools.length === 1 ? (
+                  inlineTools.some((tool) => tool.id === tools[0].id) ? null : (
+                    <ToolCard
+                      tool={tools[0]}
+                      forms={forms}
+                      busyFormID={busyFormID}
+                      onFormSubmit={onFormSubmit}
+                      onFormCancel={onFormCancel}
+                      detailed={false}
+                    />
+                  )
+                ) : tools.length > 1 ? (
+                  <ToolRun
+                    tools={tools}
+                    onOpen={() => setOpenRunID(messages[start].id)}
+                  />
+                ) : null
               ) : null}
             </div>
-            {message.reasoning ? (
-              <details className="reasoning">
-                <summary>Raciocínio</summary>
-                <div>{message.reasoning}</div>
-              </details>
-            ) : null}
-            {message.text ? <Markdown text={message.text} /> : null}
-            {message.tools.map((tool) => (
-              <ToolCard
-                key={tool.id}
-                tool={tool}
-                forms={forms}
-                busyFormID={busyFormID}
-                onFormSubmit={onFormSubmit}
-                onFormCancel={onFormCancel}
-                detailed={showToolDetails === true}
-              />
-            ))}
-            {message.error ? <div className="error-banner">{message.error}</div> : null}
-            {!message.text && message.tools.length === 0 && message.streaming ? (
-              <div className="thinking">
-                <span />
-                <span />
-                <span /> trabalhando
-              </div>
-            ) : null}
+          )
+        })}
+        {busy && !messages.some((message) => message.kind === "assistant" && message.streaming) ? (
+          <div className="thinking">
+            <span />
+            <span />
+            <span /> aguardando o OpenCode
           </div>
-        ),
-      )}
-      {busy && !messages.some((message) => message.kind === "assistant" && message.streaming) ? (
-        <div className="thinking">
-          <span />
-          <span />
-          <span /> aguardando o OpenCode
-        </div>
-      ) : null}
-      {orphanForms.map((form) => (
-        <PendingFormCard
-          key={form.id}
-          form={form}
-          busy={busyFormID === form.id}
-          onSubmit={(answer) => onFormSubmit?.(form, answer)}
-          onCancel={onFormCancel ? () => onFormCancel(form) : undefined}
+        ) : null}
+        {orphanForms.map((form) => (
+          <PendingFormCard
+            key={form.id}
+            form={form}
+            busy={busyFormID === form.id}
+            onSubmit={(answer) => onFormSubmit?.(form, answer)}
+            onCancel={onFormCancel ? () => onFormCancel(form) : undefined}
+          />
+        ))}
+        <div ref={bottomRef} />
+      </div>
+      {openRunID && openTools.length ? (
+        <ToolsModal
+          tools={openTools}
+          title="Ferramentas desta execução"
+          onClose={() => setOpenRunID(null)}
         />
-      ))}
-      <div ref={bottomRef} />
-    </div>
+      ) : null}
+    </>
   )
 }

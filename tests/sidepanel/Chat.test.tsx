@@ -55,6 +55,7 @@ describe("sidepanel/Chat", () => {
         ]}
         busy={false}
         onSuggestion={vi.fn()}
+        toolDisplay="rows"
       />,
     )
 
@@ -83,19 +84,46 @@ describe("sidepanel/Chat", () => {
     expect(container.querySelector(".error-banner")).toHaveTextContent("falha na chamada")
   })
 
-  it("usa a linha compacta das tools por padrão e detalha quando configurado", () => {
+  it("agrupa as tools do run em uma linha e abre o modal", async () => {
+    const user = userEvent.setup()
+    const message = makeMessage({
+      tools: [
+        { id: "t1", name: "navigate", status: "ok", input: { url: "https://x.com" }, output: "ok", startedAt: 1_000, finishedAt: 1_400 },
+        { id: "t2", name: "computer", status: "error", input: { action: "click" }, output: "Ref inexistente.", startedAt: 1_500, finishedAt: 3_000 },
+      ],
+    })
+    render(<Chat messages={[message]} busy={false} onSuggestion={vi.fn()} />)
+
+    expect(screen.getByText("2 ferramentas")).toBeInTheDocument()
+    expect(screen.getByText("1 erro")).toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /2 ferramentas/ }))
+    const dialog = screen.getByRole("dialog")
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByText("Navegar")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /Navegar/ }))
+    expect(screen.getByText("Parâmetros")).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("respeita os modos de linhas e cards completos", () => {
     const message = makeMessage({
       tools: [
         { id: "t1", name: "navigate", status: "ok", input: { url: "https://x.com" }, output: "ok" },
       ],
     })
     const { rerender } = render(
-      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} />,
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="rows" />,
     )
-    expect(screen.queryByText("Parâmetros")).not.toBeInTheDocument()
+    expect(screen.getByText("Navegar")).toBeInTheDocument()
+    expect(screen.queryByText("2 ferramentas")).not.toBeInTheDocument()
 
     rerender(
-      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} showToolDetails />,
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="full" />,
     )
     expect(screen.getByText("Parâmetros")).toBeInTheDocument()
     expect(screen.getByText("Resultado")).toBeInTheDocument()
