@@ -4,6 +4,7 @@ import {
   OpencodeClient,
   OpencodeError,
 } from "./opencode/client";
+import { messageUsage } from "./opencode/usage";
 import { Permissions } from "./permissions";
 import { Recording } from "./recording";
 import { RelayClient } from "./relay";
@@ -46,6 +47,7 @@ import type {
 } from "../shared/types";
 
 const ACTIVE_SESSION_KEY = "ui.activeSession";
+const BROWSER_AGENT_ID = "opencode-browser";
 const cdp = new Cdp();
 const tabs = new TabGroups();
 const recording = new Recording(cdp);
@@ -93,6 +95,8 @@ let syncInFlight = false;
 let syncPending = false;
 let lastSseEventAt = 0;
 let connectStartedAt = 0;
+let refreshSessionTimer: ReturnType<typeof setTimeout> | null = null;
+let contextUsage: TokenUsage | undefined;
 
 function playSound(): void {
   if (config?.soundEnabled === false) return;
@@ -137,6 +141,7 @@ function snapshot(): AppSnapshot {
     relay: relayState,
     busy,
     connection,
+    contextUsage,
     defaultModel,
     agents,
     commands,
@@ -355,10 +360,19 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
 async function applyWorkspace(workspace: string | undefined): Promise<void> {
   if (!workspace) return;
   workspaceHint = workspace;
-  if (!config || config.directory) return;
-  config = { ...config, directory: workspace };
-  await setConfig(config);
-  client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+  if (!config) return;
+  const firstDirectory = !config.directory;
+  if (firstDirectory) {
+    config = { ...config, directory: workspace };
+    await setConfig(config);
+    client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+  }
+  ensureBrowserAgentInBackground();
+  if (!firstDirectory) {
+    // O agente pode ter acabado de ser gravado; recarrega a lista a cada ready.
+    await refreshAgents().catch(() => undefined);
+    return;
+  }
   await refreshModels().catch(() => undefined);
   await refreshAgents().catch(() => undefined);
   await refreshCommands().catch(() => undefined);
@@ -366,6 +380,28 @@ async function applyWorkspace(workspace: string | undefined): Promise<void> {
   if (!activeSessionID && sessions[0]) await selectSession(sessions[0].id);
   startSse();
   broadcastNow();
+}
+
+/**
+ * O plugin grava o agente `opencode-browser` no `.opencode/agents` do diretório
+ * da sessão. É idempotente e silencioso quando o plugin não está disponível.
+ */
+async function ensureBrowserAgent(): Promise<void> {
+  if (!relayState.connected) return;
+  try {
+    await relay.ensureAgent();
+  } catch {
+    // plugin antigo ou sem resposta: seguimos com os agentes existentes
+  }
+}
+
+/** Instala o agente sem bloquear o fluxo e recarrega a lista quando terminar. */
+function ensureBrowserAgentInBackground(): void {
+  if (!relayState.connected) return;
+  void ensureBrowserAgent().then(async () => {
+    await refreshAgents().catch(() => undefined);
+    broadcastNow();
+  });
 }
 
 async function pair(link: string): Promise<void> {
@@ -389,6 +425,7 @@ async function pair(link: string): Promise<void> {
   });
   try {
     await refreshModels();
+    ensureBrowserAgentInBackground();
     await refreshAgents().catch(() => undefined);
     await refreshCommands().catch(() => undefined);
     await refreshSessions();
@@ -427,6 +464,7 @@ async function unpair(): Promise<void> {
   commands = [];
   statusMessage = null;
   syncPending = false;
+  contextUsage = undefined;
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   await updateBadge();
   broadcastNow();
@@ -458,6 +496,7 @@ async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
         detail: errorMessage(error),
       });
     });
+    ensureBrowserAgentInBackground();
   }
   broadcastNow();
 }
@@ -517,10 +556,44 @@ async function refreshAgents(): Promise<void> {
     config = { ...config, defaultAgent: undefined };
     await setConfig(config);
   }
-  if (!config?.defaultAgent && agents.some((agent) => agent.id === "build")) {
-    config = { ...config!, defaultAgent: "build" };
-    await setConfig(config);
+  if (!config?.defaultAgent) {
+    const preferred = agents.some((agent) => agent.id === BROWSER_AGENT_ID)
+      ? BROWSER_AGENT_ID
+      : agents.some((agent) => agent.id === "build")
+        ? "build"
+        : undefined;
+    if (preferred) {
+      config = { ...config!, defaultAgent: preferred };
+      await setConfig(config);
+    }
   }
+  broadcastNow();
+}
+
+function refreshSessionUsage(): void {
+  if (refreshSessionTimer) clearTimeout(refreshSessionTimer);
+  refreshSessionTimer = setTimeout(() => {
+    refreshSessionTimer = null;
+    void (async () => {
+      await refreshSessions().catch(() => undefined);
+      await refreshActiveUsage();
+    })();
+  }, 400);
+}
+
+/** Contexto da última requisição da sessão ativa (não é o total acumulado). */
+async function refreshActiveUsage(): Promise<void> {
+  if (!client || !activeSessionID) {
+    contextUsage = undefined;
+    broadcastNow();
+    return;
+  }
+  const sessionID = activeSessionID;
+  const usage = await client
+    .lastAssistantUsage(sessionID)
+    .catch(() => undefined);
+  if (activeSessionID !== sessionID) return;
+  contextUsage = usage;
   broadcastNow();
 }
 
@@ -565,15 +638,23 @@ function pickModel(explicit?: ModelRef): ModelRef | undefined {
 async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   const chosen = pickModel(model);
+  const browserAgent =
+    config?.browserAgentDefault !== false &&
+    agents.some((item) => item.id === BROWSER_AGENT_ID)
+      ? BROWSER_AGENT_ID
+      : undefined;
   const chosenAgent =
     agent ??
+    browserAgent ??
     config?.defaultAgent ??
     agents.find((item) => item.id === "build")?.id;
   const session = await client.createSession(chosen, chosenAgent);
+  if (!session.agent && chosenAgent) session.agent = chosenAgent;
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)];
   activeSessionID = session.id;
   messages = [];
   busy = false;
+  contextUsage = undefined;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: session.id });
   broadcastNow();
 }
@@ -587,6 +668,7 @@ async function selectSession(id: string): Promise<void> {
   broadcastNow();
   void hydrate(id);
   void loadForms(id);
+  void refreshActiveUsage();
 }
 
 async function loadForms(id: string): Promise<void> {
@@ -632,10 +714,14 @@ async function cancelForm(
 async function hydrate(id: string): Promise<void> {
   if (!client) return;
   const token = ++hydrateToken;
+  const startedAt = Date.now();
   try {
     const raw = await client.context(id);
     if (token !== hydrateToken || activeSessionID !== id) return;
     if (busy) return;
+    // Um evento ao vivo chegou durante a leitura: ele é mais novo que o
+    // snapshot e sobrescrever aqui apagaria texto/erro recém-recebidos.
+    if (lastSseEventAt > startedAt) return;
     messages = mapContext(raw);
     busy = messages.some(
       (message) => message.kind === "assistant" && message.streaming,
@@ -727,6 +813,7 @@ async function deleteSession(id: string): Promise<void> {
     messages = [];
     forms = [];
     if (activeSessionID) await selectSession(activeSessionID);
+    else contextUsage = undefined;
   }
   broadcastNow();
 }
@@ -978,6 +1065,7 @@ async function reconnectBackend(): Promise<void> {
   config = stored;
   client = new OpencodeClient(config.baseUrl, config.token, config.directory);
   if (!wasOnline) resetStreaming();
+  ensureBrowserAgentInBackground();
   startSse();
   await syncAfterReconnect();
   await updateBadge();
@@ -1183,6 +1271,7 @@ function onOpencodeEvent(event: {
           input: data.input,
           status: "running",
           images: toolImages.get(id),
+          startedAt: Date.now(),
         });
       }
       scheduleBroadcast();
@@ -1205,6 +1294,7 @@ function onOpencodeEvent(event: {
         tool.output = contentText(data.content);
         tool.metadata = data.metadata as Record<string, unknown>;
         tool.images = toolImages.get(data.id) ?? tool.images;
+        tool.finishedAt = Date.now();
         scheduleBroadcast();
       }
       break;
@@ -1216,6 +1306,7 @@ function onOpencodeEvent(event: {
         tool.status = "error";
         tool.output =
           formatOpencodeError(data.error) || contentText(data.content);
+        tool.finishedAt = Date.now();
         scheduleBroadcast();
       }
       break;
@@ -1236,6 +1327,7 @@ function onOpencodeEvent(event: {
       for (const message of messages) {
         if (message.kind === "assistant") message.streaming = false;
       }
+      refreshSessionUsage();
       if (ports.size === 0) {
         playSound();
         if (config?.notifyEnabled !== false) {
@@ -1273,6 +1365,7 @@ function onOpencodeEvent(event: {
         for (const message of messages) {
           if (message.kind === "assistant") message.streaming = false;
         }
+        refreshSessionUsage();
         scheduleBroadcast();
       }
       break;
@@ -1287,6 +1380,7 @@ function onOpencodeEvent(event: {
 function markSessionError(error: unknown): void {
   busy = false;
   statusMessage = null;
+  refreshSessionUsage();
   for (const item of messages) {
     if (item.kind === "assistant") item.streaming = false;
   }
@@ -1356,6 +1450,7 @@ function ensureTool(
     name: toolNames.get(id) ?? "tool",
     status: "running",
     images: toolImages.get(id),
+    startedAt: Date.now(),
   };
   message.tools.push(tool);
   return tool;
@@ -1373,34 +1468,6 @@ function contentText(content: unknown): string | undefined {
     .filter(Boolean)
     .join("\n");
   return text || undefined;
-}
-
-function messageUsage(
-  message: Record<string, unknown>,
-): TokenUsage | undefined {
-  const nestedUsage =
-    message.usage && typeof message.usage === "object"
-      ? (message.usage as Record<string, unknown>)
-      : undefined;
-  const tokens =
-    message.tokens && typeof message.tokens === "object"
-      ? (message.tokens as Record<string, unknown>)
-      : nestedUsage?.tokens && typeof nestedUsage.tokens === "object"
-        ? (nestedUsage.tokens as Record<string, unknown>)
-        : (nestedUsage ?? message);
-  const cache =
-    tokens?.cache && typeof tokens.cache === "object"
-      ? (tokens.cache as Record<string, unknown>)
-      : undefined;
-  const usage: TokenUsage = {};
-  for (const key of ["total", "input", "output", "reasoning"] as const) {
-    if (typeof tokens?.[key] === "number") usage[key] = tokens[key] as number;
-  }
-  if (typeof cache?.read === "number") usage.cacheRead = cache.read;
-  if (typeof cache?.write === "number") usage.cacheWrite = cache.write;
-  const cost = message.cost ?? nestedUsage?.cost;
-  if (typeof cost === "number") usage.cost = cost;
-  return Object.keys(usage).length > 0 ? usage : undefined;
 }
 
 async function executeRelayTool(

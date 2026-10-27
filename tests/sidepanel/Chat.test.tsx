@@ -55,6 +55,7 @@ describe("sidepanel/Chat", () => {
         ]}
         busy={false}
         onSuggestion={vi.fn()}
+        toolDisplay="rows"
       />,
     )
 
@@ -83,34 +84,132 @@ describe("sidepanel/Chat", () => {
     expect(container.querySelector(".error-banner")).toHaveTextContent("falha na chamada")
   })
 
-  it("usa a linha compacta das tools por padrão e detalha quando configurado", () => {
+  it("agrupa as tools do run em uma linha e abre o modal", async () => {
+    const user = userEvent.setup()
+    const message = makeMessage({
+      tools: [
+        { id: "t1", name: "navigate", status: "ok", input: { url: "https://x.com" }, output: "ok", startedAt: 1_000, finishedAt: 1_400 },
+        { id: "t2", name: "computer", status: "error", input: { action: "click" }, output: "Ref inexistente.", startedAt: 1_500, finishedAt: 3_000 },
+      ],
+    })
+    render(<Chat messages={[message]} busy={false} onSuggestion={vi.fn()} />)
+
+    expect(screen.getByText("2 ferramentas")).toBeInTheDocument()
+    expect(screen.getByText("1 erro")).toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /2 ferramentas/ }))
+    const dialog = screen.getByRole("dialog")
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByText("Navegar")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /Navegar/ }))
+    expect(screen.getByText("Parâmetros")).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("respeita os modos de linhas e cards completos", () => {
     const message = makeMessage({
       tools: [
         { id: "t1", name: "navigate", status: "ok", input: { url: "https://x.com" }, output: "ok" },
       ],
     })
     const { rerender } = render(
-      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} />,
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="rows" />,
     )
-    expect(screen.queryByText("Parâmetros")).not.toBeInTheDocument()
+    expect(screen.getByText("Navegar")).toBeInTheDocument()
+    expect(screen.queryByText("2 ferramentas")).not.toBeInTheDocument()
 
     rerender(
-      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} showToolDetails />,
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="full" />,
     )
     expect(screen.getByText("Parâmetros")).toBeInTheDocument()
     expect(screen.getByText("Resultado")).toBeInTheDocument()
   })
 
-  it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {    render(
-      <Chat
-        messages={[makeMessage({ usage: { total: 1200, input: 900, output: 300, cost: 0.0012 } })]}
-        busy={false}
-        onSuggestion={vi.fn()}
-      />,
+  it("esconde tools e raciocínio e mostra só o indicador de trabalho", () => {
+    const message = makeMessage({
+      reasoning: "pensei nas opções",
+      text: "resposta",
+      tools: [
+        {
+          id: "t1",
+          name: "navigate",
+          status: "ok",
+          input: { url: "https://x.com" },
+          output: "ok",
+        },
+      ],
+    })
+    const { rerender } = render(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+    expect(screen.queryByText("Raciocínio")).not.toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
+    expect(screen.queryByText(/trabalhando/)).not.toBeInTheDocument()
+
+    rerender(
+      <Chat messages={[message]} busy onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+    expect(screen.getAllByText(/trabalhando/)).toHaveLength(1)
+  })
+
+  it("mantém perguntas do agente visíveis no modo oculto", () => {
+    const message = makeMessage({
+      tools: [
+        {
+          id: "t1",
+          name: "question",
+          status: "running",
+          input: {
+            questions: [{ question: "Apagar tudo?", options: [{ label: "Sim" }] }],
+          },
+        },
+      ],
+    })
+    render(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
     )
 
-    expect(screen.getByText(/1\.200 tokens · 900 entrada · 300 saída/)).toBeInTheDocument()
-    expect(screen.getByText(/US\$/)).toBeInTheDocument()
+    expect(screen.getByText("Pergunta")).toBeInTheDocument()
+    expect(screen.getByText("Apagar tudo?")).toBeInTheDocument()
+  })
+
+  it("mostra a tool atual no indicador do modo oculto", () => {
+    const message = makeMessage({
+      text: "resposta",
+      tools: [{ id: "t1", name: "browser_read_page", status: "running" }],
+    })
+    render(
+      <Chat messages={[message]} busy onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+
+    expect(
+      screen.getByText(/trabalhando: lendo a página/),
+    ).toBeInTheDocument()
+  })
+
+  it("agrupa o run em um único bloco no modo oculto", () => {
+    const messages = [
+      { kind: "user" as const, id: "u1", text: "faça", time: 1 },
+      makeMessage({ id: "a1", text: "primeiro", tools: [] }),
+      makeMessage({
+        id: "a2",
+        text: "",
+        tools: [{ id: "t1", name: "navigate", status: "ok", input: { url: "https://x" } }],
+      }),
+      makeMessage({ id: "a3", text: "final", tools: [] }),
+    ]
+    render(
+      <Chat messages={messages} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+
+    expect(screen.getAllByText("OpenCode")).toHaveLength(1)
+    expect(screen.getByText("primeiro")).toBeInTheDocument()
+    expect(screen.getByText("final")).toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
   })
 
   it("mostra os pontos de streaming quando o assistente está transmitindo", () => {

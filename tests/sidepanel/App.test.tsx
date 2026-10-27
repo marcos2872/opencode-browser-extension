@@ -291,14 +291,13 @@ describe("sidepanel/App", () => {
     expect(sent("interrupt")).toEqual({ type: "interrupt" })
   })
 
-  it("cria uma nova sessão com o modelo e agente selecionados", async () => {
+  it("cria uma nova sessão com o modelo selecionado", async () => {
     const { user } = await renderApp(makeSnapshot())
 
     await user.click(screen.getByTitle("Nova conversa"))
     expect(sent("session:new")).toEqual({
       type: "session:new",
       model: { id: "model-1", providerID: "provider-1" },
-      agent: "build",
     })
   })
 

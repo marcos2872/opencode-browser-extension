@@ -36,6 +36,21 @@ class FakeWebSocket {
 
   send(data: string): void {
     this.sent.push(data);
+    try {
+      const message = JSON.parse(data) as { type?: string; id?: string };
+      if (message.type === "ensure_agent" && message.id) {
+        queueMicrotask(() =>
+          this.message({
+            type: "ensure_agent_result",
+            id: message.id,
+            ok: true,
+            path: "/tmp/opencode-browser-agent.md",
+          }),
+        );
+      }
+    } catch {
+      // payload não-JSON: ignora
+    }
   }
 
   close(): void {
@@ -96,16 +111,21 @@ function installFetch(
     sseHang?: boolean;
     failPrompt?: boolean;
     agentStatus?: number;
+    agents?: unknown[];
   } = {},
 ): void {
   apiCalls.length = 0;
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
+    const requestBody =
+      typeof init?.body === "string"
+        ? (JSON.parse(init.body) as Record<string, unknown>)
+        : undefined;
     apiCalls.push({
       url,
       method,
-      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      body: requestBody,
     });
 
     const pathname = new URL(url).pathname;
@@ -118,7 +138,7 @@ function installFetch(
     if (pathname === "/api/agent")
       return options.agentStatus
         ? jsonResponse({ message: "agente indisponível" }, options.agentStatus)
-        : jsonResponse({ data: [makeAgent()] });
+        : jsonResponse({ data: options.agents ?? [makeAgent()] });
     if (pathname === "/api/command")
       return jsonResponse({ data: [makeCommand()] });
     if (pathname === "/api/event") {
@@ -134,10 +154,29 @@ function installFetch(
     }
     if (pathname === "/api/session" && method === "POST") {
       return jsonResponse({
-        data: makeSession({ id: "ses_nova", title: "Nova" }),
+        data: makeSession({
+          id: "ses_nova",
+          title: "Nova",
+          agent:
+            typeof requestBody?.agent === "string"
+              ? requestBody.agent
+              : undefined,
+        }),
       });
     }
     if (pathname.endsWith("/context")) return jsonResponse({ data: [] });
+    if (pathname.endsWith("/message")) {
+      return jsonResponse({
+        data: [
+          { type: "idle" },
+          {
+            type: "assistant",
+            tokens: { input: 1000, output: 100, cache: { read: 200 } },
+            cost: 0,
+          },
+        ],
+      });
+    }
     if (
       pathname.endsWith("/prompt") ||
       pathname.endsWith("/command") ||
@@ -164,6 +203,15 @@ function flush(times = 12): Promise<void> {
     chain = chain.then(() => new Promise((resolve) => setTimeout(resolve, 0)));
   }
   return chain;
+}
+
+/**
+ * Depois de fechar/errar o stream, o laço do SSE agenda um retry em 2 s. Deixar
+ * esse retry acontecer dentro do teste evita que ele consuma o fetch mock do
+ * teste seguinte e desvie os eventos para um módulo antigo.
+ */
+async function settleSseRetry(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 2_100));
 }
 
 async function loadWorker(): Promise<void> {
@@ -327,6 +375,10 @@ describe("service-worker: conexão e reconexão", () => {
       phase: "offline",
       failure: "server_error",
     });
+
+    // Prende o retry de 2 s para ele não consumir o fetch do próximo teste.
+    installFetch({ sseHang: true });
+    await settleSseRetry();
   });
 
   it("reconecta o backend recriando o cliente e recarregando as listas", async () => {
@@ -391,6 +443,10 @@ describe("service-worker: conexão e reconexão", () => {
     expect(state.snapshot.messages.at(-1)).toMatchObject({
       error: expect.stringContaining("caiu durante a execução"),
     });
+
+    // Prende o retry pendente do SSE para ele não vazar para o próximo teste.
+    installFetch({ sseHang: true });
+    await settleSseRetry();
   });
 
   it("verifica a saúde do servidor periodicamente", async () => {
@@ -462,6 +518,92 @@ describe("service-worker: conexão e reconexão", () => {
     ).toBe(false);
   });
 
+  it("pede ao plugin o agente do navegador ao conectar", async () => {
+    await loadWorker();
+    await pairWorker();
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    socket.message({
+      type: "ready",
+      v: 1,
+      workspace: "/home/teste/.opencode-browser-extensions",
+    });
+    await flush();
+
+    expect(
+      socket.sentJson().some((message: any) => message.type === "ensure_agent"),
+    ).toBe(true);
+  });
+
+  it("expõe o contexto da última mensagem no snapshot", async () => {
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.contextUsage).toMatchObject({
+      input: 1000,
+      cacheRead: 200,
+    });
+  })
+
+  it("prefere o agente do navegador quando ele existe", async () => {    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.config.defaultAgent).toBe("opencode-browser");
+  });
+
+  it("cria novas sessões com o agente do navegador por padrão", async () => {
+    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+
+    const response = await callWorker({ type: "session:new" });
+    expect(response.ok).toBe(true);
+    const created = apiCalls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
+    );
+    expect(created?.body).toMatchObject({ agent: "opencode-browser" });
+    expect(
+      response.snapshot.sessions.find((item: any) => item.id === "ses_nova")
+        ?.agent,
+    ).toBe("opencode-browser");
+  });
+
+  it("respeita o agente padrão quando o agente do navegador está desligado", async () => {
+    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+    await callWorker({
+      type: "settings:update",
+      patch: { browserAgentDefault: false, defaultAgent: "build" },
+    });
+    apiCalls.length = 0;
+
+    await callWorker({ type: "session:new" });
+    const created = apiCalls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
+    );
+    expect(created?.body).toMatchObject({ agent: "build" });
+  });
+
   it("volta a offline quando o stream termina", async () => {    await loadWorker();
     await pairWorker();
 
@@ -474,6 +616,8 @@ describe("service-worker: conexão e reconexão", () => {
       failure: "stream_closed",
       attempts: 1,
     });
+
+    await settleSseRetry();
   });
 
   it("reconectar sem configuração devolve instrução", async () => {
@@ -832,6 +976,19 @@ describe("service-worker: eventos SSE", () => {
     await flush();
   }
 
+  /** Aguarda o estado refletir um evento sem depender do número de ticks. */
+  async function waitForSnapshot(
+    check: (snapshot: any) => boolean,
+  ): Promise<any> {
+    let snapshot: any = null;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      snapshot = (await callWorker({ type: "state:get" })).snapshot;
+      if (check(snapshot)) return snapshot;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    return snapshot;
+  }
+
   it("acompanha texto, raciocínio e ferramentas", async () => {
     await withSse();
     pushEvent("session.text.started", {
@@ -991,17 +1148,32 @@ describe("service-worker: eventos SSE", () => {
     expect(chrome.notifications.create).not.toHaveBeenCalled();
   });
 
+  it("atualiza o resumo da sessão depois da execução", async () => {
+    await withSse();
+    apiCalls.length = 0;
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_test" });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await flush();
+
+    expect(
+      apiCalls.some((call) => call.url.includes("/api/session")),
+    ).toBe(true);
+  });
+
   it("atualiza título de sessão renomeada", async () => {
     await withSse();
     pushEvent("session.renamed", {
       sessionID: "ses_test",
       title: "Novo título",
     });
-    await flush();
-    const response = await callWorker({ type: "state:get" });
+    const snapshot = await waitForSnapshot((state) =>
+      state.sessions.some(
+        (item: any) => item.id === "ses_test" && item.title === "Novo título",
+      ),
+    );
     expect(
-      response.snapshot.sessions.find((item: any) => item.id === "ses_test")
-        .title,
+      snapshot.sessions.find((item: any) => item.id === "ses_test").title,
     ).toBe("Novo título");
   });
 
@@ -1009,11 +1181,9 @@ describe("service-worker: eventos SSE", () => {
     await withSse();
     const form = makeForm();
     pushEvent("form.created", { form });
-    await flush();
 
-    let response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(1);
-    expect(response.snapshot.forms[0]).toMatchObject({ id: "frm_1" });
+    let snapshot = await waitForSnapshot((state) => state.forms.length === 1);
+    expect(snapshot.forms[0]).toMatchObject({ id: "frm_1" });
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: "PLAY_NOTIFICATION",
     });
@@ -1025,30 +1195,28 @@ describe("service-worker: eventos SSE", () => {
       form: { ...form, id: "frm_outro", sessionID: "ses_outro" },
     });
     await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(1);
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.forms).toHaveLength(1);
 
     pushEvent("form.replied", { id: "frm_1" });
-    await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    snapshot = await waitForSnapshot((state) => state.forms.length === 0);
+    expect(snapshot.forms).toHaveLength(0);
   });
 
   it("aceita o form embutido em form.cancelled e ignora ids desconhecidos", async () => {
     await withSse();
     const form = makeForm({ id: "frm_2" });
     pushEvent("form.created", { form });
-    await flush();
+    await waitForSnapshot((state) => state.forms.length === 1);
 
     pushEvent("form.cancelled", { form: { ...form } });
-    await flush();
-    let response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    let snapshot = await waitForSnapshot((state) => state.forms.length === 0);
+    expect(snapshot.forms).toHaveLength(0);
 
     pushEvent("form.replied", { id: "frm_inexistente" });
     await flush();
-    response = await callWorker({ type: "state:get" });
-    expect(response.snapshot.forms).toHaveLength(0);
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.forms).toHaveLength(0);
   });
 });
 

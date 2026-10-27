@@ -35,7 +35,14 @@ export type RelayInbound =
       permissionMode?: string;
     }
   | { type: "cancel"; id: string }
-  | { type: "ping" };
+  | { type: "ping" }
+  | {
+      type: "ensure_agent_result";
+      id: string;
+      ok: boolean;
+      path?: string;
+      error?: string;
+    };
 
 /** Extension -> plugin */
 export type RelayOutbound =
@@ -50,7 +57,8 @@ export type RelayOutbound =
       metadata?: Record<string, unknown>;
     }
   | { type: "progress"; id: string; phase: string; detail?: string }
-  | { type: "pong" };
+  | { type: "pong" }
+  | { type: "ensure_agent"; id: string };
 
 export type UiRequest =
   | { type: "state:get" }

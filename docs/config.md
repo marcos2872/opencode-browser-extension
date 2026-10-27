@@ -17,7 +17,8 @@ ou na página de opções.
 | `findMode` | Ranking do `find` | `heuristic` \| `model` | `heuristic` | Não | `tools/page.ts` |
 | `soundEnabled` | Aviso sonoro | boolean | `true` | Não | Offscreen |
 | `notifyEnabled` | Notificação do sistema | boolean | `true` | Não | `chrome.notifications` |
-| `showToolDetails` | Parâmetros e resultado das tools no chat | boolean | `false` | Não | `sidepanel/ToolCard` |
+| `toolDisplay` | Como as tools aparecem no chat (`grouped`, `rows`, `full`, `hidden`) | string | `grouped` | Não | `sidepanel/Chat` |
+| `browserAgentDefault` | Usa o agente `opencode-browser` nas novas sessões | boolean | `true` | Não | `service-worker` |
 
 ### Modos de permissão
 
@@ -50,12 +51,15 @@ anúncio do plugin.
 | `OPENCODE_BROWSER_RELAY_PORT` | Porta inicial do relay | number | `8799` | Não | `plugin/browser-relay.ts` |
 | `OPENCODE_BROWSER_EXTENSION_ID` | ID de extensão aceito na origem | string | ID fixo do manifest | Não | Validação de origem |
 | `OPENCODE_BROWSER_ALLOW_ANY_EXTENSION` | Libera qualquer extensão | `0` \| `1` | `0` | Não | Validação de origem |
+| `OPENCODE_BROWSER_REQUIRE_HELLO` | Exige `hello` antes de ativar o socket | `0` \| `1` | `1` | Não | Handshake |
+| `OPENCODE_BROWSER_WS_SECRET` | Segredo opcional exigido no `hello` | string | — | Não | Handshake (a extensão atual não envia) |
 
-## Arquivo temporário do relay
+## Arquivo do relay
 
 | Caminho | Conteúdo | Permissão |
 |---|---|---|
-| `/tmp/opencode-browser-relay.token` | `{"token":"…","port":8800}` | `0600` |
+| `$XDG_RUNTIME_DIR/opencode-browser/relay.json` (se definido) | `{"token":"…","port":8800}` | pasta `0700`, arquivo `0600` |
+| `~/.cache/opencode-browser/relay.json` (fallback) | `{"token":"…","port":8800}` | pasta `0700`, arquivo `0600` |
 
 ## Manifest da extensão
 

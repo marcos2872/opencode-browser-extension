@@ -9,6 +9,7 @@ import { ConnectionBanner } from "./ConnectionBanner"
 import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
 import { SessionBar } from "./SessionBar"
+import { sessionStats } from "./sessionStats"
 import { request } from "./api"
 
 async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> {
@@ -148,10 +149,10 @@ export default function App() {
   }
 
   async function newSession() {
+    // Sem `agent`: o servidor escolhe o padrão (hoje, o agente do navegador).
     const response = await request({
       type: "session:new",
       model: selectedModel ?? undefined,
-      agent: selectedAgent ?? undefined,
     })
     if (!response.ok) showToast(response.error)
     else setDraft("")
@@ -279,6 +280,22 @@ export default function App() {
         : snapshot.connection.phase === "unconfigured"
           ? "OpenCode não configurado"
           : null
+  const currentModel =
+    activeSession?.model ??
+    selectedModel ??
+    snapshot.config?.defaultModel ??
+    snapshot.defaultModel
+  const modelInfo = snapshot.models.find(
+    (model) =>
+      model.id === currentModel?.id &&
+      model.providerID === currentModel?.providerID,
+  )
+  const usageStats = sessionStats(
+    snapshot.messages,
+    modelInfo,
+    activeSession,
+    snapshot.contextUsage,
+  )
 
   return (
     <div className="app">
@@ -354,7 +371,7 @@ export default function App() {
             busyFormID={formBusyID}
             onFormSubmit={(form, answer) => void respondForm(form, answer)}
             onFormCancel={(form) => void cancelForm(form)}
-            showToolDetails={snapshot.config?.showToolDetails === true}
+            toolDisplay={snapshot.config?.toolDisplay ?? "grouped"}
           />
           {snapshot.statusMessage ? (
             <div className="status-banner">
@@ -368,6 +385,7 @@ export default function App() {
             disabled={!snapshot.config}
             blockedReason={offlineReason}
             relayConnected={snapshot.relay.connected}
+            stats={usageStats}
             commands={snapshot.commands}
             onChange={setDraft}
             onSend={() => void send()}

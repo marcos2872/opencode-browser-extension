@@ -670,3 +670,74 @@ describe("background/relay — connect() e send()", () => {
     expect(client.send({ type: "pong" })).toBe(false)
   })
 })
+
+describe("background/relay — agente do navegador", () => {
+  async function connectedClient(): Promise<{
+    client: RelayClient
+    socket: FakeWebSocket
+  }> {
+    vi.useFakeTimers()
+    healthFetch({ 8799: async () => healthOk() })
+    const { client } = makeClient()
+    await client.connect()
+    const socket = socketAt(0)
+    socket.open()
+    socket.message(JSON.stringify({ type: "ready", v: 1 }))
+    return { client, socket }
+  }
+
+  it("envia ensure_agent com o diretório e resolve com o path", async () => {
+    const { client, socket } = await connectedClient()
+
+    const promise = client.ensureAgent()
+    const sent = socket.sentJson().at(-1) as {
+      type: string
+      id: string
+    }
+    expect(sent).toMatchObject({ type: "ensure_agent" })
+
+    socket.message(
+      JSON.stringify({
+        type: "ensure_agent_result",
+        id: sent.id,
+        ok: true,
+        path: "/tmp/conv/.opencode/agents/opencode-browser.md",
+      }),
+    )
+
+    await expect(promise).resolves.toEqual({
+      path: "/tmp/conv/.opencode/agents/opencode-browser.md",
+    })
+  })
+
+  it("rejeita quando o plugin devolve erro", async () => {
+    const { client, socket } = await connectedClient()
+
+    const promise = client.ensureAgent()
+    const sent = socket.sentJson().at(-1) as { id: string }
+    socket.message(
+      JSON.stringify({
+        type: "ensure_agent_result",
+        id: sent.id,
+        ok: false,
+        error: "sem permissão para gravar",
+      }),
+    )
+
+    await expect(promise).rejects.toThrow("sem permissão para gravar")
+  })
+
+  it("rejeita sem socket aberto", async () => {
+    const { client } = makeClient()
+    await expect(client.ensureAgent()).rejects.toThrow(/não conectado/)
+  })
+
+  it("rejeita pendentes quando o socket cai", async () => {
+    const { client, socket } = await connectedClient()
+
+    const promise = client.ensureAgent()
+    socket.drop(1006)
+
+    await expect(promise).rejects.toThrow(/desconectou/)
+  })
+})

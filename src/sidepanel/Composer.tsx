@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 import type { CommandInfo } from "../shared/types"
 import { SendIcon, StopIcon } from "../components/icons"
+import { formatCost, formatTokens, type SessionStats } from "./sessionStats"
 
 const MIN_HEIGHT = 22
 const MAX_HEIGHT = 160
@@ -28,6 +29,7 @@ interface Props {
   disabled?: boolean
   blockedReason?: string | null
   relayConnected: boolean
+  stats?: SessionStats | null
   commands: CommandInfo[]
   onChange: (value: string) => void
   onSend: () => void
@@ -40,6 +42,7 @@ export function Composer({
   disabled,
   blockedReason,
   relayConnected,
+  stats,
   commands,
   onChange,
   onSend,
@@ -81,6 +84,16 @@ export function Composer({
         .slice(0, 6)
     : []
 
+  const contextLabel =
+    stats?.contextUsed !== undefined
+      ? stats.percent !== undefined
+        ? `Contexto ${formatTokens(stats.contextUsed)} (${stats.percent}%)`
+        : `Contexto ${formatTokens(stats.contextUsed)} tokens`
+      : null
+  const costLabel =
+    stats?.cost !== undefined ? `Sessão ${formatCost(stats.cost)}` : null
+  const statsLabel = [contextLabel, costLabel].filter(Boolean).join(" · ")
+
   return (
     <div className="composer">
       {matches.length > 0 ? (
@@ -104,7 +117,7 @@ export function Composer({
               : blockedReason ?? "Peça algo ao OpenCode..."
           }
           disabled={disabled || Boolean(blockedReason)}
-          title={blockedReason ?? undefined}
+          title={blockedReason ?? "Enter envia · Shift+Enter quebra linha"}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -131,7 +144,16 @@ export function Composer({
         </div>
       </div>
       <div className="composer-hint">
-        <span>Enter envia · Shift+Enter quebra linha</span>
+        <span
+          className="composer-usage"
+          title={
+            statsLabel
+              ? "Tokens da última requisição / janela do modelo · custo informado pelo OpenCode"
+              : undefined
+          }
+        >
+          {statsLabel || "Enter envia · Shift+Enter quebra linha"}
+        </span>
         <span
           className="status"
           role="status"

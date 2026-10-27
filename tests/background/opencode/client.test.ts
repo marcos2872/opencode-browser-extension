@@ -475,6 +475,76 @@ describe("OpencodeClient.listSessions", () => {
   });
 });
 
+describe("OpencodeClient.lastAssistantUsage", () => {
+  it("escolhe a mensagem mais nova mesmo com a ordem invertida", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            type: "assistant",
+            time: { created: 100 },
+            tokens: { input: 4_465 },
+          },
+          {
+            type: "assistant",
+            time: { created: 200 },
+            tokens: { input: 1_128, cache: { read: 23_153 } },
+          },
+        ],
+      }),
+    );
+
+    await expect(makeClient().lastAssistantUsage("ses_1")).resolves.toEqual({
+      input: 1_128,
+      cacheRead: 23_153,
+    });
+  });
+
+  it("aceita a ordem da API (mais nova primeiro)", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            type: "assistant",
+            time: { created: 200 },
+            tokens: { input: 1_128, cache: { read: 23_153 } },
+          },
+          {
+            type: "assistant",
+            time: { created: 100 },
+            tokens: { input: 4_465 },
+          },
+        ],
+      }),
+    );
+
+    await expect(makeClient().lastAssistantUsage("ses_1")).resolves.toEqual({
+      input: 1_128,
+      cacheRead: 23_153,
+    });
+  });
+
+  it("ignora mensagens sem usage e devolve undefined quando não há assistente", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        data: [{ type: "assistant", time: { created: 10 } }, { type: "idle" }],
+      }),
+    );
+
+    await expect(makeClient().lastAssistantUsage("ses_1")).resolves.toBeUndefined();
+  });
+
+  it("pede a rota de mensagens da sessão", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }));
+
+    await makeClient().lastAssistantUsage("ses_1");
+
+    expect(new URL(lastCall().url).pathname).toBe(
+      "/api/session/ses_1/message",
+    );
+  });
+});
+
 describe("OpencodeClient.createSession", () => {
   it("envia model, agent e location no body", async () => {
     const model = { id: "m1", providerID: "p1" };

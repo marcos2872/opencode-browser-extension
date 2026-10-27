@@ -66,6 +66,14 @@ export class RelayClient {
   private attempts = 0
   /** Só checa silêncio depois que o plugin novo prova que sabe pingar. */
   private livenessArmed = false
+  private agentPending = new Map<
+    string,
+    {
+      resolve: (value: { path?: string }) => void
+      reject: (error: Error) => void
+      timer: ReturnType<typeof setTimeout>
+    }
+  >()
   private state: RelayState = { connected: false, url: RELAY_URL }
 
   constructor(private readonly handlers: RelayHandlers) {}
@@ -112,12 +120,12 @@ export class RelayClient {
       }
       this.touch(socket)
       if (message.type === "ready") {
-        this.handlers.onReady?.({ home: message.home, workspace: message.workspace })
         this.setState({
           connected: true,
           url,
           lastSeenAt: Date.now(),
         })
+        this.handlers.onReady?.({ home: message.home, workspace: message.workspace })
         return
       }
       if (message.type === "ping") {
@@ -129,6 +137,15 @@ export class RelayClient {
         this.handlers.onCancel(message.id)
         return
       }
+      if (message.type === "ensure_agent_result") {
+        const pending = this.agentPending.get(message.id)
+        if (!pending) return
+        this.agentPending.delete(message.id)
+        clearTimeout(pending.timer)
+        if (message.ok) pending.resolve({ path: message.path })
+        else pending.reject(new Error(message.error ?? "O plugin não gravou o agente."))
+        return
+      }
       if (message.type === "tool_request") {
         this.handlers.onTool(message)
       }
@@ -138,6 +155,7 @@ export class RelayClient {
       if (this.socket !== socket) return
       this.socket = null
       this.stopWatchdog()
+      this.rejectAgentPending("O plugin desconectou antes de instalar o agente.")
       const silent = event.code === 4000
       this.setState({
         connected: false,
@@ -178,6 +196,26 @@ export class RelayClient {
     } catch {
       return false
     }
+  }
+
+  /** Pede ao plugin para gravar o agente do navegador na configuração global. */
+  ensureAgent(): Promise<{ path?: string }> {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return Promise.reject(new Error("Plugin do OpenCode não conectado."))
+    }
+    const id = crypto.randomUUID()
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.agentPending.delete(id)
+        reject(new Error("O plugin não respondeu ao instalar o agente."))
+      }, 5_000)
+      this.agentPending.set(id, { resolve, reject, timer })
+      if (!this.send({ type: "ensure_agent", id })) {
+        clearTimeout(timer)
+        this.agentPending.delete(id)
+        reject(new Error("Falha ao enviar o pedido ao plugin."))
+      }
+    })
   }
 
   private touch(socket: WebSocket): void {
@@ -229,6 +267,7 @@ export class RelayClient {
 
   private close(): void {
     this.stopWatchdog()
+    this.rejectAgentPending("Conexão encerrada antes de instalar o agente.")
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
@@ -249,6 +288,14 @@ export class RelayClient {
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer)
       this.watchdogTimer = null
+    }
+  }
+
+  private rejectAgentPending(message: string): void {
+    for (const [id, pending] of this.agentPending) {
+      clearTimeout(pending.timer)
+      this.agentPending.delete(id)
+      pending.reject(new Error(message))
     }
   }
 

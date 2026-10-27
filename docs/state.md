@@ -16,6 +16,7 @@
 | `agents` | AgentInfo[] | [] | `refreshAgents` | Agentes primários |
 | `commands` | CommandInfo[] | [] | `refreshCommands` | Comandos `/` |
 | `statusMessage` | string \| null | null | SSE (`session.retry.scheduled`) | Aviso no painel |
+| `contextUsage` | TokenUsage \| undefined | undefined | `refreshActiveUsage` | Usage da última mensagem do assistente (contexto do rodapé) |
 | `relayState` | RelayState | desconectado | RelayClient | Estado do plugin |
 | `ports` | Set<Port> | ∅ | páginas conectadas | Quem recebe broadcasts |
 | `toolAborts` | Map<string, AbortController> | ∅ | execução/parada | Cancelamento por chamada |
@@ -58,8 +59,14 @@
 | `pending` | instância dona do servidor | Chamadas aguardando `tool_result` |
 | `server` | instância dona do servidor | Servidor Bun |
 | `serverVersion` | instância dona do servidor | Versão para forçar rebind |
+| `port` | instância dona do servidor | Porta escolhida |
+| `token` | instância dona do servidor | Token gravado no arquivo privado |
+| `remotePort` | processo cliente | Porta de um relay de outro processo |
+| `starting` | qualquer instância | Promise que serializa a subida do servidor |
+| `waiters` | qualquer instância | Chamadas aguardando a extensão reconectar |
 | `instances` | instância dona do servidor | Contador de instâncias carregadas |
 
-O estado entre instâncias é compartilhado por um arquivo temporário com token e
-porta (`/tmp/opencode-browser-relay.token`), além do fallback HTTP descrito em
+O estado entre instâncias é compartilhado por um arquivo privado com token e
+porta (`$XDG_RUNTIME_DIR/opencode-browser/relay.json` ou
+`~/.cache/opencode-browser/relay.json`), além do fallback HTTP descrito em
 [plugin.md](plugin.md).

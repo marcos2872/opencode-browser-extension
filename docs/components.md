@@ -13,14 +13,28 @@ renderiza onboarding, chat, cards e toasts.
 ### `Chat`
 
 **Arquivo:** `src/sidepanel/Chat.tsx`
-**Descrição:** Lista de mensagens com Markdown, raciocínio colapsável, cards de
-ferramenta, indicador de streaming e sugestões iniciais.
+**Descrição:** Lista de mensagens com Markdown, raciocínio colapsável,
+indicador de streaming e sugestões iniciais. No modo agrupado (padrão), as
+tools de cada execução viram uma linha com contagem/erros e abrem o
+`ToolsModal`; a ferramenta em execução e as perguntas (`question`) continuam
+inline. Em `hidden`, raciocínio e tools somem, as mensagens de cada execução
+são agregadas em um único bloco e o indicador mostra a ação atual (ex.:
+“trabalhando: lendo a página”); perguntas continuam visíveis.
+
+### `ToolsModal`
+
+**Arquivo:** `src/sidepanel/ToolsModal.tsx`
+**Descrição:** Modal com a lista de tools de uma execução, filtro “somente
+erros”, duração por chamada e detalhe expansível (parâmetros, resultado e
+imagens). Fecha com ESC ou clique no fundo.
 
 ### `Composer`
 
 **Arquivo:** `src/sidepanel/Composer.tsx`
 **Descrição:** Caixa de texto com auto-resize, envio por Enter, botão Parar e
-menu de comandos `/` filtrado por prefixo.
+menu de comandos `/` filtrado por prefixo. O rodapé mostra apenas os tokens de
+contexto usados + porcentagem (`input + cache.read` da última mensagem) e o custo
+da sessão com 4 casas; sem dados, mostra a dica de teclado.
 
 ### `ModelPicker`
 
@@ -43,10 +57,9 @@ plugin, status do relay e botão de reconexão.
 ### `ToolCard`
 
 **Arquivo:** `src/sidepanel/ToolCard.tsx`
-**Descrição:** Card de ferramenta. Por padrão usa a linha compacta (ícone,
-rótulo, resumo e status), expandível ao clicar; em erro, a primeira linha do
-resultado aparece mesmo recolhida. Com `showToolDetails` ligado nas opções,
-mostra o card completo com imagens, parâmetros e resultado colapsáveis.
+**Descrição:** Card de ferramenta. O modo vem de `toolDisplay`: `grouped`
+(agrupa no modal), `rows` (linha compacta expansível, com a primeira linha do
+erro visível) ou `full` (card completo com imagens, parâmetros e resultado).
 
 ### `PermissionCard`
 
@@ -114,8 +127,8 @@ prompt, interrupção, contexto, geração stateless) e assinatura do SSE.
 
 **Arquivo:** `src/background/relay.ts`
 **Descrição:** Descobre a porta do plugin por `GET /health` (8799–8802), conecta
-o WebSocket, envia `hello`, mantém `pong` a cada 20 s, reconecta com backoff e
-entrega `tool_request`/`cancel`.
+o WebSocket, envia `hello` (só então recebe `ready`), mantém `pong` a cada 20 s,
+reconecta com backoff e entrega `tool_request`/`cancel`.
 
 ### `Cdp`
 
@@ -146,7 +159,8 @@ limite de 30 e `flush` para não perder quadros em corrida.
 
 **Arquivo:** `src/background/tools/registry.ts`
 **Descrição:** Mapeia nomes para handlers, normaliza prefixo `browser_` e executa
-`browser_batch` em sequência.
+`browser_batch` em sequência. O relay pode expor `tabs_close_tab` e enviar
+`tabs_close` (campo `wire`).
 
 ### `tools/a11y`
 

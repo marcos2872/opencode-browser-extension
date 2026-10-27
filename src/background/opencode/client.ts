@@ -6,9 +6,11 @@ import type {
   ModelInfo,
   ModelRef,
   SessionInfo,
+  TokenUsage,
 } from "../../shared/types";
 import type { OpencodeEvent } from "../../shared/protocol";
 import { parseSse } from "./sse";
+import { messageUsage } from "./usage";
 
 const PAIR_PATH = /\/auth\/connect\/([A-Za-z0-9_-]+)/;
 
@@ -304,6 +306,32 @@ export class OpencodeClient {
       "/api/session",
     );
     return payload?.data ?? [];
+  }
+
+  /** Usage da última mensagem do assistente (contexto da última requisição). */
+  async lastAssistantUsage(id: string): Promise<TokenUsage | undefined> {
+    const payload = await this.request<{ data?: unknown[] }>(
+      `/api/session/${encodeURIComponent(id)}/message`,
+    );
+    const list = Array.isArray(payload?.data) ? payload.data : [];
+    // A API devolve as mensagens da mais nova para a mais antiga, mas não
+    // confie na ordem: escolhe a de maior `time.created`.
+    let best: { created: number; usage: TokenUsage } | undefined;
+    for (const item of list) {
+      if (!item || typeof item !== "object") continue;
+      const message = item as Record<string, unknown>;
+      if (message.type !== "assistant") continue;
+      const usage = messageUsage(message);
+      if (!usage) continue;
+      const time =
+        message.time && typeof message.time === "object"
+          ? (message.time as Record<string, unknown>)
+          : undefined;
+      const created =
+        typeof time?.created === "number" ? time.created : 0;
+      if (!best || created > best.created) best = { created, usage };
+    }
+    return best?.usage;
   }
 
   async createSession(model?: ModelRef, agent?: string): Promise<SessionInfo> {

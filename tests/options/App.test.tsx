@@ -87,18 +87,30 @@ describe("options/App", () => {
     )
   })
 
-  it("salva a preferência de detalhes das ferramentas", async () => {
+  it("salva a preferência de exibição das ferramentas", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const select = screen.getByLabelText("Ferramentas no chat")
+    expect(select).toHaveValue("grouped")
+
+    await user.selectOptions(select, "hidden")
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+
+    expect(sent("settings:update").patch.toolDisplay).toBe("hidden")
+  })
+
+  it("salva a preferência de agente do navegador", async () => {
     const { user } = await renderOptions(makeSnapshot())
 
     const toggle = screen.getByRole("checkbox", {
-      name: /Mostrar parâmetros e resultado das ferramentas/,
+      name: /opencode-browser.*novas sessões/,
     })
-    expect(toggle).not.toBeChecked()
+    expect(toggle).toBeChecked()
 
     await user.click(toggle)
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.click(screen.getByRole("button", { name: "Salvar", exact: true }))
 
-    expect(sent("settings:update").patch.showToolDetails).toBe(true)
+    expect(sent("settings:update").patch.browserAgentDefault).toBe(false)
   })
 
   it("salva a pasta das conversas informada", async () => {
@@ -228,7 +240,8 @@ describe("options/App", () => {
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
-        showToolDetails: false,
+        toolDisplay: "grouped",
+        browserAgentDefault: true,
         directory: undefined,
       },
     })

@@ -48,6 +48,10 @@ export interface SessionInfo {
   agent?: string;
   time?: { created?: number; updated?: number };
   location?: { directory?: string };
+  /** Custo acumulado informado pelo OpenCode. */
+  cost?: number;
+  /** Uso da sessão (último request) informado pelo OpenCode. */
+  tokens?: TokenUsage;
 }
 
 export interface BrowserTabContext {
@@ -65,6 +69,8 @@ export interface ToolCallView {
   output?: string;
   images?: ImagePayload[];
   metadata?: Record<string, unknown>;
+  startedAt?: number;
+  finishedAt?: number;
 }
 
 export interface FormOption {
@@ -149,6 +155,7 @@ export interface TokenUsage {
   reasoning?: number;
   cacheRead?: number;
   cacheWrite?: number;
+  cache?: { read?: number; write?: number };
   cost?: number;
 }
 
@@ -188,8 +195,10 @@ export interface OpencodeConfig {
   findMode?: "heuristic" | "model";
   soundEnabled?: boolean;
   notifyEnabled?: boolean;
-  /** Mostra parâmetros e resultado das tools no chat. Padrão: compacto. */
-  showToolDetails?: boolean;
+  /** Como as tools aparecem no chat. Padrão: agrupadas em um modal. */
+  toolDisplay?: "grouped" | "rows" | "full" | "hidden";
+  /** Usa o agente `opencode-browser` nas novas sessões. Padrão: true. */
+  browserAgentDefault?: boolean;
 }
 
 export interface PermissionRequest {
@@ -267,6 +276,8 @@ export interface AppSnapshot {
   relay: RelayState;
   busy: boolean;
   connection: ConnectionState;
+  /** Usage da última mensagem da sessão ativa (contexto da janela). */
+  contextUsage?: TokenUsage;
   defaultModel: ModelRef | null;
   agents: AgentInfo[];
   commands: CommandInfo[];
