@@ -914,6 +914,51 @@ a {
   white-space: pre-line;
 }
 
+.connection-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 10px 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--err) 30%, var(--line));
+  background: color-mix(in srgb, var(--err) 8%, var(--bg-elev));
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.connection-banner.warn {
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--line));
+  background: color-mix(in srgb, var(--warn) 9%, var(--bg-elev));
+}
+
+.connection-banner .connection-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.connection-banner strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.connection-banner span {
+  color: var(--text-soft);
+  line-height: 1.35;
+}
+
+.connection-banner .connection-note {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.connection-banner .btn {
+  flex: 0 0 auto;
+}
+
 .composer {
   border-top: 1px solid var(--line);
   padding: 9px 10px 10px;

@@ -1,5 +1,27 @@
 # Erros
 
+## Estado de conexão no painel
+
+Quando a configuração existe mas o servidor do OpenCode não está respondendo, o
+side panel mostra um banner persistente com a causa e o próximo passo:
+
+| Texto | Causa (`connection.failure`) | Ação do banner |
+|---|---|---|
+| `O OpenCode não está respondendo` | `unreachable` | Iniciar `opencode serve` e clicar em **Tentar novamente** |
+| `O OpenCode demorou demais para responder` | `timeout` | Reiniciar o OpenCode e **Tentar novamente** |
+| `Token do OpenCode inválido ou expirado` | `unauthorized` | Rodar `opencode pair` e abrir as configurações |
+| `O OpenCode respondeu com erro` | `server_error` | Conferir o log do servidor e **Tentar novamente** |
+| `A conexão com o OpenCode foi encerrada` | `stream_closed` | **Reconectar**; se persistir, reiniciar o OpenCode |
+| `Conectando ao OpenCode…` | `connecting` | Nenhuma; aguardar a tentativa em andamento |
+
+O botão **Tentar novamente** envia `connection:reconnect`. Enquanto o backend não
+está `online`, o campo de mensagem fica bloqueado com o motivo no placeholder —
+o texto digitado não é perdido.
+
+O rodapé do campo mostra o estado do plugin (`ferramentas conectadas` /
+`ferramentas offline`). O estado do plugin é independente do estado da API: o
+chat funciona sem ele, mas as ferramentas do navegador não.
+
 ## Erros de pareamento e conexão
 
 | Mensagem | Causa | Resolução |
@@ -8,7 +30,7 @@
 | `O link não contém /auth/connect/<código>.` | URL de outra rota | Rode `opencode pair` de novo |
 | `Link expirado ou já usado. Rode opencode pair novamente.` | Código consumido ou fora dos 5 min | Gere um novo link |
 | `O servidor não devolveu um token de sessão.` | Resposta inesperada | Verifique a versão do OpenCode |
-| `Não foi possível falar com o OpenCode em <url>. Ele está rodando?` | Servidor parado ou porta errada | `opencode service status` e repareie |
+| `Não foi possível falar com o OpenCode em <url>. Ele está rodando?` | Servidor parado ou porta errada | Inicie `opencode serve` e use **Tentar novamente** no banner |
 | `OpenCode não configurado.` | Nenhum pareamento feito | Conclua o onboarding |
 
 ## Erros do relay

@@ -1,11 +1,30 @@
 import { useEffect, useState } from "react"
-import type { AppSnapshot, ModelRef, OpencodeConfig, PermissionMode } from "../shared/types"
+import type { AppSnapshot, ConnectionState, ModelRef, OpencodeConfig, PermissionMode } from "../shared/types"
 import { ModelPicker } from "../sidepanel/ModelPicker"
 import { request } from "../sidepanel/api"
 import { RefreshIcon, TerminalIcon } from "../components/icons"
+import { describeRelay } from "../components/relayStatus"
 
 const ALLOW_KEY = "permissions.allow"
 const DENY_KEY = "permissions.deny"
+
+function describeConnection(connection: ConnectionState): string {
+  if (connection.phase === "online") return "online"
+  if (connection.phase === "connecting") return "conectando"
+  if (connection.phase === "unconfigured") return "não configurada"
+  switch (connection.failure) {
+    case "unauthorized":
+      return "offline — token inválido ou expirado"
+    case "timeout":
+      return "offline — o servidor não respondeu a tempo"
+    case "server_error":
+      return "offline — o servidor respondeu com erro"
+    case "stream_closed":
+      return "offline — conexão encerrada"
+    default:
+      return "offline — servidor não respondeu"
+  }
+}
 
 const TOOLS = [
   ["tabs_context", "lista as abas do grupo"],
@@ -81,6 +100,15 @@ export default function App() {
     setLink("")
     setSnapshot(response.snapshot ?? null)
     showToast("Conectado.")
+  }
+
+  async function reconnectBackend() {
+    const response = await request({ type: "connection:reconnect" })
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
+    if (response.snapshot) setSnapshot(response.snapshot)
   }
 
   async function savePermissions() {
@@ -170,14 +198,27 @@ export default function App() {
         <section className="card">
           <h2>Conexão</h2>
           <div className="status-line">
-            <span className={`dot ${snapshot.backend === "online" ? "ok" : snapshot.backend === "offline" ? "err" : "warn"}`} />
-            API: {snapshot.backend === "online" ? "online" : snapshot.backend === "offline" ? "offline" : "desconhecida"}
+            <span
+              className={`dot ${
+                snapshot.connection.phase === "online"
+                  ? "ok"
+                  : snapshot.connection.phase === "offline"
+                    ? "err"
+                    : "warn"
+              }`}
+            />
+            API: {describeConnection(snapshot.connection)}
+            {config ? (
+              <button className="btn small" onClick={() => void reconnectBackend()}>
+                <RefreshIcon size={13} /> Reconectar
+              </button>
+            ) : null}
           </div>
           <div className="status-line">
             <span className={`dot ${snapshot.relay.connected ? "ok" : "warn"}`} />
-            Ferramentas: {snapshot.relay.connected ? "plugin conectado" : snapshot.relay.lastError ?? "plugin desconectado"}
+            Ferramentas: {describeRelay(snapshot.relay)}
             <button className="btn small" onClick={() => void request({ type: "relay:reconnect" })}>
-              <RefreshIcon size={13} /> Reconectar
+              <RefreshIcon size={13} /> Reconectar plugin
             </button>
           </div>
           {config ? (

@@ -34,8 +34,13 @@ export const tabsTools: ToolMap = {
       await ctx.tabs.ensure(ctx.sessionID)
       tabs = await ctx.tabs.list(ctx.sessionID)
     }
-    const groupId = await ctx.tabs.groupOf(ctx.sessionID)
-    const active = tabs.find((tab) => tab.active) ?? tabs[0]
+    const [groupId, mainTabId] = await Promise.all([
+      ctx.tabs.groupOf(ctx.sessionID),
+      ctx.tabs.currentTabId(ctx.sessionID),
+    ])
+    const active = mainTabId !== null
+      ? tabs.find((tab) => tab.id === mainTabId) ?? tabs.find((tab) => tab.active) ?? tabs[0]
+      : tabs.find((tab) => tab.active) ?? tabs[0]
     const output = JSON.stringify(
       {
         ...(groupId !== null ? { tabGroupId: groupId } : {}),
@@ -101,7 +106,7 @@ export const tabsTools: ToolMap = {
       url: tab.url,
     })
     if (!allowed) return { content: "Anexação negada pelo usuário." }
-    await ctx.tabs.addTab(ctx.sessionID, tabId)
+    await ctx.tabs.addTab(ctx.sessionID, tabId, { makeMain: true })
     return {
       content: `Aba anexada ao grupo desta sessão.\n\n${await tabContext(ctx, tabId)}`,
       metadata: { tabId },

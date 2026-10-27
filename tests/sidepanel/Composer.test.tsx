@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Composer } from "../../src/sidepanel/Composer"
@@ -10,6 +10,7 @@ interface HarnessProps {
   initialValue?: string
   busy?: boolean
   disabled?: boolean
+  blockedReason?: string | null
   relayConnected?: boolean
   commands?: CommandInfo[]
   onSend?: () => void
@@ -24,6 +25,7 @@ function Harness({ initialValue = "", onChangeSpy, ...rest }: HarnessProps) {
       value={value}
       busy={rest.busy ?? false}
       disabled={rest.disabled}
+      blockedReason={rest.blockedReason}
       relayConnected={rest.relayConnected ?? false}
       commands={rest.commands ?? []}
       onChange={(next) => {
@@ -42,6 +44,7 @@ function Controlled({ value, ...rest }: HarnessProps & { value: string }) {
       value={value}
       busy={rest.busy ?? false}
       disabled={rest.disabled}
+      blockedReason={rest.blockedReason}
       relayConnected={rest.relayConnected ?? false}
       commands={rest.commands ?? []}
       onChange={rest.onChangeSpy ?? (() => {})}
@@ -67,15 +70,54 @@ describe("sidepanel/Composer", () => {
     expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
   })
 
+  it("bloqueia o campo e o envio quando o OpenCode está offline", () => {
+    const { container } = render(
+      <Controlled
+        value="oi"
+        blockedReason="OpenCode offline — inicie o servidor para enviar"
+      />,
+    )
+
+    const textarea = screen.getByRole("textbox")
+    expect(textarea).toBeDisabled()
+    expect(textarea).toHaveAttribute(
+      "title",
+      "OpenCode offline — inicie o servidor para enviar",
+    )
+    expect(container.querySelector(".send-btn")).toBeDisabled()
+    expect(textarea).toHaveAttribute(
+      "placeholder",
+      "OpenCode offline — inicie o servidor para enviar",
+    )
+  })
+
   it("ajusta a altura do textarea conforme o conteúdo (auto-resize)", () => {
     const scrollHeight = vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(200)
-    const { rerender } = render(<Controlled value="" />)
+    const { rerender } = render(<Controlled value="linha" />)
     const textarea = screen.getByPlaceholderText("Peça algo ao OpenCode...")
     expect(textarea.style.height).toBe("160px")
 
     scrollHeight.mockReturnValue(40)
     rerender(<Controlled value="duas linhas" />)
     expect(textarea.style.height).toBe("40px")
+
+    rerender(<Controlled value="" />)
+    expect(textarea.style.height).toBe("")
+  })
+
+  it("recalcula a altura no resize da janela para não ficar presa", () => {
+    const scrollHeight = vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(40)
+    render(<Controlled value="texto" />)
+    const textarea = screen.getByPlaceholderText("Peça algo ao OpenCode...")
+    expect(textarea.style.height).toBe("40px")
+
+    scrollHeight.mockReturnValue(200)
+    fireEvent(window, new Event("resize"))
+    expect(textarea.style.height).toBe("160px")
+
+    scrollHeight.mockReturnValue(4)
+    fireEvent(window, new Event("resize"))
+    expect(textarea.style.height).toBe("22px")
   })
 
   it("Enter envia quando há texto", async () => {

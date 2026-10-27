@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { RelayState } from "../shared/types"
+import { describeRelay } from "../components/relayStatus"
 import { CheckIcon, LinkIcon, RefreshIcon, TerminalIcon } from "../components/icons"
 
 interface Props {
@@ -105,7 +106,7 @@ export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
           </div>
           <div className="status-line">
             <span className={`dot ${relay.connected ? "ok" : "warn"}`} />
-            {relay.connected ? "Plugin conectado" : relay.lastError ?? "Plugin desconectado"}
+            {relay.connected ? "Plugin conectado" : describeRelay(relay)}
             <button className="btn small" onClick={onReconnect}>
               <RefreshIcon size={13} /> Reconectar
             </button>

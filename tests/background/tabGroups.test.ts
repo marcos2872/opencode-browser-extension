@@ -181,6 +181,35 @@ describe("background/tabGroups", () => {
   })
 
   describe("addTab/createTab/closeTab", () => {
+    it("addTab sem grupo cria o grupo com a própria aba, sem about:blank", async () => {
+      const outsider = chromeMock.__state.addTab({ groupId: -1, url: "https://app.com/" })
+
+      const groupId = await groups.addTab("ses_1", outsider.id, { makeMain: true })
+
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
+      expect(chromeMock.__state.tabs.get(outsider.id)?.groupId).toBe(groupId)
+      expect(chromeMock.tabGroups.update).toHaveBeenCalledWith(
+        groupId,
+        expect.objectContaining({ title: "OpenCode" }),
+      )
+      await expect(groups.currentTabId("ses_1")).resolves.toBe(outsider.id)
+    })
+
+    it("addTab com makeMain troca a aba principal e ativa", async () => {
+      const record = await groups.ensure("ses_1")
+      const outsider = chromeMock.__state.addTab({ groupId: -1 })
+
+      const groupId = await groups.addTab("ses_1", outsider.id, { makeMain: true })
+
+      expect(groupId).toBe(record.groupId)
+      expect(chromeMock.tabs.update).toHaveBeenCalledWith(outsider.id, { active: true })
+      await expect(groups.currentTabId("ses_1")).resolves.toBe(outsider.id)
+    })
+
+    it("currentTabId é nulo sem sessão registrada", async () => {
+      await expect(groups.currentTabId("ses_inexistente")).resolves.toBeNull()
+    })
+
     it("addTab agrupa a aba informada e devolve o grupo", async () => {
       const record = await groups.ensure("ses_1")
       const outsider = chromeMock.__state.addTab({ groupId: -1 })

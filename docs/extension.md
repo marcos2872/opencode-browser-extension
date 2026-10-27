@@ -62,12 +62,28 @@ Ponto de entrada: `src/background/service-worker.ts` (build em
 diretório padrão está configurado. O pareamento consome o link de uso único e
 guarda `baseUrl` + `token` em `chrome.storage.local`.
 
-### Streaming
+### Streaming e estado da conexão
 
-O SSE é assinado em `GET /api/event` e reconecta com backoff. Os eventos são
-traduzidos para o estado do chat (mensagens, raciocínio, ferramentas, retries e
-erros) e publicados nas páginas por um `Port` de longa duração. A lista completa
-está em [events.md](events.md).
+O SSE é assinado em `GET /api/event` e o estado do canal é publicado em
+`AppSnapshot.connection` (`unconfigured`, `connecting`, `online`, `offline`).
+`online` só é publicado depois que a resposta do stream abre (callback `onOpen`
+do `subscribe`); falhas carregam a causa (`unreachable`, `timeout`,
+`unauthorized`, `server_error`, `stream_closed`), que o banner do painel usa
+para dizer o que fazer.
+
+- Reconexão automática com espera exponencial de 2 s a 30 s (60 s quando o token
+  é recusado) e sem republicar snapshot a cada tentativa.
+- Ao voltar para `online`, modelos, agentes, comandos e sessões são recarregados
+  e a sessão ativa é reidratada.
+- O botão **Tentar novamente** envia `connection:reconnect`: recria o cliente a
+  partir da configuração salva, limpa execuções órfãs e reinicia o stream.
+- Requisições HTTP têm timeout de 15 s (o stream SSE fica isento). O alarme de
+  30 s faz uma verificação leve a cada ~60 s e encerra execuções presas depois de
+  5 s de queda.
+
+Os eventos são traduzidos para o estado do chat (mensagens, raciocínio,
+ferramentas, retries e erros) e publicados nas páginas por um `Port` de longa
+duração. A lista completa está em [events.md](events.md).
 
 ### Execução de ferramentas
 

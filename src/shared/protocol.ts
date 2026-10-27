@@ -1,6 +1,7 @@
 import type {
   AppSnapshot,
   BrowserTabContext,
+  ConnectionFailure,
   FormAnswer,
   ImagePayload,
   ModelInfo,
@@ -88,7 +89,8 @@ export type UiRequest =
       formID: string;
       message?: string;
     }
-  | { type: "relay:reconnect" };
+  | { type: "relay:reconnect" }
+  | { type: "connection:reconnect" };
 
 export type UiResponse =
   | {
@@ -98,7 +100,7 @@ export type UiResponse =
       sessions?: SessionInfo[];
       tabs?: BrowserTabContext[];
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; failure?: ConnectionFailure };
 
 /** Broadcast from service worker to extension pages. */
 export type UiEvent =

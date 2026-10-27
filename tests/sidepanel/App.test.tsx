@@ -2,9 +2,29 @@ import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../src/sidepanel/App"
-import type { AppSnapshot, ChatMessage, PermissionRequest } from "../../src/shared/types"
+import type { AppSnapshot, ChatMessage, ConnectionState, PermissionRequest } from "../../src/shared/types"
 import type { FakePort } from "../helpers/chrome"
 import { makeAgent, makeCommand, makeForm, makeMessage, makeModel, makeSession } from "../helpers/factories"
+
+const CONNECTION_ONLINE: ConnectionState = {
+  phase: "online",
+  failure: null,
+  detail: null,
+  attempts: 0,
+  lastOnlineAt: null,
+  offlineSince: null,
+}
+
+function offlineConnection(partial: Partial<ConnectionState> = {}): ConnectionState {
+  return {
+    ...CONNECTION_ONLINE,
+    phase: "offline",
+    failure: "unreachable",
+    detail: "conexão recusada",
+    offlineSince: Date.now(),
+    ...partial,
+  }
+}
 
 function makeSnapshot(partial: Partial<AppSnapshot> = {}): AppSnapshot {
   return {
@@ -20,7 +40,7 @@ function makeSnapshot(partial: Partial<AppSnapshot> = {}): AppSnapshot {
     forms: [],
     relay: { connected: true, url: "ws://127.0.0.1:8799" },
     busy: false,
-    backend: "online",
+    connection: CONNECTION_ONLINE,
     defaultModel: null,
     agents: [makeAgent()],
     commands: [makeCommand()],
@@ -170,14 +190,33 @@ describe("sidepanel/App", () => {
   })
 
   it("mostra o backend online e offline", async () => {
-    await renderApp(makeSnapshot({ backend: "offline" }))
+    await renderApp(makeSnapshot({ connection: offlineConnection() }))
     expect(screen.getByText("offline")).toBeInTheDocument()
+  })
+
+  it("mostra banner acionável quando o OpenCode não responde", async () => {
+    const { user } = await renderApp(makeSnapshot({ connection: offlineConnection() }))
+
+    expect(screen.getByText("O OpenCode não está respondendo")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /Tentar novamente/ }))
+
+    expect(sent("connection:reconnect")).toEqual({ type: "connection:reconnect" })
+  })
+
+  it("bloqueia o envio enquanto o backend está offline", async () => {
+    await renderApp(makeSnapshot({ connection: offlineConnection() }))
+
+    expect(screen.getByRole("textbox")).toBeDisabled()
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "placeholder",
+      "OpenCode offline — inicie o servidor para enviar",
+    )
   })
 
   it("mostra as abas conectadas no botão de contexto e permite removê-las", async () => {
     const { user } = await renderApp(
       makeSnapshot({
-        backend: "offline",
+        connection: offlineConnection(),
         relay: { connected: false, url: "ws://127.0.0.1:8799", lastError: "conexão recusada" },
       }),
       {
@@ -479,6 +518,19 @@ describe("sidepanel/App", () => {
 
     expect(await screen.findByText("backend fora do ar")).toBeInTheDocument()
     await waitFor(() => expect(textarea).toHaveValue("oi"))
+  })
+
+  it("não duplica no toast a falha de conexão já mostrada no banner", async () => {
+    const { user } = await renderApp(makeSnapshot(), {
+      prompt: { ok: false, error: "sem conexão", failure: "unreachable" },
+    })
+    const textarea = screen.getByPlaceholderText("Peça algo ao OpenCode...")
+
+    await user.type(textarea, "oi")
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => expect(textarea).toHaveValue("oi"))
+    expect(screen.queryByText("sem conexão")).not.toBeInTheDocument()
   })
 
   it("responde uma pergunta do agente pelo card da tool", async () => {

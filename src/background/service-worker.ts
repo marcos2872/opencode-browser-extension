@@ -30,6 +30,9 @@ import type {
   AppSnapshot,
   CommandInfo,
   ChatMessage,
+  ConnectionFailure,
+  ConnectionPhase,
+  ConnectionState,
   FormAnswer,
   FormInfo,
   ImagePayload,
@@ -67,7 +70,14 @@ let activeSessionID: string | null = null;
 let messages: ChatMessage[] = [];
 let forms: FormInfo[] = [];
 let busy = false;
-let backend: AppSnapshot["backend"] = "unknown";
+let connection: ConnectionState = {
+  phase: "unconfigured",
+  failure: null,
+  detail: null,
+  attempts: 0,
+  lastOnlineAt: null,
+  offlineSince: null,
+};
 let defaultModel: ModelRef | null = null;
 let agents: AgentInfo[] = [];
 let commands: CommandInfo[] = [];
@@ -77,6 +87,12 @@ let workspaceHint: string | null = null;
 let sseAbort: AbortController | null = null;
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 let hydrateToken = 0;
+let probeInFlight = false;
+let healthTick = 0;
+let syncInFlight = false;
+let syncPending = false;
+let lastSseEventAt = 0;
+let connectStartedAt = 0;
 
 function playSound(): void {
   if (config?.soundEnabled === false) return;
@@ -120,7 +136,7 @@ function snapshot(): AppSnapshot {
     forms,
     relay: relayState,
     busy,
-    backend,
+    connection,
     defaultModel,
     agents,
     commands,
@@ -156,6 +172,92 @@ function broadcastNow(): void {
 
 function errorMessage(error: unknown): string {
   return formatOpencodeError(error) || "Erro inesperado do OpenCode.";
+}
+
+function setConnection(patch: Partial<ConnectionState>): void {
+  const previous = connection;
+  const next = { ...connection, ...patch };
+  if (patch.phase === "online" && previous.phase !== "online") {
+    next.lastOnlineAt = Date.now();
+    next.offlineSince = null;
+  }
+  if (patch.phase === "offline" && previous.phase !== "offline") {
+    next.offlineSince = Date.now();
+  }
+  if (patch.phase !== undefined && patch.phase !== "offline") {
+    next.offlineSince = null;
+  }
+  connection = next;
+  const visible =
+    next.phase !== previous.phase ||
+    next.failure !== previous.failure ||
+    next.detail !== previous.detail;
+  if (visible) broadcastNow();
+  else scheduleBroadcast();
+}
+
+function classifyFailure(error: unknown): ConnectionFailure {
+  if (error instanceof OpencodeError) {
+    if (error.timedOut) return "timeout";
+    if (error.status === 401 || error.status === 403) return "unauthorized";
+    if (error.status !== undefined) return "server_error";
+  }
+  return "unreachable";
+}
+
+/**
+ * Só devolve causa quando a falha é do canal (não do provedor). A UI usa isso
+ * para não repetir no toast o que o banner persistente já explica.
+ */
+function connectionFailureOf(error: unknown): ConnectionFailure | undefined {
+  if (!(error instanceof OpencodeError)) return undefined;
+  if (error.timedOut) return "timeout";
+  if (error.status === 401 || error.status === 403) return "unauthorized";
+  if (error.status !== undefined) return undefined;
+  return "unreachable";
+}
+
+function nextRetryDelay(
+  attempts: number,
+  failure: ConnectionFailure | null,
+): number {
+  if (failure === "unauthorized") return 60_000;
+  const exponent = Math.min(Math.max(attempts - 1, 0), 4);
+  return Math.min(2_000 * 2 ** exponent, 30_000);
+}
+
+function resetStreaming(): void {
+  busy = false;
+  statusMessage = null;
+  for (const message of messages) {
+    if (message.kind === "assistant") message.streaming = false;
+  }
+}
+
+function markRunInterrupted(detail: string): void {
+  busy = false;
+  statusMessage = null;
+  let message = [...messages]
+    .reverse()
+    .find((item) => item.kind === "assistant");
+  if (!message || message.kind !== "assistant") {
+    message = ensureAssistant(`interrupted_${crypto.randomUUID()}`);
+  }
+  if (message.kind !== "assistant") return;
+  message.error = detail;
+  message.streaming = false;
+  broadcastNow();
+}
+
+function freshConnection(phase: ConnectionPhase): ConnectionState {
+  return {
+    phase,
+    failure: null,
+    detail: null,
+    attempts: 0,
+    lastOnlineAt: null,
+    offlineSince: phase === "offline" ? Date.now() : null,
+  };
 }
 
 async function handleUi(request: UiRequest): Promise<UiResponse> {
@@ -207,7 +309,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
         sessionID,
       );
       if (!allowed) return { ok: true, snapshot: snapshot() };
-      await tabs.addTab(sessionID, tab.id);
+      await tabs.addTab(sessionID, tab.id, { makeMain: true });
       return { ok: true, snapshot: snapshot() };
     }
     case "tabs:list":
@@ -239,6 +341,9 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
     case "relay:reconnect":
       relay.reconnect();
       return { ok: true };
+    case "connection:reconnect":
+      await reconnectBackend();
+      return { ok: true, snapshot: snapshot() };
     default:
       return { ok: false, error: "Comando desconhecido." };
   }
@@ -273,10 +378,25 @@ async function pair(link: string): Promise<void> {
   await setConfig(config);
   client = new OpencodeClient(config.baseUrl, config.token, config.directory);
   await permissions.init();
-  await refreshModels();
-  await refreshAgents().catch(() => undefined);
-  await refreshCommands().catch(() => undefined);
-  await refreshSessions();
+  setConnection({
+    phase: "connecting",
+    failure: null,
+    detail: null,
+    attempts: 0,
+  });
+  try {
+    await refreshModels();
+    await refreshAgents().catch(() => undefined);
+    await refreshCommands().catch(() => undefined);
+    await refreshSessions();
+  } catch (error) {
+    setConnection({
+      phase: "offline",
+      failure: classifyFailure(error),
+      detail: errorMessage(error),
+    });
+    throw error;
+  }
   if (!activeSessionID && sessions[0]) {
     await selectSession(sessions[0].id);
   }
@@ -298,11 +418,12 @@ async function unpair(): Promise<void> {
   messages = [];
   forms = [];
   busy = false;
-  backend = "unknown";
+  connection = freshConnection("unconfigured");
   defaultModel = null;
   agents = [];
   commands = [];
   statusMessage = null;
+  syncPending = false;
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   await updateBadge();
   broadcastNow();
@@ -320,22 +441,38 @@ async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
   await setConfig(config);
   if (connectionChanged) {
     client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+    setConnection({
+      phase: "connecting",
+      failure: null,
+      detail: null,
+      attempts: 0,
+    });
     startSse();
-    await refreshModels().catch(() => undefined);
+    await refreshModels().catch((error) => {
+      setConnection({
+        phase: "offline",
+        failure: classifyFailure(error),
+        detail: errorMessage(error),
+      });
+    });
   }
   broadcastNow();
 }
 
 async function refreshModels(): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
-  models = (await client.listModels()).sort((a, b) => {
+  const active = client;
+  const listed = await active.listModels();
+  if (client !== active) return;
+  models = listed.sort((a, b) => {
     if (a.providerID !== b.providerID)
       return a.providerID.localeCompare(b.providerID);
     return (a.name ?? a.id).localeCompare(b.name ?? b.id);
   });
-  defaultModel =
-    (await client.defaultModel().catch(() => null)) ?? defaultModel;
-  const preferred = config?.defaultModel;
+  const fallback = await active.defaultModel().catch(() => null);
+  if (client !== active || !config) return;
+  defaultModel = fallback ?? defaultModel;
+  const preferred = config.defaultModel;
   if (
     preferred &&
     !models.some(
@@ -343,32 +480,35 @@ async function refreshModels(): Promise<void> {
         model.id === preferred.id && model.providerID === preferred.providerID,
     )
   ) {
-    config = { ...config!, defaultModel: undefined };
+    config = { ...config, defaultModel: undefined };
     await setConfig(config);
   }
-  if (!config?.defaultModel && defaultModel) {
-    config = { ...config!, defaultModel };
+  if (!config.defaultModel && defaultModel) {
+    config = { ...config, defaultModel };
     await setConfig(config);
   }
-  backend = "online";
   broadcastNow();
 }
 
 async function refreshCommands(): Promise<void> {
   if (!client) return;
-  commands = (await client.listCommands()).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  const active = client;
+  const listed = await active.listCommands();
+  if (client !== active) return;
+  commands = listed.sort((a, b) => a.name.localeCompare(b.name));
   broadcastNow();
 }
 
 async function refreshAgents(): Promise<void> {
   if (!client) return;
-  agents = (await client.listAgents()).sort((a, b) =>
+  const active = client;
+  const listed = await active.listAgents();
+  if (client !== active || !config) return;
+  agents = listed.sort((a, b) =>
     (a.name ?? a.id).localeCompare(b.name ?? b.id),
   );
   if (
-    config?.defaultAgent &&
+    config.defaultAgent &&
     !agents.some((agent) => agent.id === config?.defaultAgent)
   ) {
     config = { ...config, defaultAgent: undefined };
@@ -383,8 +523,11 @@ async function refreshAgents(): Promise<void> {
 
 async function refreshSessions(): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
+  const active = client;
   const directory = config?.directory;
-  sessions = (await client.listSessions())
+  const listed = await active.listSessions();
+  if (client !== active) return;
+  sessions = listed
     .filter(
       (session) =>
         !directory ||
@@ -593,36 +736,64 @@ async function switchModel(model: ModelRef): Promise<void> {
   broadcastNow();
 }
 
+function isConnectionFailure(failure: ConnectionFailure): boolean {
+  return (
+    failure === "unreachable" ||
+    failure === "timeout" ||
+    failure === "unauthorized"
+  );
+}
+
+/**
+ * Em falha de conexão, remove a mensagem otimista para a UI devolver o texto ao
+ * rascunho e propaga o erro (o banner persistente explica o que fazer). Nos
+ * demais erros, mantém a bolha inline com o detalhe do provedor.
+ */
+function handleSendFailure(error: unknown, optimisticID: string): void {
+  busy = false;
+  const failure = classifyFailure(error);
+  if (isConnectionFailure(failure)) {
+    messages = messages.filter((message) => message.id !== optimisticID);
+    setConnection({
+      phase: "offline",
+      failure,
+      detail: errorMessage(error),
+    });
+    broadcastNow();
+    throw error;
+  }
+  messages.push({
+    kind: "assistant",
+    id: `local_error_${crypto.randomUUID()}`,
+    text: "",
+    reasoning: "",
+    tools: [],
+    time: Date.now(),
+    streaming: false,
+    error: errorMessage(error),
+  });
+  broadcastNow();
+}
+
 async function runCommand(name: string, text: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   if (!activeSessionID) await createSession();
   if (!activeSessionID) throw new Error("Não foi possível criar a sessão.");
   const sessionID = activeSessionID;
+  const optimisticID = `local_${crypto.randomUUID()}`;
   messages.push({
     kind: "user",
-    id: `local_${crypto.randomUUID()}`,
+    id: optimisticID,
     text: `/${name}${text ? ` ${text}` : ""}`,
     time: Date.now(),
   });
   busy = true;
-  backend = "online";
   statusMessage = null;
   broadcastNow();
   try {
     await client.runCommand(sessionID, name, text);
   } catch (error) {
-    busy = false;
-    messages.push({
-      kind: "assistant",
-      id: `local_error_${crypto.randomUUID()}`,
-      text: "",
-      reasoning: "",
-      tools: [],
-      time: Date.now(),
-      streaming: false,
-      error: errorMessage(error),
-    });
-    broadcastNow();
+    handleSendFailure(error, optimisticID);
   }
 }
 
@@ -648,31 +819,20 @@ async function sendPrompt(text: string): Promise<void> {
   }
   if (!activeSessionID) throw new Error("Não foi possível criar a sessão.");
   const sessionID = activeSessionID;
+  const optimisticID = `local_${crypto.randomUUID()}`;
   messages.push({
     kind: "user",
-    id: `local_${crypto.randomUUID()}`,
+    id: optimisticID,
     text: trimmed,
     time: Date.now(),
   });
   busy = true;
-  backend = "online";
   statusMessage = null;
   broadcastNow();
   try {
     await client.prompt(sessionID, trimmed);
   } catch (error) {
-    busy = false;
-    messages.push({
-      kind: "assistant",
-      id: `local_error_${crypto.randomUUID()}`,
-      text: "",
-      reasoning: "",
-      tools: [],
-      time: Date.now(),
-      streaming: false,
-      error: errorMessage(error),
-    });
-    broadcastNow();
+    handleSendFailure(error, optimisticID);
   }
 }
 
@@ -689,35 +849,136 @@ async function interrupt(): Promise<void> {
   broadcastNow();
 }
 
-function startSse(): void {
+function startSse(resetBackoff = true): void {
   sseAbort?.abort();
   sseAbort = null;
-  if (!client) return;
+  if (!client) {
+    setConnection({ phase: "unconfigured" });
+    return;
+  }
   const controller = new AbortController();
   sseAbort = controller;
   const activeClient = client;
+  setConnection({
+    phase: "connecting",
+    failure: null,
+    detail: null,
+    attempts: resetBackoff ? 0 : connection.attempts,
+  });
+  const handleEvent = (event: Parameters<typeof onOpencodeEvent>[0]) => {
+    if (client !== activeClient) return;
+    lastSseEventAt = Date.now();
+    onOpencodeEvent(event);
+  };
 
   void (async () => {
     while (!controller.signal.aborted) {
       try {
-        backend = "online";
-        broadcastNow();
+        connectStartedAt = Date.now();
         console.log("[sse] conectando", config?.baseUrl);
-        await activeClient.subscribe(onOpencodeEvent, controller.signal);
+        await activeClient.subscribe(
+          handleEvent,
+          controller.signal,
+          () => {
+            if (
+              controller.signal.aborted ||
+              sseAbort !== controller ||
+              client !== activeClient
+            ) {
+              return;
+            }
+            const reconnected = connection.phase !== "online";
+            lastSseEventAt = Date.now();
+            setConnection({
+              phase: "online",
+              failure: null,
+              detail: null,
+              attempts: 0,
+            });
+            if (reconnected) void syncAfterReconnect();
+          },
+        );
+        if (controller.signal.aborted) return;
         console.log("[sse] stream encerrado");
+        setConnection({
+          phase: "offline",
+          failure: "stream_closed",
+          detail: "O OpenCode encerrou o stream de eventos.",
+          attempts: connection.attempts + 1,
+        });
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error("[sse] erro", error);
-        backend = "offline";
-        broadcastNow();
-        if (error instanceof OpencodeError && error.status === 401) {
-          await sleep(10_000);
-        } else {
-          await sleep(2_000);
-        }
+        setConnection({
+          phase: "offline",
+          failure: classifyFailure(error),
+          detail: errorMessage(error),
+          attempts: connection.attempts + 1,
+        });
       }
+      if (controller.signal.aborted) return;
+      await sleep(nextRetryDelay(connection.attempts, connection.failure));
     }
+    if (sseAbort === controller) sseAbort = null;
   })();
+}
+
+/**
+ * Depois de uma reconexão, o servidor pode estar em outro estado: recarrega as
+ * listas e reidrata a sessão ativa para o painel não ficar vazio.
+ */
+async function syncAfterReconnect(): Promise<void> {
+  if (!client) return;
+  if (syncInFlight) {
+    syncPending = true;
+    return;
+  }
+  const active = client;
+  syncInFlight = true;
+  try {
+    await refreshModels();
+    if (client !== active) return;
+    await refreshAgents().catch(() => undefined);
+    await refreshCommands().catch(() => undefined);
+    await refreshSessions().catch(() => undefined);
+    if (client !== active) return;
+    if (!activeSessionID && sessions[0]) {
+      await selectSession(sessions[0].id);
+    } else if (activeSessionID) {
+      void hydrate(activeSessionID);
+    }
+  } catch (error) {
+    if (client !== active) return;
+    // O stream está aberto; uma falha pontual de refresh não derruba o estado.
+    if (connection.phase === "online") return;
+    setConnection({
+      phase: "offline",
+      failure: classifyFailure(error),
+      detail: errorMessage(error),
+    });
+  } finally {
+    syncInFlight = false;
+    if (syncPending) {
+      syncPending = false;
+      void syncAfterReconnect();
+    }
+  }
+}
+
+async function reconnectBackend(): Promise<void> {
+  const stored = await getConfig();
+  if (!stored) {
+    setConnection({ phase: "unconfigured" });
+    throw new Error("Configure o pareamento primeiro.");
+  }
+  const wasOnline = connection.phase === "online";
+  config = stored;
+  client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+  if (!wasOnline) resetStreaming();
+  startSse();
+  await syncAfterReconnect();
+  await updateBadge();
+  broadcastNow();
 }
 
 function onOpencodeEvent(event: {
@@ -1339,6 +1600,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({
         ok: false,
         error: errorMessage(error),
+        failure: connectionFailureOf(error),
       } satisfies UiResponse),
     );
   return true;
@@ -1348,8 +1610,69 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== "keepalive") return;
   void ensureOffscreen();
   relay.connect();
-  if (config && backend === "offline" && !sseAbort) startSse();
+  void runHealthcheck();
 });
+
+/**
+ * Motor periódico (30 s). Retoma o SSE quando ele não está rodando, encerra
+ * execuções órfãs após queda e faz uma verificação leve de vida do servidor
+ * para detectar streams meio-abertos.
+ */
+async function runHealthcheck(): Promise<void> {
+  if (!config || !client) return;
+  if (!sseAbort) {
+    startSse();
+    return;
+  }
+  if (
+    connection.phase === "connecting" &&
+    connectStartedAt &&
+    Date.now() - connectStartedAt > 20_000
+  ) {
+    // Handshake pendurado: o servidor aceitou o TCP mas não abriu o stream.
+    startSse(false);
+    return;
+  }
+  if (busy) {
+    if (
+      connection.phase === "offline" &&
+      connection.offlineSince &&
+      Date.now() - connection.offlineSince > 5_000
+    ) {
+      markRunInterrupted(
+        "A conexão com o OpenCode caiu durante a execução. A resposta pode estar incompleta.",
+      );
+      return;
+    }
+    if (
+      connection.phase === "online" &&
+      lastSseEventAt &&
+      Date.now() - lastSseEventAt > 120_000
+    ) {
+      markRunInterrupted(
+        "O OpenCode parou de responder durante a execução. A resposta pode estar incompleta.",
+      );
+      startSse(false);
+    }
+    return;
+  }
+  healthTick += 1;
+  if (healthTick % 2 !== 0 || probeInFlight) return;
+  probeInFlight = true;
+  try {
+    await client.probe();
+    if (connection.phase === "offline") startSse(false);
+  } catch (error) {
+    setConnection({
+      phase: "offline",
+      failure: classifyFailure(error),
+      detail: errorMessage(error),
+    });
+    startSse(false);
+  } finally {
+    probeInFlight = false;
+  }
+}
 
 chrome.commands.onCommand.addListener((command) => {
   if (command !== "toggle-side-panel") return;
@@ -1385,23 +1708,37 @@ async function init(): Promise<void> {
   config = await getConfig();
   if (config) {
     client = new OpencodeClient(config.baseUrl, config.token, config.directory);
-    await refreshModels().catch(() => {
-      backend = "offline";
+    setConnection({
+      phase: "connecting",
+      failure: null,
+      detail: null,
+      attempts: 0,
     });
-    await refreshAgents().catch(() => undefined);
-    await refreshCommands().catch(() => undefined);
-    await refreshSessions().catch(() => undefined);
-    const stored = await chrome.storage.local.get(ACTIVE_SESSION_KEY);
-    const wanted =
-      typeof stored[ACTIVE_SESSION_KEY] === "string"
-        ? stored[ACTIVE_SESSION_KEY]
-        : null;
-    const initial =
-      sessions.find((session) => session.id === wanted)?.id ??
-      sessions[0]?.id ??
-      null;
-    if (initial) await selectSession(initial);
+    try {
+      await refreshModels();
+      await refreshAgents().catch(() => undefined);
+      await refreshCommands().catch(() => undefined);
+      await refreshSessions().catch(() => undefined);
+      const stored = await chrome.storage.local.get(ACTIVE_SESSION_KEY);
+      const wanted =
+        typeof stored[ACTIVE_SESSION_KEY] === "string"
+          ? stored[ACTIVE_SESSION_KEY]
+          : null;
+      const initial =
+        sessions.find((session) => session.id === wanted)?.id ??
+        sessions[0]?.id ??
+        null;
+      if (initial) await selectSession(initial);
+    } catch (error) {
+      setConnection({
+        phase: "offline",
+        failure: classifyFailure(error),
+        detail: errorMessage(error),
+      });
+    }
     startSse();
+  } else {
+    connection = freshConnection("unconfigured");
   }
   relay.connect();
   await updateBadge();

@@ -49,6 +49,7 @@ class FakeWebSocket {
   close(): void {
     this.closeCalls += 1
     this.readyState = FakeWebSocket.CLOSED
+    this.emit("close", { code: 4000, reason: "sem pong" })
   }
 
   sentJson(): unknown[] {
@@ -271,23 +272,28 @@ describe("background/relay — descoberta de porta", () => {
 })
 
 describe("background/relay — handshake e ping", () => {
-  it("envia hello com extensionId e versão do protocolo ao abrir", async () => {
+  it("envia hello e só marca conectado depois do ready", async () => {
     vi.useFakeTimers()
     healthFetch({ 8799: async () => healthOk() })
     const { client, states } = makeClient()
     await client.connect()
 
-    socketAt(0).open()
+    const socket = socketAt(0)
+    socket.open()
 
-    expect(socketAt(0).sentJson()).toEqual([
+    expect(socket.sentJson()).toEqual([
       { type: "hello", v: RELAY_PROTOCOL, extensionId: "test-extension-id" },
     ])
     expect(RELAY_PROTOCOL).toBe(1)
-    expect(client.current).toEqual({ connected: true, url: "ws://127.0.0.1:8799" })
-    expect(states.at(-1)).toEqual({ connected: true, url: "ws://127.0.0.1:8799" })
+    expect(client.current.connected).toBe(false)
+
+    socket.message(JSON.stringify({ type: "ready", v: 1 }))
+
+    expect(client.current).toMatchObject({ connected: true, url: "ws://127.0.0.1:8799" })
+    expect(states.at(-1)).toMatchObject({ connected: true, url: "ws://127.0.0.1:8799" })
   })
 
-  it("envia pong a cada 20 segundos", async () => {
+  it("não envia pong por conta própria", async () => {
     vi.useFakeTimers()
     healthFetch({ 8799: async () => healthOk() })
     const { client } = makeClient()
@@ -295,19 +301,44 @@ describe("background/relay — handshake e ping", () => {
     const socket = socketAt(0)
     socket.open()
 
-    expect(socket.sent).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(60_000)
 
-    await vi.advanceTimersByTimeAsync(19_999)
     expect(pongs(socket)).toHaveLength(0)
+  })
 
-    await vi.advanceTimersByTimeAsync(1)
+  it("fecha o socket após 45s de silêncio depois do primeiro ping", async () => {
+    vi.useFakeTimers()
+    healthFetch({ 8799: async () => healthOk() })
+    const { client } = makeClient()
+    await client.connect()
+    const socket = socketAt(0)
+    socket.open()
+    socket.message(JSON.stringify({ type: "ping" }))
+
     expect(pongs(socket)).toEqual([{ type: "pong" }])
 
+    await vi.advanceTimersByTimeAsync(44_000)
+    expect(socket.closeCalls).toBe(0)
+
     await vi.advanceTimersByTimeAsync(20_000)
-    expect(pongs(socket)).toHaveLength(2)
+    expect(socket.closeCalls).toBe(1)
+    expect(client.current).toMatchObject({ connected: false, reason: "silent" })
   })
 
-  it("não acumula intervalos quando o socket emite open mais de uma vez", async () => {
+  it("não arma o watchdog para plugins antigos que não enviam ping", async () => {
+    vi.useFakeTimers()
+    healthFetch({ 8799: async () => healthOk() })
+    const { client } = makeClient()
+    await client.connect()
+    const socket = socketAt(0)
+    socket.open()
+
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    expect(socket.closeCalls).toBe(0)
+  })
+
+  it("não acumula watchdogs quando o socket emite open mais de uma vez", async () => {
     vi.useFakeTimers()
     healthFetch({ 8799: async () => healthOk() })
     const { client } = makeClient()
@@ -316,9 +347,10 @@ describe("background/relay — handshake e ping", () => {
 
     socket.open()
     socket.open()
+    socket.message(JSON.stringify({ type: "ping" }))
 
-    await vi.advanceTimersByTimeAsync(20_000)
-    expect(pongs(socket)).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(socket.closeCalls).toBe(1)
   })
 })
 
@@ -571,6 +603,7 @@ describe("background/relay — queda e reconexão", () => {
     expect(first.closeCalls).toBe(1)
     const second = socketAt(1)
     second.open()
+    second.message(JSON.stringify({ type: "ready", v: 1 }))
     const callsAfterReconnect = onState.mock.calls.length
 
     first.drop(1006, "tarde demais")

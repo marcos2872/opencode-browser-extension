@@ -16,11 +16,14 @@ export class OpencodeError extends Error {
   constructor(
     message: string,
     readonly status?: number,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; timedOut?: boolean },
   ) {
     super(message, options);
     this.name = "OpencodeError";
+    this.timedOut = options?.timedOut ?? false;
   }
+
+  readonly timedOut: boolean;
 }
 
 export function formatOpencodeError(error: unknown): string {
@@ -107,6 +110,7 @@ export class OpencodeClient {
     readonly baseUrl: string,
     readonly token: string,
     readonly directory?: string,
+    readonly timeoutMs = 15_000,
   ) {}
 
   static parsePairLink(link: string): { baseUrl: string; code: string } {
@@ -176,11 +180,29 @@ export class OpencodeClient {
     return url.toString();
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async request<T>(
+    path: string,
+    init?: RequestInit,
+    timeoutMs = this.timeoutMs,
+  ): Promise<T> {
+    const controller = new AbortController();
+    const external = init?.signal ?? undefined;
+    const forwardAbort = () => controller.abort();
+    if (external) {
+      if (external.aborted) controller.abort();
+      else external.addEventListener("abort", forwardAbort, { once: true });
+    }
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+
     let response: Response;
     try {
       response = await fetch(this.url(path), {
         ...init,
+        signal: controller.signal,
         headers: this.headers(
           init?.headers as Record<string, string> | undefined,
         ),
@@ -188,10 +210,15 @@ export class OpencodeClient {
       });
     } catch (error) {
       throw new OpencodeError(
-        `Não foi possível falar com o OpenCode em ${this.baseUrl}. Ele está rodando?`,
+        timedOut
+          ? `O OpenCode não respondeu em ${Math.round(timeoutMs / 1000)}s. Ele ainda está rodando?`
+          : `Não foi possível falar com o OpenCode em ${this.baseUrl}. Ele está rodando?`,
         undefined,
-        { cause: error },
+        { cause: error, timedOut },
       );
+    } finally {
+      clearTimeout(timer);
+      external?.removeEventListener("abort", forwardAbort);
     }
     if (!response.ok) {
       let body: unknown;
@@ -358,6 +385,7 @@ export class OpencodeClient {
   async subscribe(
     onEvent: (event: OpencodeEvent) => void,
     signal: AbortSignal,
+    onOpen?: () => void,
   ): Promise<void> {
     const response = await fetch(`${this.baseUrl}/api/event`, {
       headers: { ...this.headers(), accept: "text/event-stream" },
@@ -370,8 +398,14 @@ export class OpencodeClient {
         response.status,
       );
     }
+    onOpen?.();
     for await (const event of parseSse(response.body, signal)) {
       onEvent(event);
     }
+  }
+
+  /** Verificação leve de que o servidor continua respondendo. */
+  async probe(timeoutMs = 5_000): Promise<void> {
+    await this.request<unknown>("/api/agent", undefined, timeoutMs);
   }
 }

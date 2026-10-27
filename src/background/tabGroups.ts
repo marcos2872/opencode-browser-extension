@@ -128,18 +128,37 @@ export class TabGroups {
       });
       if (tab.id === undefined)
         throw new Error("Não foi possível criar a aba do grupo.");
-      const groupId = await chrome.tabs.group({ tabIds: [tab.id] });
-      const index = records.length;
-      await chrome.tabGroups.update(groupId, {
-        title: displayName,
-        color: COLORS[index % COLORS.length] as chrome.tabGroups.Color,
-        collapsed: false,
-      });
-      const record: GroupRecord = { sessionID, groupId, mainTabId: tab.id };
-      this.records = [...(this.records ?? []), record];
-      await this.save();
-      return record;
+      const groupId = await this.createGroupLocked(
+        sessionID,
+        tab.id,
+        displayName,
+      );
+      return { sessionID, groupId, mainTabId: tab.id };
     });
+  }
+
+  /**
+   * Cria o grupo usando a própria aba informada como principal, sem abrir uma
+   * aba em branco. Deve ser chamado dentro de `serialize`.
+   */
+  private async createGroupLocked(
+    sessionID: string,
+    tabId: number,
+    displayName = "OpenCode",
+  ): Promise<number> {
+    const groupId = await chrome.tabs.group({ tabIds: [tabId] });
+    const index = (this.records ?? []).length;
+    await chrome.tabGroups.update(groupId, {
+      title: displayName,
+      color: COLORS[index % COLORS.length] as chrome.tabGroups.Color,
+      collapsed: false,
+    });
+    this.records = [
+      ...(this.records ?? []),
+      { sessionID, groupId, mainTabId: tabId },
+    ];
+    await this.save();
+    return groupId;
   }
 
   async get(sessionID: string): Promise<GroupRecord | null> {
@@ -188,10 +207,56 @@ export class TabGroups {
     return { tabId: main.id, groupId: record.groupId };
   }
 
-  async addTab(sessionID: string, tabId: number): Promise<number> {
-    const record = await this.ensure(sessionID);
-    await chrome.tabs.group({ tabIds: [tabId], groupId: record.groupId });
-    return record.groupId;
+  async addTab(
+    sessionID: string,
+    tabId: number,
+    options: { makeMain?: boolean } = {},
+  ): Promise<number> {
+    return this.serialize(async () => {
+      const records = await this.load();
+      const record = records.find((item) => item.sessionID === sessionID);
+      if (record) {
+        let alive = true;
+        try {
+          await chrome.tabGroups.get(record.groupId);
+        } catch {
+          alive = false;
+        }
+        if (alive) {
+          await chrome.tabs.group({ tabIds: [tabId], groupId: record.groupId });
+          if (options.makeMain) {
+            record.mainTabId = tabId;
+            await this.save();
+            await chrome.tabs
+              .update(tabId, { active: true })
+              .catch(() => undefined);
+          }
+          return record.groupId;
+        }
+        this.records = records.filter((item) => item !== record);
+      }
+      // Sem grupo: a aba anexada vira a principal, sem criar about:blank.
+      const groupId = await this.createGroupLocked(sessionID, tabId);
+      if (options.makeMain) {
+        await chrome.tabs
+          .update(tabId, { active: true })
+          .catch(() => undefined);
+      }
+      return groupId;
+    });
+  }
+
+  /** Aba que as ferramentas usam quando nenhum `tabId` é informado. */
+  async currentTabId(sessionID: string): Promise<number | null> {
+    const record = await this.get(sessionID);
+    if (!record) return null;
+    const tabs = await chrome.tabs
+      .query({ groupId: record.groupId })
+      .catch(() => []);
+    if (tabs.some((tab) => tab.id === record.mainTabId)) {
+      return record.mainTabId;
+    }
+    return tabs.find((tab) => tab.id !== undefined)?.id ?? null;
   }
 
   async detachTab(sessionID: string, tabId: number): Promise<void> {

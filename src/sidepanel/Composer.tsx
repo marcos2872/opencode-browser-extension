@@ -2,10 +2,31 @@ import { useEffect, useRef } from "react"
 import type { CommandInfo } from "../shared/types"
 import { SendIcon, StopIcon } from "../components/icons"
 
+const MIN_HEIGHT = 22
+const MAX_HEIGHT = 160
+
+/**
+ * Ajusta a altura ao conteúdo. Com o campo vazio, remove o inline e deixa o
+ * CSS/`rows` definir — assim um valor residual nunca fica congelado no teto.
+ */
+function fit(element: HTMLTextAreaElement): void {
+  if (!element.value) {
+    element.style.height = ""
+    return
+  }
+  element.style.height = "0px"
+  const next = Math.min(
+    Math.max(element.scrollHeight, MIN_HEIGHT),
+    MAX_HEIGHT,
+  )
+  element.style.height = `${next}px`
+}
+
 interface Props {
   value: string
   busy: boolean
   disabled?: boolean
+  blockedReason?: string | null
   relayConnected: boolean
   commands: CommandInfo[]
   onChange: (value: string) => void
@@ -17,6 +38,7 @@ export function Composer({
   value,
   busy,
   disabled,
+  blockedReason,
   relayConnected,
   commands,
   onChange,
@@ -28,9 +50,29 @@ export function Composer({
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    element.style.height = "auto"
-    element.style.height = `${Math.min(element.scrollHeight, 160)}px`
+    fit(element)
   }, [value])
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    const onWindowResize = () => fit(element)
+    window.addEventListener("resize", onWindowResize)
+    let width = element.clientWidth
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (element.clientWidth === width) return
+            width = element.clientWidth
+            fit(element)
+          })
+    if (observer) observer.observe(element.parentElement ?? element)
+    return () => {
+      window.removeEventListener("resize", onWindowResize)
+      observer?.disconnect()
+    }
+  }, [])
 
   const slash = /^\/([^\s]*)$/.exec(value)
   const matches = slash
@@ -56,8 +98,13 @@ export function Composer({
           ref={ref}
           value={value}
           rows={1}
-          placeholder={busy ? "O agente está trabalhando..." : "Peça algo ao OpenCode..."}
-          disabled={disabled}
+          placeholder={
+            busy
+              ? "O agente está trabalhando..."
+              : blockedReason ?? "Peça algo ao OpenCode..."
+          }
+          disabled={disabled || Boolean(blockedReason)}
+          title={blockedReason ?? undefined}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -75,8 +122,8 @@ export function Composer({
             <button
               className="send-btn"
               onClick={onSend}
-              disabled={disabled || !value.trim()}
-              title="Enviar (Enter)"
+              disabled={disabled || Boolean(blockedReason) || !value.trim()}
+              title={blockedReason ?? "Enviar (Enter)"}
             >
               <SendIcon size={14} />
             </button>
