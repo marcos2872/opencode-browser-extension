@@ -6,6 +6,13 @@ import { ToolRun, ToolsModal } from "./ToolsModal"
 
 export type ToolDisplay = "grouped" | "rows" | "full" | "hidden"
 
+interface HiddenRun {
+  texts: string[]
+  errors: string[]
+  questions: ToolCallView[]
+  usage?: TokenUsage
+}
+
 interface Props {
   messages: ChatMessage[]
   busy: boolean
@@ -62,6 +69,25 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
   const [openRunID, setOpenRunID] = useState<string | null>(null)
   const hidden = toolDisplay === "hidden"
   const runTools = collectRunTools(messages)
+  const hiddenRuns = new Map<number, HiddenRun>()
+  if (hidden) {
+    messages.forEach((message, index) => {
+      if (message.kind === "user") return
+      const start = runStartIndex(messages, index)
+      const run = hiddenRuns.get(start) ?? {
+        texts: [],
+        errors: [],
+        questions: [],
+      }
+      if (message.text.trim()) run.texts.push(message.text)
+      if (message.error) run.errors.push(message.error)
+      for (const tool of message.tools) {
+        if (tool.name === "question") run.questions.push(tool)
+      }
+      if (message.usage) run.usage = message.usage
+      hiddenRuns.set(start, run)
+    })
+  }
   const openStart = openRunID
     ? messages.findIndex((message) => message.id === openRunID)
     : -1
@@ -123,25 +149,70 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
           }
 
           const start = runStartIndex(messages, index)
-          const tools = runTools.get(start) ?? []
           const runEnds =
             index === messages.length - 1 || messages[index + 1].kind === "user"
+
+          if (hidden) {
+            if (!runEnds) return null
+            const run = hiddenRuns.get(start)
+            if (
+              !run ||
+              (!run.texts.length && !run.errors.length && !run.questions.length)
+            ) {
+              return null
+            }
+            return (
+              <div className="msg msg-assistant" key={`run_${messages[start].id}`}>
+                <div className="row">
+                  <span className="msg-meta">OpenCode</span>
+                  {run.usage ? (
+                    <span className="usage-meta">{usageLabel(run.usage)}</span>
+                  ) : null}
+                </div>
+                {run.texts.map((text, textIndex) => (
+                  <Markdown
+                    key={`${messages[start].id}_t${textIndex}`}
+                    text={text}
+                  />
+                ))}
+                {run.questions.map((tool) => (
+                  <ToolCard
+                    key={tool.id}
+                    tool={tool}
+                    forms={forms}
+                    busyFormID={busyFormID}
+                    onFormSubmit={onFormSubmit}
+                    onFormCancel={onFormCancel}
+                    detailed={false}
+                  />
+                ))}
+                {run.errors.map((error, errorIndex) => (
+                  <div
+                    className="error-banner"
+                    key={`${messages[start].id}_e${errorIndex}`}
+                  >
+                    {error}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          const tools = runTools.get(start) ?? []
           const inlineTools =
-            hidden
-              ? message.tools.filter((tool) => tool.name === "question")
-              : toolDisplay === "grouped"
-                ? message.tools.filter(
-                    (tool) =>
-                      tool.name === "question" || tool.status === "running",
-                  )
-                : message.tools
+            toolDisplay === "grouped"
+              ? message.tools.filter(
+                  (tool) =>
+                    tool.name === "question" || tool.status === "running",
+                )
+              : message.tools
 
           return (
             <div className="msg msg-assistant" key={message.id}>
               <div className="row">
                 <span className="msg-meta">OpenCode</span>
                 {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
-                {!hidden && message.streaming ? (
+                {message.streaming ? (
                   <span className="thinking">
                     <span />
                     <span />
@@ -149,7 +220,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                   </span>
                 ) : null}
               </div>
-              {!hidden && message.reasoning ? (
+              {message.reasoning ? (
                 <details className="reasoning">
                   <summary>Raciocínio</summary>
                   <div>{message.reasoning}</div>
@@ -168,14 +239,14 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                 />
               ))}
               {message.error ? <div className="error-banner">{message.error}</div> : null}
-              {!hidden && !message.text && message.tools.length === 0 && message.streaming ? (
+              {!message.text && message.tools.length === 0 && message.streaming ? (
                 <div className="thinking">
                   <span />
                   <span />
                   <span /> trabalhando
                 </div>
               ) : null}
-              {!hidden && toolDisplay === "grouped" && runEnds ? (
+              {toolDisplay === "grouped" && runEnds ? (
                 tools.length === 1 ? (
                   inlineTools.some((tool) => tool.id === tools[0].id) ? null : (
                     <ToolCard

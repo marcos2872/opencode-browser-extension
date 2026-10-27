@@ -177,6 +177,27 @@ describe("sidepanel/Chat", () => {
     expect(screen.getByText("Apagar tudo?")).toBeInTheDocument()
   })
 
+  it("agrupa o run em um único bloco no modo oculto", () => {
+    const messages = [
+      { kind: "user" as const, id: "u1", text: "faça", time: 1 },
+      makeMessage({ id: "a1", text: "primeiro", tools: [] }),
+      makeMessage({
+        id: "a2",
+        text: "",
+        tools: [{ id: "t1", name: "navigate", status: "ok", input: { url: "https://x" } }],
+      }),
+      makeMessage({ id: "a3", text: "final", tools: [] }),
+    ]
+    render(
+      <Chat messages={messages} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+
+    expect(screen.getAllByText("OpenCode")).toHaveLength(1)
+    expect(screen.getByText("primeiro")).toBeInTheDocument()
+    expect(screen.getByText("final")).toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
+  })
+
   it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {    render(
       <Chat
         messages={[makeMessage({ usage: { total: 1200, input: 900, output: 300, cost: 0.0012 } })]}

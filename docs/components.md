@@ -17,8 +17,9 @@ renderiza onboarding, chat, cards e toasts.
 indicador de streaming e sugestões iniciais. No modo agrupado (padrão), as
 tools de cada execução viram uma linha com contagem/erros e abrem o
 `ToolsModal`; a ferramenta em execução e as perguntas (`question`) continuam
-inline. Em `hidden`, raciocínio e tools somem e só o indicador “trabalhando”
-aparece durante a execução (perguntas continuam visíveis).
+inline. Em `hidden`, raciocínio e tools somem, as mensagens de cada execução
+são agregadas em um único bloco e só o indicador “trabalhando” aparece durante
+a execução (perguntas continuam visíveis).
 
 ### `ToolsModal`
 
