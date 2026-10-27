@@ -4,6 +4,10 @@ interface GroupRecord {
   mainTabId: number;
 }
 
+function isBlankUrl(url?: string): boolean {
+  return !url || url === "about:blank" || url.startsWith("chrome://newtab");
+}
+
 const STORAGE_KEY = "tabGroups";
 const COLORS = [
   "blue",
@@ -274,18 +278,66 @@ export class TabGroups {
     url = "about:blank",
     active = true,
   ): Promise<number> {
-    const record = await this.ensure(sessionID);
-    const source = await chrome.tabs
-      .get(record.mainTabId)
-      .catch(() => undefined);
-    const tab = await chrome.tabs.create({
-      windowId: source?.windowId,
-      url,
-      active,
+    return this.serialize(async () => {
+      const records = await this.load();
+      const record = records.find((item) => item.sessionID === sessionID);
+      if (record) {
+        try {
+          await chrome.tabGroups.get(record.groupId);
+        } catch {
+          this.records = records.filter((item) => item !== record);
+        }
+      }
+      const current = this.records?.find(
+        (item) => item.sessionID === sessionID,
+      );
+
+      // Sem grupo: a aba já nasce dentro dele, sem about:blank intermediário.
+      if (!current) {
+        const window = await chrome.windows
+          .getLastFocused()
+          .catch(() => undefined);
+        const created = await chrome.tabs.create({
+          windowId: window?.id,
+          url,
+          active,
+        });
+        if (created.id === undefined)
+          throw new Error("Não foi possível criar a aba.");
+        await this.createGroupLocked(sessionID, created.id);
+        return created.id;
+      }
+
+      const tabs = await chrome.tabs
+        .query({ groupId: current.groupId })
+        .catch(() => []);
+      const main = tabs.find((tab) => tab.id === current.mainTabId);
+      // Grupo recém-criado: a única aba é a em branco; navega nela.
+      if (
+        tabs.length === 1 &&
+        main?.id !== undefined &&
+        isBlankUrl(main.url ?? main.pendingUrl)
+      ) {
+        await chrome.tabs.update(main.id, { url, active });
+        return main.id;
+      }
+
+      const source = await chrome.tabs
+        .get(current.mainTabId)
+        .catch(() => undefined);
+      const tab = await chrome.tabs.create({
+        windowId: source?.windowId,
+        url,
+        active,
+      });
+      if (tab.id === undefined) throw new Error("Não foi possível criar a aba.");
+      await chrome.tabs.group({ tabIds: [tab.id], groupId: current.groupId });
+      if (!tabs.some((item) => item.id === current.mainTabId)) {
+        current.mainTabId = tab.id;
+        await this.save();
+      }
+      return tab.id;
     });
-    if (tab.id === undefined) throw new Error("Não foi possível criar a aba.");
-    await chrome.tabs.group({ tabIds: [tab.id], groupId: record.groupId });
-    return tab.id;
   }
 
   async closeTab(sessionID: string, tabId: number): Promise<void> {

@@ -32,6 +32,8 @@ Regras:
 - Seja breve e não narre cada passo antes de agir; vá direto às ferramentas.
 - Comece por `browser_tabs_context` e reutilize a aba que já está no grupo.
   Só use `browser_tabs_create` quando não houver aba adequada.
+- Se o grupo já tem uma aba, use `browser_navigate` nela em vez de
+  `browser_tabs_create`.
 - Trabalhe apenas nas abas do grupo desta sessão; não toque em outras janelas.
 - Use `browser_batch` para sequências de ações independentes.
 - Depois de navegar, clicar ou preencher, confirme com `browser_read_page`,
