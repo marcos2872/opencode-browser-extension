@@ -4,6 +4,7 @@ import {
   OpencodeClient,
   OpencodeError,
 } from "./opencode/client";
+import { messageUsage } from "./opencode/usage";
 import { Permissions } from "./permissions";
 import { Recording } from "./recording";
 import { RelayClient } from "./relay";
@@ -95,6 +96,7 @@ let syncPending = false;
 let lastSseEventAt = 0;
 let connectStartedAt = 0;
 let refreshSessionTimer: ReturnType<typeof setTimeout> | null = null;
+let contextUsage: TokenUsage | undefined;
 
 function playSound(): void {
   if (config?.soundEnabled === false) return;
@@ -139,6 +141,7 @@ function snapshot(): AppSnapshot {
     relay: relayState,
     busy,
     connection,
+    contextUsage,
     defaultModel,
     agents,
     commands,
@@ -461,6 +464,7 @@ async function unpair(): Promise<void> {
   commands = [];
   statusMessage = null;
   syncPending = false;
+  contextUsage = undefined;
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   await updateBadge();
   broadcastNow();
@@ -570,8 +574,27 @@ function refreshSessionUsage(): void {
   if (refreshSessionTimer) clearTimeout(refreshSessionTimer);
   refreshSessionTimer = setTimeout(() => {
     refreshSessionTimer = null;
-    void refreshSessions().catch(() => undefined);
+    void (async () => {
+      await refreshSessions().catch(() => undefined);
+      await refreshActiveUsage();
+    })();
   }, 400);
+}
+
+/** Contexto da última requisição da sessão ativa (não é o total acumulado). */
+async function refreshActiveUsage(): Promise<void> {
+  if (!client || !activeSessionID) {
+    contextUsage = undefined;
+    broadcastNow();
+    return;
+  }
+  const sessionID = activeSessionID;
+  const usage = await client
+    .lastAssistantUsage(sessionID)
+    .catch(() => undefined);
+  if (activeSessionID !== sessionID) return;
+  contextUsage = usage;
+  broadcastNow();
 }
 
 async function refreshSessions(): Promise<void> {
@@ -631,6 +654,7 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   activeSessionID = session.id;
   messages = [];
   busy = false;
+  contextUsage = undefined;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: session.id });
   broadcastNow();
 }
@@ -644,6 +668,7 @@ async function selectSession(id: string): Promise<void> {
   broadcastNow();
   void hydrate(id);
   void loadForms(id);
+  void refreshActiveUsage();
 }
 
 async function loadForms(id: string): Promise<void> {
@@ -788,6 +813,7 @@ async function deleteSession(id: string): Promise<void> {
     messages = [];
     forms = [];
     if (activeSessionID) await selectSession(activeSessionID);
+    else contextUsage = undefined;
   }
   broadcastNow();
 }
@@ -1442,34 +1468,6 @@ function contentText(content: unknown): string | undefined {
     .filter(Boolean)
     .join("\n");
   return text || undefined;
-}
-
-function messageUsage(
-  message: Record<string, unknown>,
-): TokenUsage | undefined {
-  const nestedUsage =
-    message.usage && typeof message.usage === "object"
-      ? (message.usage as Record<string, unknown>)
-      : undefined;
-  const tokens =
-    message.tokens && typeof message.tokens === "object"
-      ? (message.tokens as Record<string, unknown>)
-      : nestedUsage?.tokens && typeof nestedUsage.tokens === "object"
-        ? (nestedUsage.tokens as Record<string, unknown>)
-        : (nestedUsage ?? message);
-  const cache =
-    tokens?.cache && typeof tokens.cache === "object"
-      ? (tokens.cache as Record<string, unknown>)
-      : undefined;
-  const usage: TokenUsage = {};
-  for (const key of ["total", "input", "output", "reasoning"] as const) {
-    if (typeof tokens?.[key] === "number") usage[key] = tokens[key] as number;
-  }
-  if (typeof cache?.read === "number") usage.cacheRead = cache.read;
-  if (typeof cache?.write === "number") usage.cacheWrite = cache.write;
-  const cost = message.cost ?? nestedUsage?.cost;
-  if (typeof cost === "number") usage.cost = cost;
-  return Object.keys(usage).length > 0 ? usage : undefined;
 }
 
 async function executeRelayTool(

@@ -56,18 +56,23 @@ describe("sessionStats", () => {
     expect(stats.contextUsed).toBe(1_500)
   })
 
-  it("usa o resumo da sessão quando o histórico não tem usage", () => {
+  it("usa o usage da última mensagem da sessão quando o histórico não tem usage", () => {
     const stats = sessionStats(
       conversation(makeMessage()),
       model,
-      {
-        id: "ses_1",
-        cost: 0.5,
-        tokens: { input: 1_000, cache: { read: 500 } },
-      },
+      undefined,
+      { input: 1_000, cache: { read: 500 } },
     )
 
     expect(stats.contextUsed).toBe(1_500)
+    expect(stats.cost).toBeUndefined()
+  })
+
+  it("usa o custo informado pela sessão", () => {
+    const stats = sessionStats(conversation(makeMessage()), model, {
+      id: "ses_1",
+      cost: 0.5,
+    })
     expect(stats.cost).toBe(0.5)
   })
 
@@ -75,7 +80,6 @@ describe("sessionStats", () => {
     const stats = sessionStats(conversation(makeMessage()), model, {
       id: "ses_1",
       cost: 0,
-      tokens: { input: 1_000 },
     })
     expect(stats.cost).toBe(0)
   })

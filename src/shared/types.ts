@@ -276,6 +276,8 @@ export interface AppSnapshot {
   relay: RelayState;
   busy: boolean;
   connection: ConnectionState;
+  /** Usage da última mensagem da sessão ativa (contexto da janela). */
+  contextUsage?: TokenUsage;
   defaultModel: ModelRef | null;
   agents: AgentInfo[];
   commands: CommandInfo[];

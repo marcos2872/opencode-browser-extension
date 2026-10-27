@@ -165,6 +165,18 @@ function installFetch(
       });
     }
     if (pathname.endsWith("/context")) return jsonResponse({ data: [] });
+    if (pathname.endsWith("/message")) {
+      return jsonResponse({
+        data: [
+          { type: "idle" },
+          {
+            type: "assistant",
+            tokens: { input: 1000, output: 100, cache: { read: 200 } },
+            cost: 0,
+          },
+        ],
+      });
+    }
     if (
       pathname.endsWith("/prompt") ||
       pathname.endsWith("/command") ||
@@ -523,8 +535,19 @@ describe("service-worker: conexão e reconexão", () => {
     ).toBe(true);
   });
 
-  it("prefere o agente do navegador quando ele existe", async () => {
-    installFetch({
+  it("expõe o contexto da última mensagem no snapshot", async () => {
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.contextUsage).toMatchObject({
+      input: 1000,
+      cacheRead: 200,
+    });
+  })
+
+  it("prefere o agente do navegador quando ele existe", async () => {    installFetch({
       agents: [
         makeAgent({ id: "build" }),
         makeAgent({ id: "opencode-browser" }),

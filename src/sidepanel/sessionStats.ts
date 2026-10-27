@@ -1,4 +1,4 @@
-import type { ChatMessage, ModelInfo, SessionInfo } from "../shared/types"
+import type { ChatMessage, ModelInfo, SessionInfo, TokenUsage } from "../shared/types"
 
 export interface SessionStats {
   contextUsed?: number
@@ -24,6 +24,7 @@ export function sessionStats(
   messages: ChatMessage[],
   model?: ModelInfo | null,
   session?: SessionInfo | null,
+  contextUsage?: TokenUsage,
 ): SessionStats {
   let contextUsed: number | undefined
   let messageCost: number | undefined
@@ -40,13 +41,14 @@ export function sessionStats(
       contextUsed = message.usage.total
     }
   }
-  if (contextUsed === undefined && session?.tokens) {
-    const tokens = session.tokens
-    if (typeof tokens.input === "number") {
+  // Histórico hidratado não tem usage por mensagem: usa o dado da sessão.
+  if (contextUsed === undefined && contextUsage) {
+    if (typeof contextUsage.input === "number") {
       contextUsed =
-        tokens.input + (tokens.cacheRead ?? tokens.cache?.read ?? 0)
-    } else if (typeof tokens.total === "number") {
-      contextUsed = tokens.total
+        contextUsage.input +
+        (contextUsage.cacheRead ?? contextUsage.cache?.read ?? 0)
+    } else if (typeof contextUsage.total === "number") {
+      contextUsed = contextUsage.total
     }
   }
   // O custo da sessão é autoritativo; o somatório cobre runs antes do refresh.
