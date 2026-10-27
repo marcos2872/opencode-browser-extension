@@ -17,7 +17,7 @@ ou na página de opções.
 | `findMode` | Ranking do `find` | `heuristic` \| `model` | `heuristic` | Não | `tools/page.ts` |
 | `soundEnabled` | Aviso sonoro | boolean | `true` | Não | Offscreen |
 | `notifyEnabled` | Notificação do sistema | boolean | `true` | Não | `chrome.notifications` |
-| `toolDisplay` | Como as tools aparecem no chat (`grouped`, `rows`, `full`) | string | `grouped` | Não | `sidepanel/Chat` |
+| `toolDisplay` | Como as tools aparecem no chat (`grouped`, `rows`, `full`, `hidden`) | string | `grouped` | Não | `sidepanel/Chat` |
 | `browserAgentDefault` | Usa o agente `opencode-browser` nas novas sessões | boolean | `true` | Não | `service-worker` |
 
 ### Modos de permissão

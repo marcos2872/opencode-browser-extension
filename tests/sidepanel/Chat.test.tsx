@@ -129,6 +129,54 @@ describe("sidepanel/Chat", () => {
     expect(screen.getByText("Resultado")).toBeInTheDocument()
   })
 
+  it("esconde tools e raciocínio e mostra só o indicador de trabalho", () => {
+    const message = makeMessage({
+      reasoning: "pensei nas opções",
+      text: "resposta",
+      tools: [
+        {
+          id: "t1",
+          name: "navigate",
+          status: "ok",
+          input: { url: "https://x.com" },
+          output: "ok",
+        },
+      ],
+    })
+    const { rerender } = render(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+    expect(screen.queryByText("Raciocínio")).not.toBeInTheDocument()
+    expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
+    expect(screen.queryByText(/trabalhando/)).not.toBeInTheDocument()
+
+    rerender(
+      <Chat messages={[message]} busy onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+    expect(screen.getAllByText(/trabalhando/)).toHaveLength(1)
+  })
+
+  it("mantém perguntas do agente visíveis no modo oculto", () => {
+    const message = makeMessage({
+      tools: [
+        {
+          id: "t1",
+          name: "question",
+          status: "running",
+          input: {
+            questions: [{ question: "Apagar tudo?", options: [{ label: "Sim" }] }],
+          },
+        },
+      ],
+    })
+    render(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+
+    expect(screen.getByText("Pergunta")).toBeInTheDocument()
+    expect(screen.getByText("Apagar tudo?")).toBeInTheDocument()
+  })
+
   it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {    render(
       <Chat
         messages={[makeMessage({ usage: { total: 1200, input: 900, output: 300, cost: 0.0012 } })]}

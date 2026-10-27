@@ -23,7 +23,7 @@ pareamento.
 | `findMode` | `heuristic` \| `model` | Não | Ranking do `find` |
 | `soundEnabled` | boolean | Não | Aviso sonoro (padrão true) |
 | `notifyEnabled` | boolean | Não | Notificação do sistema (padrão true) |
-| `toolDisplay` | `grouped` \| `rows` \| `full` | Não | Exibição das tools no chat (padrão `grouped`) |
+| `toolDisplay` | `grouped` \| `rows` \| `full` \| `hidden` | Não | Exibição das tools no chat (padrão `grouped`; `hidden` esconde tools e raciocínio) |
 | `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
 
 ## Modelos e sessões

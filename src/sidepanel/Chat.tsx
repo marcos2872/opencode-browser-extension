@@ -4,7 +4,7 @@ import { Markdown } from "../components/Markdown"
 import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
 import { ToolRun, ToolsModal } from "./ToolsModal"
 
-export type ToolDisplay = "grouped" | "rows" | "full"
+export type ToolDisplay = "grouped" | "rows" | "full" | "hidden"
 
 interface Props {
   messages: ChatMessage[]
@@ -60,6 +60,7 @@ function collectRunTools(messages: ChatMessage[]): Map<number, ToolCallView[]> {
 
 export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, toolDisplay = "grouped" }: Props) {
   const [openRunID, setOpenRunID] = useState<string | null>(null)
+  const hidden = toolDisplay === "hidden"
   const runTools = collectRunTools(messages)
   const openStart = openRunID
     ? messages.findIndex((message) => message.id === openRunID)
@@ -126,18 +127,21 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
           const runEnds =
             index === messages.length - 1 || messages[index + 1].kind === "user"
           const inlineTools =
-            toolDisplay === "grouped"
-              ? message.tools.filter(
-                  (tool) => tool.name === "question" || tool.status === "running",
-                )
-              : message.tools
+            hidden
+              ? message.tools.filter((tool) => tool.name === "question")
+              : toolDisplay === "grouped"
+                ? message.tools.filter(
+                    (tool) =>
+                      tool.name === "question" || tool.status === "running",
+                  )
+                : message.tools
 
           return (
             <div className="msg msg-assistant" key={message.id}>
               <div className="row">
                 <span className="msg-meta">OpenCode</span>
                 {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
-                {message.streaming ? (
+                {!hidden && message.streaming ? (
                   <span className="thinking">
                     <span />
                     <span />
@@ -145,7 +149,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                   </span>
                 ) : null}
               </div>
-              {message.reasoning ? (
+              {!hidden && message.reasoning ? (
                 <details className="reasoning">
                   <summary>Raciocínio</summary>
                   <div>{message.reasoning}</div>
@@ -164,14 +168,14 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                 />
               ))}
               {message.error ? <div className="error-banner">{message.error}</div> : null}
-              {!message.text && message.tools.length === 0 && message.streaming ? (
+              {!hidden && !message.text && message.tools.length === 0 && message.streaming ? (
                 <div className="thinking">
                   <span />
                   <span />
                   <span /> trabalhando
                 </div>
               ) : null}
-              {toolDisplay === "grouped" && runEnds ? (
+              {!hidden && toolDisplay === "grouped" && runEnds ? (
                 tools.length === 1 ? (
                   inlineTools.some((tool) => tool.id === tools[0].id) ? null : (
                     <ToolCard
@@ -193,11 +197,11 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
             </div>
           )
         })}
-        {busy && !messages.some((message) => message.kind === "assistant" && message.streaming) ? (
+        {busy && (hidden || !messages.some((message) => message.kind === "assistant" && message.streaming)) ? (
           <div className="thinking">
             <span />
             <span />
-            <span /> aguardando o OpenCode
+            <span /> {hidden ? "trabalhando" : "aguardando o OpenCode"}
           </div>
         ) : null}
         {orphanForms.map((form) => (
@@ -211,7 +215,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
         ))}
         <div ref={bottomRef} />
       </div>
-      {openRunID && openTools.length ? (
+      {!hidden && openRunID && openTools.length ? (
         <ToolsModal
           tools={openTools}
           title="Ferramentas desta execução"

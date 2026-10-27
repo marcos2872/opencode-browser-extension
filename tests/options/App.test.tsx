@@ -93,10 +93,10 @@ describe("options/App", () => {
     const select = screen.getByLabelText("Ferramentas no chat")
     expect(select).toHaveValue("grouped")
 
-    await user.selectOptions(select, "full")
+    await user.selectOptions(select, "hidden")
     await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
 
-    expect(sent("settings:update").patch.toolDisplay).toBe("full")
+    expect(sent("settings:update").patch.toolDisplay).toBe("hidden")
   })
 
   it("salva a preferência de agente do navegador", async () => {

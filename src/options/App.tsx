@@ -58,7 +58,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
-  const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full">("grouped")
+  const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full" | "hidden">("grouped")
   const [browserAgentDefault, setBrowserAgentDefault] = useState(true)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
@@ -411,16 +411,20 @@ export default function App() {
               className="select"
               value={toolDisplay}
               onChange={(event) =>
-                setToolDisplay(event.target.value as "grouped" | "rows" | "full")
+                setToolDisplay(
+                  event.target.value as "grouped" | "rows" | "full" | "hidden",
+                )
               }
             >
               <option value="grouped">Agrupadas (abrem em um modal)</option>
               <option value="rows">Linhas compactas, uma por chamada</option>
               <option value="full">Cards completos, com parâmetros e resultado</option>
+              <option value="hidden">Ocultar tools e raciocínio (só “trabalhando”)</option>
             </select>
             <p className="desc">
               No modo agrupado, uma linha resume a execução e abre a lista completa de tools;
-              só a ferramenta em execução fica no chat.
+              só a ferramenta em execução fica no chat. Em “Ocultar”, o raciocínio e as tools
+              somem e só aparece o indicador de trabalho; perguntas do agente continuam visíveis.
             </p>
           </div>
 

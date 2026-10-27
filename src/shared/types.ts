@@ -191,7 +191,7 @@ export interface OpencodeConfig {
   soundEnabled?: boolean;
   notifyEnabled?: boolean;
   /** Como as tools aparecem no chat. Padrão: agrupadas em um modal. */
-  toolDisplay?: "grouped" | "rows" | "full";
+  toolDisplay?: "grouped" | "rows" | "full" | "hidden";
   /** Usa o agente `opencode-browser` nas novas sessões. Padrão: true. */
   browserAgentDefault?: boolean;
 }
