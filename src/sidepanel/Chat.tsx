@@ -1,5 +1,5 @@
 import { useState, type RefObject } from "react"
-import type { ChatMessage, FormAnswer, FormInfo, ToolCallView, TokenUsage } from "../shared/types"
+import type { ChatMessage, FormAnswer, FormInfo, ToolCallView } from "../shared/types"
 import { Markdown } from "../components/Markdown"
 import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
 import { activityText } from "./toolActivity"
@@ -12,7 +12,6 @@ interface HiddenRun {
   texts: string[]
   errors: string[]
   questions: ToolCallView[]
-  usage?: TokenUsage
 }
 
 interface Props {
@@ -35,20 +34,7 @@ const SUGGESTIONS = [
   "Pesquise o preço de um produto em três lojas e compare em uma tabela.",
 ]
 
-function usageLabel(usage: TokenUsage): string {
-  const formatter = new Intl.NumberFormat("pt-BR")
-  const total = usage.total ?? (usage.input ?? 0) + (usage.output ?? 0)
-  const parts = [`${formatter.format(total)} tokens`]
-  if (usage.input !== undefined) parts.push(`${formatter.format(usage.input)} entrada`)
-  if (usage.output !== undefined) parts.push(`${formatter.format(usage.output)} saída`)
-  if (usage.cost !== undefined) {
-    parts.push(new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD", maximumFractionDigits: 6 }).format(usage.cost))
-  }
-  return parts.join(" · ")
-}
-
-/** Índice da primeira mensagem de assistente do run que contém `index`. */
-function runStartIndex(messages: ChatMessage[], index: number): number {
+/** Índice da primeira mensagem de assistente do run que contém `index`. */function runStartIndex(messages: ChatMessage[], index: number): number {
   let start = index
   while (start > 0 && messages[start - 1].kind === "assistant") start -= 1
   return start
@@ -85,9 +71,8 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
       if (message.text.trim()) run.texts.push(message.text)
       if (message.error) run.errors.push(message.error)
       for (const tool of message.tools) {
-        if (normalizeToolName(tool.name) === "question") run.questions.push(tool)
+      if (normalizeToolName(tool.name) === "question") run.questions.push(tool)
       }
-      if (message.usage) run.usage = message.usage
       hiddenRuns.set(start, run)
     })
   }
@@ -168,9 +153,6 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
               <div className="msg msg-assistant" key={`run_${messages[start].id}`}>
                 <div className="row">
                   <span className="msg-meta">OpenCode</span>
-                  {run.usage ? (
-                    <span className="usage-meta">{usageLabel(run.usage)}</span>
-                  ) : null}
                 </div>
                 {run.texts.map((text, textIndex) => (
                   <Markdown
@@ -215,7 +197,6 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
             <div className="msg msg-assistant" key={message.id}>
               <div className="row">
                 <span className="msg-meta">OpenCode</span>
-                {message.usage ? <span className="usage-meta">{usageLabel(message.usage)}</span> : null}
                 {message.streaming ? (
                   <span className="thinking">
                     <span />

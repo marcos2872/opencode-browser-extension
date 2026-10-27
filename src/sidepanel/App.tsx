@@ -9,6 +9,7 @@ import { ConnectionBanner } from "./ConnectionBanner"
 import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
 import { SessionBar } from "./SessionBar"
+import { sessionStats } from "./sessionStats"
 import { request } from "./api"
 
 async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> {
@@ -279,6 +280,17 @@ export default function App() {
         : snapshot.connection.phase === "unconfigured"
           ? "OpenCode não configurado"
           : null
+  const currentModel =
+    activeSession?.model ??
+    selectedModel ??
+    snapshot.config?.defaultModel ??
+    snapshot.defaultModel
+  const modelInfo = snapshot.models.find(
+    (model) =>
+      model.id === currentModel?.id &&
+      model.providerID === currentModel?.providerID,
+  )
+  const usageStats = sessionStats(snapshot.messages, modelInfo)
 
   return (
     <div className="app">
@@ -368,6 +380,7 @@ export default function App() {
             disabled={!snapshot.config}
             blockedReason={offlineReason}
             relayConnected={snapshot.relay.connected}
+            stats={usageStats}
             commands={snapshot.commands}
             onChange={setDraft}
             onSend={() => void send()}

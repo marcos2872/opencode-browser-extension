@@ -32,7 +32,9 @@ imagens). Fecha com ESC ou clique no fundo.
 
 **Arquivo:** `src/sidepanel/Composer.tsx`
 **Descrição:** Caixa de texto com auto-resize, envio por Enter, botão Parar e
-menu de comandos `/` filtrado por prefixo.
+menu de comandos `/` filtrado por prefixo. O rodapé mostra o contexto da última
+requisição / janela do modelo e o custo da sessão; sem dados, mostra a dica de
+teclado.
 
 ### `ModelPicker`
 

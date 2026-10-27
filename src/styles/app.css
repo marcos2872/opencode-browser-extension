@@ -1233,6 +1233,11 @@ a {
   text-overflow: ellipsis;
 }
 
+.composer-hint .composer-usage {
+  min-width: 0;
+  color: var(--muted);
+}
+
 /* Onboarding */
 .onboarding {
   flex: 1;

@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Composer } from "../../src/sidepanel/Composer"
+import type { SessionStats } from "../../src/sidepanel/sessionStats"
 import type { CommandInfo } from "../../src/shared/types"
 import { makeCommand } from "../helpers/factories"
 
@@ -12,6 +13,7 @@ interface HarnessProps {
   disabled?: boolean
   blockedReason?: string | null
   relayConnected?: boolean
+  stats?: SessionStats | null
   commands?: CommandInfo[]
   onSend?: () => void
   onStop?: () => void
@@ -27,6 +29,7 @@ function Harness({ initialValue = "", onChangeSpy, ...rest }: HarnessProps) {
       disabled={rest.disabled}
       blockedReason={rest.blockedReason}
       relayConnected={rest.relayConnected ?? false}
+      stats={rest.stats}
       commands={rest.commands ?? []}
       onChange={(next) => {
         setValue(next)
@@ -46,6 +49,7 @@ function Controlled({ value, ...rest }: HarnessProps & { value: string }) {
       disabled={rest.disabled}
       blockedReason={rest.blockedReason}
       relayConnected={rest.relayConnected ?? false}
+      stats={rest.stats}
       commands={rest.commands ?? []}
       onChange={rest.onChangeSpy ?? (() => {})}
       onSend={rest.onSend ?? (() => {})}
@@ -240,5 +244,30 @@ describe("sidepanel/Composer", () => {
     render(<Harness />)
     expect(screen.getByText("Enter envia · Shift+Enter quebra linha")).toBeInTheDocument()
     expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
+  })
+
+  it("troca a dica de teclado por contexto e custo da sessão", () => {
+    render(
+      <Controlled
+        value=""
+        stats={{
+          contextUsed: 12_000,
+          contextLimit: 200_000,
+          percent: 6,
+          cost: 0.03,
+        }}
+      />,
+    )
+
+    const line = screen.getByText(/Contexto 12\.000 \/ 200\.000 \(6%\)/)
+    expect(line).toHaveTextContent("Sessão US$ 0,03")
+    expect(
+      screen.queryByText("Enter envia · Shift+Enter quebra linha"),
+    ).not.toBeInTheDocument()
+  })
+
+  it("mostra só os tokens quando o modelo não informa a janela", () => {
+    render(<Controlled value="" stats={{ contextUsed: 1200 }} />)
+    expect(screen.getByText("Contexto 1.200 tokens")).toBeInTheDocument()
   })
 })

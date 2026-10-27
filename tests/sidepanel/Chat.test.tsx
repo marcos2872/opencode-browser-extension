@@ -212,18 +212,6 @@ describe("sidepanel/Chat", () => {
     expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
   })
 
-  it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {    render(
-      <Chat
-        messages={[makeMessage({ usage: { total: 1200, input: 900, output: 300, cost: 0.0012 } })]}
-        busy={false}
-        onSuggestion={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText(/1\.200 tokens · 900 entrada · 300 saída/)).toBeInTheDocument()
-    expect(screen.getByText(/US\$/)).toBeInTheDocument()
-  })
-
   it("mostra os pontos de streaming quando o assistente está transmitindo", () => {
     const { container } = render(
       <Chat messages={[makeMessage({ streaming: true, text: "parcial" })]} busy onSuggestion={vi.fn()} />,
