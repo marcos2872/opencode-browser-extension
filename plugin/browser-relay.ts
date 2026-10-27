@@ -72,10 +72,21 @@ function agentMarkdown(): string {
 description: Opera o navegador do usuário pela extensão OpenCode Browser.
 mode: primary
 permissions:
-  "*": deny
-  "browser_*": allow
-  question: allow
-  doom_loop: ask
+  - action: "*"
+    resource: "*"
+    effect: deny
+  - action: "browser"
+    resource: "*"
+    effect: allow
+  - action: "browser_*"
+    resource: "*"
+    effect: allow
+  - action: question
+    resource: "*"
+    effect: allow
+  - action: doom_loop
+    resource: "*"
+    effect: ask
 ---
 
 ${AGENT_MARKER}

@@ -28,8 +28,8 @@ describe("plugin: agente do navegador", () => {
     const content = readFileSync(path, "utf8")
     expect(content.startsWith("---\n")).toBe(true)
     expect(content).toContain("mode: primary")
-    expect(content).toContain('"*": deny')
-    expect(content).toContain('"browser_*": allow')
+    expect(content).toContain("permissions:\n  - action: \"*\"")
+    expect(content).toContain('action: "browser_*"')
     expect(content).toContain("browser_tabs_context")
   })
 

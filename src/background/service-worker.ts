@@ -364,7 +364,11 @@ async function applyWorkspace(workspace: string | undefined): Promise<void> {
     client = new OpencodeClient(config.baseUrl, config.token, config.directory);
   }
   ensureBrowserAgentInBackground();
-  if (!firstDirectory) return;
+  if (!firstDirectory) {
+    // O agente pode ter acabado de ser gravado; recarrega a lista a cada ready.
+    await refreshAgents().catch(() => undefined);
+    return;
+  }
   await refreshModels().catch(() => undefined);
   await refreshAgents().catch(() => undefined);
   await refreshCommands().catch(() => undefined);

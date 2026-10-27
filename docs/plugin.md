@@ -42,10 +42,18 @@ O arquivo usa o frontmatter V2 do OpenCode:
 ```yaml
 mode: primary
 permissions:
-  "*": deny
-  "browser_*": allow
-  question: allow
-  doom_loop: ask
+  - action: "*"
+    resource: "*"
+    effect: deny
+  - action: "browser"
+    resource: "*"
+    effect: allow
+  - action: "browser_*"
+    resource: "*"
+    effect: allow
+  - action: question
+    resource: "*"
+    effect: allow
 ```
 
 Na prática, o agente só enxerga as ferramentas do navegador e `question`:
