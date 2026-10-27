@@ -148,10 +148,10 @@ export default function App() {
   }
 
   async function newSession() {
+    // Sem `agent`: o servidor escolhe o padrão (hoje, o agente do navegador).
     const response = await request({
       type: "session:new",
       model: selectedModel ?? undefined,
-      agent: selectedAgent ?? undefined,
     })
     if (!response.ok) showToast(response.error)
     else setDraft("")

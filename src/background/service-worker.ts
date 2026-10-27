@@ -617,6 +617,7 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
     config?.defaultAgent ??
     agents.find((item) => item.id === "build")?.id;
   const session = await client.createSession(chosen, chosenAgent);
+  if (!session.agent && chosenAgent) session.agent = chosenAgent;
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)];
   activeSessionID = session.id;
   messages = [];

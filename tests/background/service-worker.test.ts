@@ -118,10 +118,14 @@ function installFetch(
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
+    const requestBody =
+      typeof init?.body === "string"
+        ? (JSON.parse(init.body) as Record<string, unknown>)
+        : undefined;
     apiCalls.push({
       url,
       method,
-      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      body: requestBody,
     });
 
     const pathname = new URL(url).pathname;
@@ -150,7 +154,14 @@ function installFetch(
     }
     if (pathname === "/api/session" && method === "POST") {
       return jsonResponse({
-        data: makeSession({ id: "ses_nova", title: "Nova" }),
+        data: makeSession({
+          id: "ses_nova",
+          title: "Nova",
+          agent:
+            typeof requestBody?.agent === "string"
+              ? requestBody.agent
+              : undefined,
+        }),
       });
     }
     if (pathname.endsWith("/context")) return jsonResponse({ data: [] });
@@ -542,6 +553,10 @@ describe("service-worker: conexão e reconexão", () => {
       (call) => call.method === "POST" && call.url.endsWith("/api/session"),
     );
     expect(created?.body).toMatchObject({ agent: "opencode-browser" });
+    expect(
+      response.snapshot.sessions.find((item: any) => item.id === "ses_nova")
+        ?.agent,
+    ).toBe("opencode-browser");
   });
 
   it("respeita o agente padrão quando o agente do navegador está desligado", async () => {
