@@ -48,6 +48,10 @@ export interface SessionInfo {
   agent?: string;
   time?: { created?: number; updated?: number };
   location?: { directory?: string };
+  /** Custo acumulado informado pelo OpenCode. */
+  cost?: number;
+  /** Uso da sessão (último request) informado pelo OpenCode. */
+  tokens?: TokenUsage;
 }
 
 export interface BrowserTabContext {
@@ -151,6 +155,7 @@ export interface TokenUsage {
   reasoning?: number;
   cacheRead?: number;
   cacheWrite?: number;
+  cache?: { read?: number; write?: number };
   cost?: number;
 }
 

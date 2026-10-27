@@ -290,7 +290,7 @@ export default function App() {
       model.id === currentModel?.id &&
       model.providerID === currentModel?.providerID,
   )
-  const usageStats = sessionStats(snapshot.messages, modelInfo)
+  const usageStats = sessionStats(snapshot.messages, modelInfo, activeSession)
 
   return (
     <div className="app">

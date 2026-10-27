@@ -31,12 +31,53 @@ describe("sessionStats", () => {
     expect(stats.cost).toBeCloseTo(0.03)
   })
 
+  it("prefere o custo da sessão ao somatório das mensagens", () => {
+    const stats = sessionStats(
+      conversation(makeMessage({ usage: { input: 1_000, cost: 0.01 } })),
+      model,
+      { id: "ses_1", cost: 0.5 },
+    )
+    expect(stats.cost).toBe(0.5)
+  })
+
   it("cai para o total quando o input não vem", () => {
     const stats = sessionStats(
       conversation(makeMessage({ usage: { total: 900 } })),
       model,
     )
     expect(stats.contextUsed).toBe(900)
+  })
+
+  it("soma o cache lido ao input", () => {
+    const stats = sessionStats(
+      conversation(makeMessage({ usage: { input: 1_000, cacheRead: 500 } })),
+      model,
+    )
+    expect(stats.contextUsed).toBe(1_500)
+  })
+
+  it("usa o resumo da sessão quando o histórico não tem usage", () => {
+    const stats = sessionStats(
+      conversation(makeMessage()),
+      model,
+      {
+        id: "ses_1",
+        cost: 0.5,
+        tokens: { input: 1_000, cache: { read: 500 } },
+      },
+    )
+
+    expect(stats.contextUsed).toBe(1_500)
+    expect(stats.cost).toBe(0.5)
+  })
+
+  it("mostra custo zero quando o provedor reporta zero", () => {
+    const stats = sessionStats(conversation(makeMessage()), model, {
+      id: "ses_1",
+      cost: 0,
+      tokens: { input: 1_000 },
+    })
+    expect(stats.cost).toBe(0)
   })
 
   it("omite a porcentagem sem a janela do modelo", () => {
