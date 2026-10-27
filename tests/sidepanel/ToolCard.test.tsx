@@ -146,6 +146,54 @@ describe("sidepanel/ToolCard", () => {
   })
 })
 
+describe("sidepanel/ToolCard: modo compacto", () => {
+  it("mostra só a linha e expande os detalhes ao clicar", async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <ToolCard
+        detailed={false}
+        tool={makeTool({ status: "ok", input: { ref: "ref_1" }, output: "resultado" })}
+      />,
+    )
+
+    const head = screen.getByRole("button", { name: /Navegar/ })
+    expect(head).toHaveAttribute("aria-expanded", "false")
+    expect(container.querySelector(".tool-card")).toHaveClass("compact")
+    expect(screen.queryByText("Parâmetros")).not.toBeInTheDocument()
+    expect(screen.queryByText("Resultado")).not.toBeInTheDocument()
+
+    await user.click(head)
+    expect(head).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByText("Parâmetros")).toBeInTheDocument()
+    expect(screen.getByText("Resultado")).toBeInTheDocument()
+  })
+
+  it("mantém o texto do erro visível com o card recolhido", () => {
+    render(
+      <ToolCard
+        detailed={false}
+        tool={makeTool({ status: "error", output: "Ref nonexistent não encontrada." })}
+      />,
+    )
+
+    expect(screen.getByText("Ref nonexistent não encontrada.")).toBeInTheDocument()
+    expect(screen.getByText("erro")).toBeInTheDocument()
+    expect(screen.queryByText("Resultado")).not.toBeInTheDocument()
+  })
+
+  it("usa só a primeira linha do erro", () => {
+    render(
+      <ToolCard
+        detailed={false}
+        tool={makeTool({ status: "error", output: "primeira linha\nsegunda linha" })}
+      />,
+    )
+
+    expect(screen.getByText("primeira linha")).toBeInTheDocument()
+    expect(screen.queryByText(/segunda linha/)).not.toBeInTheDocument()
+  })
+})
+
 const QUESTION_INPUT = {
   questions: [
     {

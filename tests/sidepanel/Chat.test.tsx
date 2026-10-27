@@ -83,8 +83,25 @@ describe("sidepanel/Chat", () => {
     expect(container.querySelector(".error-banner")).toHaveTextContent("falha na chamada")
   })
 
-  it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {
-    render(
+  it("usa a linha compacta das tools por padrão e detalha quando configurado", () => {
+    const message = makeMessage({
+      tools: [
+        { id: "t1", name: "navigate", status: "ok", input: { url: "https://x.com" }, output: "ok" },
+      ],
+    })
+    const { rerender } = render(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} />,
+    )
+    expect(screen.queryByText("Parâmetros")).not.toBeInTheDocument()
+
+    rerender(
+      <Chat messages={[message]} busy={false} onSuggestion={vi.fn()} showToolDetails />,
+    )
+    expect(screen.getByText("Parâmetros")).toBeInTheDocument()
+    expect(screen.getByText("Resultado")).toBeInTheDocument()
+  })
+
+  it("mostra o uso de tokens e o custo informado pelo OpenCode", () => {    render(
       <Chat
         messages={[makeMessage({ usage: { total: 1200, input: 900, output: 300, cost: 0.0012 } })]}
         busy={false}

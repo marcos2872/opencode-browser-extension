@@ -13,7 +13,7 @@ Assinados em `GET /api/event` e traduzidos para o estado do chat.
 | `session.execution.started`   | `sessionID`                                                          | `busy = true`                                               |
 | `session.text.started`        | `assistantMessageID`                                                 | Cria a mensagem do assistente                               |
 | `session.text.delta`          | `delta`                                                              | Acrescenta texto (streaming)                                |
-| `session.text.ended`          | `text`                                                               | Consolida o texto final                                     |
+| `session.text.ended`          | `text`                                                               | Consolida o texto final e encerra o streaming da mensagem   |
 | `message.updated`             | `info.id`, `info.sessionID`, `info.role`, `info.tokens`, `info.cost` | Atualiza tokens e custo da resposta do assistente           |
 | `session.usage.updated`       | `messageID?`, `usage` ou `tokens`/`cost`                             | Atualiza o usage publicado durante a execução               |
 | `session.reasoning.delta`     | `delta`                                                              | Acrescenta raciocínio                                       |
@@ -23,7 +23,7 @@ Assinados em `GET /api/event` e traduzidos para o estado do chat.
 | `session.tool.progress`       | `id`, `metadata`                                                     | Atualiza metadados do card                                  |
 | `session.tool.success`        | `id`, `content`, `metadata`                                          | Card como `ok` com resultado                                |
 | `session.tool.failed`         | `id`, `error`                                                        | Card como `error`                                           |
-| `session.step.ended`          | `finish`                                                             | Encerra `busy` se não for `tool-calls`                      |
+| `session.step.ended`          | `finish`                                                             | Encerra o streaming do passo; `busy` só cai fora de `tool-calls` |
 | `session.execution.succeeded` | —                                                                    | `busy = false`; som/notificação se o painel estiver fechado |
 | `session.execution.failed`    | `error` ou `message`                                                 | Encerra a execução e mostra o erro na resposta              |
 | `session.retry.scheduled`     | `attempt`, `message`                                                 | Mostra aviso "tentando novamente"                           |

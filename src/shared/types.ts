@@ -188,6 +188,8 @@ export interface OpencodeConfig {
   findMode?: "heuristic" | "model";
   soundEnabled?: boolean;
   notifyEnabled?: boolean;
+  /** Mostra parâmetros e resultado das tools no chat. Padrão: compacto. */
+  showToolDetails?: boolean;
 }
 
 export interface PermissionRequest {
@@ -215,10 +217,44 @@ export interface PermissionDecision {
   scope?: PermissionScope;
 }
 
+/** Motivo da última queda do relay, usado para escolher a instrução na UI. */
+export type RelayFailure =
+  | "missing_plugin"
+  | "rejected"
+  | "closed"
+  | "silent";
+
 export interface RelayState {
   connected: boolean;
   url: string;
   lastError?: string;
+  reason?: RelayFailure;
+  /** Última mensagem recebida do plugin (prova de vida). */
+  lastSeenAt?: number;
+}
+
+/** Estado do canal HTTP/SSE com o servidor do OpenCode. */
+export type ConnectionPhase =
+  | "unconfigured"
+  | "connecting"
+  | "online"
+  | "offline";
+
+export type ConnectionFailure =
+  | "unreachable"
+  | "timeout"
+  | "unauthorized"
+  | "server_error"
+  | "stream_closed";
+
+export interface ConnectionState {
+  phase: ConnectionPhase;
+  failure: ConnectionFailure | null;
+  detail: string | null;
+  attempts: number;
+  lastOnlineAt: number | null;
+  /** Quando a fase virou `offline`; usado para encerrar execuções órfãs. */
+  offlineSince: number | null;
 }
 
 export interface AppSnapshot {
@@ -230,7 +266,7 @@ export interface AppSnapshot {
   forms: FormInfo[];
   relay: RelayState;
   busy: boolean;
-  backend: "unknown" | "online" | "offline";
+  connection: ConnectionState;
   defaultModel: ModelRef | null;
   agents: AgentInfo[];
   commands: CommandInfo[];

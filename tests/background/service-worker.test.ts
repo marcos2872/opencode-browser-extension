@@ -88,7 +88,16 @@ function pushEvent(type: string, data: Record<string, unknown>): void {
 
 const apiCalls: Array<{ url: string; method: string; body: unknown }> = [];
 
-function installFetch(options: { sessions?: unknown[]; formError?: boolean } = {}): void {
+function installFetch(
+  options: {
+    sessions?: unknown[];
+    formError?: boolean;
+    sseStatus?: number;
+    sseHang?: boolean;
+    failPrompt?: boolean;
+    agentStatus?: number;
+  } = {},
+): void {
   apiCalls.length = 0;
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
@@ -106,10 +115,18 @@ function installFetch(options: { sessions?: unknown[]; formError?: boolean } = {
     if (pathname === "/api/model") return jsonResponse({ data: [makeModel()] });
     if (pathname === "/api/model/default")
       return jsonResponse({ data: makeModel({ id: "model-1" }) });
-    if (pathname === "/api/agent") return jsonResponse({ data: [makeAgent()] });
+    if (pathname === "/api/agent")
+      return options.agentStatus
+        ? jsonResponse({ message: "agente indisponível" }, options.agentStatus)
+        : jsonResponse({ data: [makeAgent()] });
     if (pathname === "/api/command")
       return jsonResponse({ data: [makeCommand()] });
-    if (pathname === "/api/event") return sseResponse();
+    if (pathname === "/api/event") {
+      if (options.sseHang) return new Promise<Response>(() => undefined);
+      if (options.sseStatus)
+        return new Response("erro", { status: options.sseStatus });
+      return sseResponse();
+    }
     if (pathname === "/api/experimental/generate")
       return jsonResponse({ data: { text: "ok" } });
     if (pathname === "/api/session" && method === "GET") {
@@ -126,6 +143,9 @@ function installFetch(options: { sessions?: unknown[]; formError?: boolean } = {
       pathname.endsWith("/command") ||
       pathname.endsWith("/interrupt")
     ) {
+      if (options.failPrompt && pathname.endsWith("/prompt")) {
+        throw new TypeError("Failed to fetch");
+      }
       return jsonResponse({});
     }
     if (pathname.endsWith("/model") || pathname.endsWith("/agent"))
@@ -262,6 +282,245 @@ describe("service-worker: pareamento", () => {
     });
     expect(response.ok).toBe(true);
     expect(response.snapshot.config.baseUrl).toBe("http://127.0.0.1:9999");
+  });
+});
+
+describe("service-worker: conexão e reconexão", () => {
+  const savedConfig = {
+    baseUrl: "http://127.0.0.1:49374",
+    token: "tok",
+    permissionMode: "ask",
+  };
+
+  it("não marca online antes do stream de eventos abrir", async () => {
+    await chrome.storage.local.set({ "opencode.config": savedConfig });
+    installFetch({ sseHang: true });
+    await loadWorker();
+
+    const response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.connection).toMatchObject({
+      phase: "connecting",
+      failure: null,
+    });
+  });
+
+  it("classifica 401 no stream como token inválido", async () => {
+    await chrome.storage.local.set({ "opencode.config": savedConfig });
+    installFetch({ sseStatus: 401 });
+    await loadWorker();
+
+    const response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.connection).toMatchObject({
+      phase: "offline",
+      failure: "unauthorized",
+      attempts: 1,
+    });
+  });
+
+  it("mantém a causa quando o servidor responde com erro", async () => {
+    await chrome.storage.local.set({ "opencode.config": savedConfig });
+    installFetch({ sseStatus: 500 });
+    await loadWorker();
+
+    const response = await callWorker({ type: "state:get" });
+    expect(response.snapshot.connection).toMatchObject({
+      phase: "offline",
+      failure: "server_error",
+    });
+  });
+
+  it("reconecta o backend recriando o cliente e recarregando as listas", async () => {
+    await loadWorker();
+    await pairWorker();
+    const modelsBefore = apiCalls.filter((call) =>
+      call.url.includes("/api/model"),
+    ).length;
+
+    const response = await callWorker({ type: "connection:reconnect" });
+
+    expect(response.ok).toBe(true);
+    await flush();
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.connection.phase).toBe("online");
+    expect(
+      apiCalls.filter((call) => call.url.includes("/api/model")).length,
+    ).toBeGreaterThan(modelsBefore);
+  });
+
+  it("devolve erro no envio quando a conexão cai e remove a mensagem otimista", async () => {
+    await loadWorker();
+    await pairWorker();
+    installFetch({ failPrompt: true });
+
+    const response = await callWorker({ type: "prompt", text: "oi" });
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/Não foi possível falar com o OpenCode/);
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.messages.some((item: any) => item.text === "oi")).toBe(
+      false,
+    );
+    expect(state.snapshot.connection).toMatchObject({
+      phase: "offline",
+      failure: "unreachable",
+    });
+  });
+
+  it("encerra execução órfã quando a conexão cai", async () => {
+    await loadWorker();
+    await pairWorker();
+    await callWorker({ type: "prompt", text: "oi" });
+    expect((await callWorker({ type: "state:get" })).snapshot.busy).toBe(true);
+
+    installFetch({ sseStatus: 500 });
+    sseController?.error(new Error("caiu"));
+    await flush();
+    expect((await callWorker({ type: "state:get" })).snapshot.connection.phase).toBe(
+      "offline",
+    );
+
+    const now = Date.now();
+    const spy = vi.spyOn(Date, "now").mockReturnValue(now + 6_000);
+    chrome.alarms.onAlarm.emit({ name: "keepalive" });
+    await flush();
+    spy.mockRestore();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.busy).toBe(false);
+    expect(state.snapshot.messages.at(-1)).toMatchObject({
+      error: expect.stringContaining("caiu durante a execução"),
+    });
+  });
+
+  it("verifica a saúde do servidor periodicamente", async () => {
+    await loadWorker();
+    await pairWorker();
+    installFetch({ agentStatus: 500, sseHang: true });
+    const agentCallsBefore = apiCalls.filter((call) =>
+      call.url.includes("/api/agent"),
+    ).length;
+
+    chrome.alarms.onAlarm.emit({ name: "keepalive" });
+    chrome.alarms.onAlarm.emit({ name: "keepalive" });
+    await flush();
+
+    expect(
+      apiCalls.filter((call) => call.url.includes("/api/agent")).length,
+    ).toBeGreaterThan(agentCallsBefore);
+  });
+
+  it("não deixa mensagens de passos anteriores em streaming", async () => {
+    await loadWorker();
+    await pairWorker();
+
+    pushEvent("session.execution.started", { sessionID: "ses_test" });
+    pushEvent("session.text.delta", {
+      sessionID: "ses_test",
+      assistantMessageID: "a1",
+      delta: "primeiro passo",
+    });
+    await flush();
+    let state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(true);
+
+    pushEvent("session.step.ended", {
+      sessionID: "ses_test",
+      finish: "tool-calls",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(false);
+
+    pushEvent("session.text.delta", {
+      sessionID: "ses_test",
+      assistantMessageID: "a2",
+      delta: "segundo passo",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(false);
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a2").streaming,
+    ).toBe(true);
+
+    pushEvent("session.text.ended", {
+      sessionID: "ses_test",
+      assistantMessageID: "a2",
+      text: "segundo passo",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a2").streaming,
+    ).toBe(false);
+  });
+
+  it("volta a offline quando o stream termina", async () => {    await loadWorker();
+    await pairWorker();
+
+    sseController?.close();
+    await flush();
+
+    const state = await callWorker({ type: "state:get" });
+    expect(state.snapshot.connection).toMatchObject({
+      phase: "offline",
+      failure: "stream_closed",
+      attempts: 1,
+    });
+  });
+
+  it("reconectar sem configuração devolve instrução", async () => {
+    await loadWorker();
+
+    const response = await callWorker({ type: "connection:reconnect" });
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/pareamento/);
+  });
+
+  it("reinicia o stream preso em connecting", async () => {
+    await chrome.storage.local.set({ "opencode.config": savedConfig });
+    installFetch({ sseHang: true });
+    await loadWorker();
+    const before = apiCalls.filter((call) =>
+      call.url.includes("/api/event"),
+    ).length;
+
+    const spy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 25_000);
+    chrome.alarms.onAlarm.emit({ name: "keepalive" });
+    await flush();
+    spy.mockRestore();
+
+    expect(
+      apiCalls.filter((call) => call.url.includes("/api/event")).length,
+    ).toBeGreaterThan(before);
+  });
+
+  it("espera entre tentativas do stream de eventos", async () => {
+    vi.useFakeTimers();
+    await chrome.storage.local.set({ "opencode.config": savedConfig });
+    installFetch({ sseStatus: 500 });
+    vi.resetModules();
+    void import("../../src/background/service-worker");
+
+    const attempts = () =>
+      apiCalls.filter((call) => call.url.includes("/api/event")).length;
+
+    await vi.advanceTimersByTimeAsync(50);
+    expect(attempts()).toBe(1);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(attempts()).toBe(2);
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(attempts()).toBe(3);
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(attempts()).toBe(4);
   });
 });
 

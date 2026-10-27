@@ -120,16 +120,20 @@ Mensagens da extensão para o plugin:
 | `hello` | `v`, `extensionId` | Identificação após conectar |
 | `tool_result` | `id`, `ok`, `content?`, `images?`, `error?`, `metadata?` | Resultado da ferramenta |
 | `progress` | `id`, `phase`, `detail?` | Progresso exibido no OpenCode |
-| `pong` | — | Resposta ao `ping` |
+| `pong` | — | Resposta ao `ping`; prova de vida |
 
 Mensagens do plugin para a extensão:
 
 | Mensagem | Campos | Descrição |
 |---|---|---|
-| `ready` | `v`, `home`, `workspace` | Handshake concluído; informa o home e a pasta de conversas |
+| `ready` | `v`, `home`, `workspace` | Handshake concluído; informa o home e a pasta de conversas. A extensão só marca o relay como conectado depois dele |
 | `tool_request` | `id`, `tool`, `args`, `sessionID?` | Pedido de execução |
 | `cancel` | `id` | Aborta uma execução |
-| `ping` | — | Verificação de vida |
+| `ping` | — | Verificação de vida a cada 20 s; o plugin fecha o socket após 60 s sem `pong` |
+
+A extensão só arma o watchdog de silêncio depois de receber o primeiro `ping`,
+então plugins antigos (que não pingam) continuam compatíveis. Quando armado, o
+socket é fechado após 45 s sem nenhuma mensagem, com `reason: "silent"`.
 
 O `sessionID` é o ID da sessão do OpenCode, usado pela extensão para isolar o
 grupo de abas.

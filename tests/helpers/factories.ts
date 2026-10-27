@@ -109,6 +109,7 @@ export function makeToolContext(overrides: Partial<ToolContext> = {}): ToolConte
     groupOf: vi.fn(async () => 100),
     resolveTab: vi.fn(async () => ({ tabId: 1, groupId: 100 })),
     ensure: vi.fn(async () => ({ sessionID: "ses_test", groupId: 100, mainTabId: 1 })),
+    currentTabId: vi.fn(async () => null),
     addTab: vi.fn(async () => 100),
     createTab: vi.fn(async () => 2),
     closeTab: vi.fn(async () => undefined),

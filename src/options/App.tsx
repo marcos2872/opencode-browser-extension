@@ -1,11 +1,30 @@
 import { useEffect, useState } from "react"
-import type { AppSnapshot, ModelRef, OpencodeConfig, PermissionMode } from "../shared/types"
+import type { AppSnapshot, ConnectionState, ModelRef, OpencodeConfig, PermissionMode } from "../shared/types"
 import { ModelPicker } from "../sidepanel/ModelPicker"
 import { request } from "../sidepanel/api"
 import { RefreshIcon, TerminalIcon } from "../components/icons"
+import { describeRelay } from "../components/relayStatus"
 
 const ALLOW_KEY = "permissions.allow"
 const DENY_KEY = "permissions.deny"
+
+function describeConnection(connection: ConnectionState): string {
+  if (connection.phase === "online") return "online"
+  if (connection.phase === "connecting") return "conectando"
+  if (connection.phase === "unconfigured") return "não configurada"
+  switch (connection.failure) {
+    case "unauthorized":
+      return "offline — token inválido ou expirado"
+    case "timeout":
+      return "offline — o servidor não respondeu a tempo"
+    case "server_error":
+      return "offline — o servidor respondeu com erro"
+    case "stream_closed":
+      return "offline — conexão encerrada"
+    default:
+      return "offline — servidor não respondeu"
+  }
+}
 
 const TOOLS = [
   ["tabs_context", "lista as abas do grupo"],
@@ -39,6 +58,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
+  const [showToolDetails, setShowToolDetails] = useState(false)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -60,6 +80,7 @@ export default function App() {
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
+        setShowToolDetails(response.snapshot.config?.showToolDetails === true)
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -83,6 +104,15 @@ export default function App() {
     showToast("Conectado.")
   }
 
+  async function reconnectBackend() {
+    const response = await request({ type: "connection:reconnect" })
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
+    if (response.snapshot) setSnapshot(response.snapshot)
+  }
+
   async function savePermissions() {
     const allow = allowText
       .split("\n")
@@ -103,6 +133,7 @@ export default function App() {
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
         notifyEnabled,
+        showToolDetails,
         directory: workspace.trim() || undefined,
       },
     })
@@ -170,14 +201,27 @@ export default function App() {
         <section className="card">
           <h2>Conexão</h2>
           <div className="status-line">
-            <span className={`dot ${snapshot.backend === "online" ? "ok" : snapshot.backend === "offline" ? "err" : "warn"}`} />
-            API: {snapshot.backend === "online" ? "online" : snapshot.backend === "offline" ? "offline" : "desconhecida"}
+            <span
+              className={`dot ${
+                snapshot.connection.phase === "online"
+                  ? "ok"
+                  : snapshot.connection.phase === "offline"
+                    ? "err"
+                    : "warn"
+              }`}
+            />
+            API: {describeConnection(snapshot.connection)}
+            {config ? (
+              <button className="btn small" onClick={() => void reconnectBackend()}>
+                <RefreshIcon size={13} /> Reconectar
+              </button>
+            ) : null}
           </div>
           <div className="status-line">
             <span className={`dot ${snapshot.relay.connected ? "ok" : "warn"}`} />
-            Ferramentas: {snapshot.relay.connected ? "plugin conectado" : snapshot.relay.lastError ?? "plugin desconectado"}
+            Ferramentas: {describeRelay(snapshot.relay)}
             <button className="btn small" onClick={() => void request({ type: "relay:reconnect" })}>
-              <RefreshIcon size={13} /> Reconectar
+              <RefreshIcon size={13} /> Reconectar plugin
             </button>
           </div>
           {config ? (
@@ -344,6 +388,18 @@ export default function App() {
               onChange={(event) => setNotifyEnabled(event.target.checked)}
             />
             <span>Mostrar notificação do sistema quando o agente terminar com o painel fechado</span>
+          </label>
+
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={showToolDetails}
+              onChange={(event) => setShowToolDetails(event.target.checked)}
+            />
+            <span>
+              Mostrar parâmetros e resultado das ferramentas no chat (desligado mostra só o
+              nome e o status; a linha continua expandível)
+            </span>
           </label>
 
           <div className="field">

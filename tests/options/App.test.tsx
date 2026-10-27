@@ -2,8 +2,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import App from "../../src/options/App"
-import type { AppSnapshot, OpencodeConfig } from "../../src/shared/types"
+import type { AppSnapshot, ConnectionState, OpencodeConfig } from "../../src/shared/types"
 import { makeAgent, makeModel } from "../helpers/factories"
+
+const CONNECTION_ONLINE: ConnectionState = {
+  phase: "online",
+  failure: null,
+  detail: null,
+  attempts: 0,
+  lastOnlineAt: null,
+  offlineSince: null,
+}
 
 function makeConfig(partial: Partial<OpencodeConfig> = {}): OpencodeConfig {
   return {
@@ -23,7 +32,7 @@ function makeSnapshot(partial: Partial<AppSnapshot> = {}): AppSnapshot {
     messages: [],
     relay: { connected: true, url: "ws://127.0.0.1:8799" },
     busy: false,
-    backend: "online",
+    connection: CONNECTION_ONLINE,
     defaultModel: null,
     agents: [makeAgent()],
     commands: [],
@@ -78,6 +87,20 @@ describe("options/App", () => {
     )
   })
 
+  it("salva a preferência de detalhes das ferramentas", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const toggle = screen.getByRole("checkbox", {
+      name: /Mostrar parâmetros e resultado das ferramentas/,
+    })
+    expect(toggle).not.toBeChecked()
+
+    await user.click(toggle)
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+
+    expect(sent("settings:update").patch.showToolDetails).toBe(true)
+  })
+
   it("salva a pasta das conversas informada", async () => {
     const { user } = await renderOptions(makeSnapshot())
 
@@ -92,18 +115,25 @@ describe("options/App", () => {
   it("exibe o estado da API e do plugin", async () => {
     await renderOptions(
       makeSnapshot({
-        backend: "offline",
+        connection: {
+          ...CONNECTION_ONLINE,
+          phase: "offline",
+          failure: "unreachable",
+          offlineSince: Date.now(),
+        },
         relay: { connected: false, url: "ws://x", lastError: "conexão recusada" },
       }),
     )
 
-    expect(screen.getByText(/API: offline/)).toBeInTheDocument()
+    expect(screen.getByText(/API: offline — servidor não respondeu/)).toBeInTheDocument()
     expect(screen.getByText(/conexão recusada/)).toBeInTheDocument()
   })
 
-  it("exibe estado desconhecido do backend", async () => {
-    await renderOptions(makeSnapshot({ backend: "unknown" }))
-    expect(screen.getByText(/API: desconhecida/)).toBeInTheDocument()
+  it("exibe estado não configurado do backend", async () => {
+    await renderOptions(
+      makeSnapshot({ connection: { ...CONNECTION_ONLINE, phase: "unconfigured" } }),
+    )
+    expect(screen.getByText(/API: não configurada/)).toBeInTheDocument()
   })
 
   it("mostra o formulário de pareamento quando não há config", async () => {
@@ -198,6 +228,7 @@ describe("options/App", () => {
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
+        showToolDetails: false,
         directory: undefined,
       },
     })
@@ -269,8 +300,14 @@ describe("options/App", () => {
 
   it("reconecta o relay", async () => {
     const { user } = await renderOptions(makeSnapshot())
-    await user.click(screen.getByRole("button", { name: /Reconectar/ }))
+    await user.click(screen.getByRole("button", { name: "Reconectar plugin" }))
     expect(sent("relay:reconnect")).toEqual({ type: "relay:reconnect" })
+  })
+
+  it("reconecta a API do OpenCode", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+    await user.click(screen.getByRole("button", { name: "Reconectar" }))
+    expect(sent("connection:reconnect")).toEqual({ type: "connection:reconnect" })
   })
 
   it("abre o painel lateral na janela atual", async () => {

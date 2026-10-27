@@ -42,7 +42,13 @@ type Pending = {
   progress?: Progress
 }
 
-type SocketData = { origin: string; id: string }
+type SocketData = {
+  origin: string
+  id: string
+  /** Timestamp do último pong; prova de vida da extensão. */
+  lastPong: number
+  pingTimer?: ReturnType<typeof setInterval>
+}
 
 interface RelayGlobal {
   active: Socket | null
@@ -658,7 +664,7 @@ export default {
             return new Response("Forbidden origin", { status: 403 })
           }
           const upgraded = bunServer.upgrade(request, {
-            data: { origin, id: crypto.randomUUID() },
+            data: { origin, id: crypto.randomUUID(), lastPong: Date.now() },
           })
           if (!upgraded) return new Response("WebSocket upgrade failed", { status: 400 })
           return undefined
@@ -674,6 +680,19 @@ export default {
               }
             }
             relay().active = socket
+            socket.data.lastPong = Date.now()
+            if (socket.data.pingTimer) clearInterval(socket.data.pingTimer)
+            socket.data.pingTimer = setInterval(() => {
+              if (Date.now() - socket.data.lastPong > 60_000) {
+                try {
+                  socket.close(4001, "extensão sem resposta")
+                } catch {
+                  // ignore
+                }
+                return
+              }
+              send(socket, { type: "ping" })
+            }, 20_000)
             log(`extensão conectada (${socket.data.origin})`)
             send(socket, { type: "ready", v: 1, home: homedir(), workspace: WORKSPACE })
           },
@@ -692,7 +711,10 @@ export default {
               }
               return
             }
-            if (message.type === "pong") return
+            if (message.type === "pong") {
+              socket.data.lastPong = Date.now()
+              return
+            }
             if (message.type === "progress" && typeof message.id === "string") {
               const item = relay().pending.get(message.id)
               if (item?.progress) {
@@ -724,6 +746,7 @@ export default {
             }
           },
           close(socket) {
+            if (socket.data.pingTimer) clearInterval(socket.data.pingTimer)
             if (relay().active === socket) relay().active = null
             failPending(socket, "A extensão desconectou durante a execução.")
             log("extensão desconectada")

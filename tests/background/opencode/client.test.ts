@@ -717,6 +717,63 @@ describe("OpencodeClient.subscribe", () => {
     expect(headers.accept).toBe("text/event-stream");
     expect(headers.authorization).toBe(expectedAuth());
   });
+
+  it("avisa quando o stream abre e não avisa em erro", async () => {
+    const onOpen = vi.fn();
+    fetchMock.mockResolvedValue(
+      response({ status: 200, body: sseBody(sseFrame("server.connected")) }),
+    );
+
+    await makeClient().subscribe(vi.fn(), new AbortController().signal, onOpen);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    onOpen.mockClear();
+    fetchMock.mockResolvedValue(response({ status: 401, body: null }));
+    await captureError(
+      makeClient().subscribe(vi.fn(), new AbortController().signal, onOpen),
+    );
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+});
+
+describe("OpencodeClient.timeout", () => {
+  it("aborta e sinaliza timeout quando o servidor não responde", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      (_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    const client = new OpencodeClient(BASE, TOKEN, undefined, 30);
+
+    const promise = expect(client.listSessions()).rejects.toMatchObject({
+      timedOut: true,
+      message: expect.stringContaining("não respondeu em"),
+    });
+    await vi.advanceTimersByTimeAsync(30);
+    await promise;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("limpa o timer quando a requisição termina", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }));
+
+    await makeClient().listSessions();
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("probe consulta /api/agent", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }));
+
+    await makeClient().probe();
+
+    expect(lastCall().url).toBe(`${BASE}/api/agent`);
+  });
 });
 
 describe("OpencodeClient.listForms", () => {

@@ -2,6 +2,9 @@ import { RELAY_PORT, RELAY_PROTOCOL, RELAY_URL, type RelayInbound, type RelayOut
 import type { RelayState } from "../shared/types"
 
 const CANDIDATE_PORTS = [RELAY_PORT, RELAY_PORT + 1, RELAY_PORT + 2, RELAY_PORT + 3]
+/** Silêncio máximo do plugin antes de considerá-lo morto (só com plugins novos). */
+const LIVENESS_MS = 45_000
+const WATCHDOG_MS = 10_000
 
 interface RelayEndpoint {
   url: string
@@ -59,8 +62,10 @@ interface RelayHandlers {
 export class RelayClient {
   private socket: WebSocket | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
-  private pingTimer: ReturnType<typeof setInterval> | null = null
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null
   private attempts = 0
+  /** Só checa silêncio depois que o plugin novo prova que sabe pingar. */
+  private livenessArmed = false
   private state: RelayState = { connected: false, url: RELAY_URL }
 
   constructor(private readonly handlers: RelayHandlers) {}
@@ -94,9 +99,7 @@ export class RelayClient {
       }
       socket.send(JSON.stringify(hello))
       if (endpoint.workspace) this.handlers.onReady?.({ workspace: endpoint.workspace })
-      this.setState({ connected: true, url })
-      if (this.pingTimer) clearInterval(this.pingTimer)
-      this.pingTimer = setInterval(() => this.send({ type: "pong" }), 20_000)
+      this.startWatchdog(socket)
     })
 
     socket.addEventListener("message", (event) => {
@@ -107,11 +110,18 @@ export class RelayClient {
       } catch {
         return
       }
+      this.touch(socket)
       if (message.type === "ready") {
         this.handlers.onReady?.({ home: message.home, workspace: message.workspace })
+        this.setState({
+          connected: true,
+          url,
+          lastSeenAt: Date.now(),
+        })
         return
       }
       if (message.type === "ping") {
+        this.livenessArmed = true
         this.send({ type: "pong" })
         return
       }
@@ -127,18 +137,31 @@ export class RelayClient {
     socket.addEventListener("close", (event) => {
       if (this.socket !== socket) return
       this.socket = null
-      this.stopPing()
+      this.stopWatchdog()
+      const silent = event.code === 4000
       this.setState({
         connected: false,
         url,
-        lastError: event.reason || `Conexão encerrada (${event.code}).`,
+        lastError: silent
+          ? "O plugin parou de responder."
+          : event.reason || `Conexão encerrada (${event.code}).`,
+        reason: silent
+          ? "silent"
+          : event.code === 1008
+            ? "rejected"
+            : "closed",
       })
       this.schedule()
     })
 
     socket.addEventListener("error", () => {
       if (this.socket !== socket) return
-      this.setState({ connected: false, url, lastError: "Plugin do OpenCode não encontrado." })
+      this.setState({
+        connected: false,
+        url,
+        lastError: "Plugin do OpenCode não encontrado.",
+        reason: "missing_plugin",
+      })
     })
   }
 
@@ -157,6 +180,33 @@ export class RelayClient {
     }
   }
 
+  private touch(socket: WebSocket): void {
+    if (this.socket !== socket) return
+    this.state = { ...this.state, lastSeenAt: Date.now() }
+  }
+
+  private startWatchdog(socket: WebSocket): void {
+    this.stopWatchdog()
+    this.watchdogTimer = setInterval(() => {
+      if (this.socket !== socket) return
+      if (!this.livenessArmed) return
+      const lastSeen = this.state.lastSeenAt ?? 0
+      if (Date.now() - lastSeen <= LIVENESS_MS) return
+      this.setState({
+        connected: false,
+        url: this.state.url,
+        reason: "silent",
+        lastError: "O plugin parou de responder.",
+      })
+      try {
+        socket.close(4000, "sem pong")
+      } catch {
+        // ignore
+      }
+      this.stopWatchdog()
+    }, WATCHDOG_MS)
+  }
+
   private schedule(): void {
     if (this.reconnectTimer) return
     this.attempts += 1
@@ -168,12 +218,17 @@ export class RelayClient {
   }
 
   private fail(reason: string): void {
-    this.setState({ connected: false, url: this.state.url, lastError: reason })
+    this.setState({
+      connected: false,
+      url: this.state.url,
+      lastError: reason,
+      reason: "missing_plugin",
+    })
     this.schedule()
   }
 
   private close(): void {
-    this.stopPing()
+    this.stopWatchdog()
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
@@ -189,10 +244,11 @@ export class RelayClient {
     }
   }
 
-  private stopPing(): void {
-    if (this.pingTimer) {
-      clearInterval(this.pingTimer)
-      this.pingTimer = null
+  private stopWatchdog(): void {
+    this.livenessArmed = false
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer)
+      this.watchdogTimer = null
     }
   }
 

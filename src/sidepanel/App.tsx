@@ -5,6 +5,7 @@ import { SettingsIcon, Logo } from "../components/icons"
 import { PermissionCard } from "../components/PermissionCard"
 import { Chat } from "./Chat"
 import { Composer } from "./Composer"
+import { ConnectionBanner } from "./ConnectionBanner"
 import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
 import { SessionBar } from "./SessionBar"
@@ -203,8 +204,9 @@ export default function App() {
       ? await request({ type: "command", name: command.name, text: match?.[2] ?? "" })
       : await request({ type: "prompt", text })
     if (!response.ok) {
-      showToast(response.error)
       setDraft(text)
+      // Falha de conexão já aparece no banner; evita toast duplicado.
+      if (!response.failure) showToast(response.error)
     }
   }
 
@@ -255,7 +257,28 @@ export default function App() {
   }
 
   const backendClass =
-    snapshot.backend === "online" ? "ok" : snapshot.backend === "offline" ? "err" : "warn"
+    snapshot.connection.phase === "online"
+      ? "ok"
+      : snapshot.connection.phase === "offline"
+        ? "err"
+        : "warn"
+  const statusLabel =
+    snapshot.connection.phase === "online"
+      ? "online"
+      : snapshot.connection.phase === "offline"
+        ? "offline"
+        : snapshot.connection.phase === "connecting"
+          ? "conectando"
+          : "..."
+  const offlineReason = !snapshot.config
+    ? null
+    : snapshot.connection.phase === "offline"
+      ? "OpenCode offline — inicie o servidor para enviar"
+      : snapshot.connection.phase === "connecting"
+        ? "Conectando ao OpenCode…"
+        : snapshot.connection.phase === "unconfigured"
+          ? "OpenCode não configurado"
+          : null
 
   return (
     <div className="app">
@@ -266,9 +289,12 @@ export default function App() {
           </span>
           <span className="brand-text">OpenCode</span>
         </div>
-        <span className="status" title={`API do OpenCode: ${snapshot.backend}`}>
+        <span
+          className="status"
+          title={`API do OpenCode: ${statusLabel}${snapshot.connection.detail ? ` — ${snapshot.connection.detail}` : ""}`}
+        >
           <span className={`dot ${backendClass}`} />
-          {snapshot.backend === "online" ? "online" : snapshot.backend === "offline" ? "offline" : "..."}
+          {statusLabel}
         </span>
         <span className="spacer" />
         {snapshot.config ? (
@@ -298,6 +324,12 @@ export default function App() {
         />
       ) : (
         <>
+          <ConnectionBanner
+            connection={snapshot.connection}
+            relay={snapshot.relay}
+            onRetry={() => void request({ type: "connection:reconnect" })}
+            onOpenOptions={() => void request({ type: "open:options" })}
+          />
           <SessionBar
             sessions={snapshot.sessions}
             activeID={snapshot.activeSessionID}
@@ -322,6 +354,7 @@ export default function App() {
             busyFormID={formBusyID}
             onFormSubmit={(form, answer) => void respondForm(form, answer)}
             onFormCancel={(form) => void cancelForm(form)}
+            showToolDetails={snapshot.config?.showToolDetails === true}
           />
           {snapshot.statusMessage ? (
             <div className="status-banner">
@@ -333,6 +366,7 @@ export default function App() {
             value={draft}
             busy={snapshot.busy}
             disabled={!snapshot.config}
+            blockedReason={offlineReason}
             relayConnected={snapshot.relay.connected}
             commands={snapshot.commands}
             onChange={setDraft}

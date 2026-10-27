@@ -43,8 +43,10 @@ plugin, status do relay e botão de reconexão.
 ### `ToolCard`
 
 **Arquivo:** `src/sidepanel/ToolCard.tsx`
-**Descrição:** Card de ferramenta com rótulo, resumo do input, status
-(rodando/ok/erro), imagens, parâmetros e resultado colapsáveis.
+**Descrição:** Card de ferramenta. Por padrão usa a linha compacta (ícone,
+rótulo, resumo e status), expandível ao clicar; em erro, a primeira linha do
+resultado aparece mesmo recolhida. Com `showToolDetails` ligado nas opções,
+mostra o card completo com imagens, parâmetros e resultado colapsáveis.
 
 ### `PermissionCard`
 

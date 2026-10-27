@@ -55,6 +55,18 @@ describe("background/tools/tabs", () => {
       expect(output.currentTabId).toBe(9)
     })
 
+    it("prefere a aba principal do grupo à aba ativa", async () => {
+      const { ctx, tabs } = makeToolContext()
+      tabs.list.mockResolvedValue([
+        { id: 1, title: "Principal", url: "https://a.com/", active: false },
+        { id: 2, title: "Ativa", url: "https://b.com/", active: true },
+      ])
+      tabs.currentTabId.mockResolvedValue(1)
+
+      const output = JSON.parse((await tabsTools.tabs_context({}, ctx)).content)
+      expect(output.currentTabId).toBe(1)
+    })
+
     it("omite currentTabId quando não há abas", async () => {
       const { ctx, tabs } = makeToolContext()
       tabs.list.mockResolvedValue([])
@@ -183,7 +195,7 @@ describe("background/tools/tabs", () => {
         detail: "Docs",
         url: "https://docs.example.com/",
       })
-      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", target.id)
+      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", target.id, { makeMain: true })
       expect(result.metadata).toEqual({ tabId: target.id })
       expect(result.content).toContain("Aba anexada ao grupo desta sessão.")
     })
@@ -196,7 +208,7 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.tabs_attach({}, ctx)
 
       expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, lastFocusedWindow: true })
-      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", active.id)
+      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", active.id, { makeMain: true })
       expect(result.metadata).toEqual({ tabId: active.id })
     })
 
