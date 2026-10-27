@@ -59,6 +59,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
   const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full">("grouped")
+  const [browserAgentDefault, setBrowserAgentDefault] = useState(true)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -81,6 +82,7 @@ export default function App() {
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
         setToolDisplay(response.snapshot.config?.toolDisplay ?? "grouped")
+        setBrowserAgentDefault(response.snapshot.config?.browserAgentDefault !== false)
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -134,6 +136,7 @@ export default function App() {
         soundEnabled,
         notifyEnabled,
         toolDisplay,
+        browserAgentDefault,
         directory: workspace.trim() || undefined,
       },
     })
@@ -308,6 +311,17 @@ export default function App() {
               {snapshot.models.length} modelo(s) disponível(is). Modelos sem suporte a tools continuam
               servindo para conversar, mas não controlam o navegador.
             </p>
+            <label className="row" style={{ gap: 8, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={browserAgentDefault}
+                onChange={(event) => setBrowserAgentDefault(event.target.checked)}
+              />
+              <span>
+                Usar o agente `opencode-browser` nas novas sessões (desligue para usar o
+                agente selecionado acima)
+              </span>
+            </label>
           </section>
         ) : null}
 

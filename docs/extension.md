@@ -105,11 +105,12 @@ outro caminho nas opções, ele tem precedência. Sessões sem `location` contin
 visíveis (defensivo).
 
 Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin grava
-o agente `opencode-browser`. Quando o servidor lista esse agente, ele vira o
-padrão de novas sessões (o usuário pode trocar no seletor) e restringe as
-ferramentas a `browser_*` e `question` — o agente não lê arquivos, não executa
-comandos e não acessa dados da máquina. Por ser global, ele aparece em todos os
-projetos do OpenCode, não só nas conversas da extensão.
+o agente `opencode-browser`. Quando o servidor lista esse agente, as novas
+sessões passam a usá-lo (`browserAgentDefault`, ligado por padrão; desligar nas
+opções volta a usar o agente padrão escolhido). Ele restringe as ferramentas a
+`browser_*` e `question` — o agente não lê arquivos, não executa comandos e não
+acessa dados da máquina. Por ser global, ele aparece em todos os projetos do
+OpenCode, não só nas conversas da extensão.
 
 ### Grupos de abas
 

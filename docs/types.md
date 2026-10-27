@@ -24,6 +24,7 @@ pareamento.
 | `soundEnabled` | boolean | Não | Aviso sonoro (padrão true) |
 | `notifyEnabled` | boolean | Não | Notificação do sistema (padrão true) |
 | `toolDisplay` | `grouped` \| `rows` \| `full` | Não | Exibição das tools no chat (padrão `grouped`) |
+| `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
 
 ## Modelos e sessões
 

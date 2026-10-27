@@ -182,6 +182,15 @@ function flush(times = 12): Promise<void> {
   return chain;
 }
 
+/**
+ * Depois de fechar/errar o stream, o laço do SSE agenda um retry em 2 s. Deixar
+ * esse retry acontecer dentro do teste evita que ele consuma o fetch mock do
+ * teste seguinte e desvie os eventos para um módulo antigo.
+ */
+async function settleSseRetry(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 2_100));
+}
+
 async function loadWorker(): Promise<void> {
   vi.resetModules();
   await import("../../src/background/service-worker");
@@ -343,6 +352,10 @@ describe("service-worker: conexão e reconexão", () => {
       phase: "offline",
       failure: "server_error",
     });
+
+    // Prende o retry de 2 s para ele não consumir o fetch do próximo teste.
+    installFetch({ sseHang: true });
+    await settleSseRetry();
   });
 
   it("reconecta o backend recriando o cliente e recarregando as listas", async () => {
@@ -407,6 +420,10 @@ describe("service-worker: conexão e reconexão", () => {
     expect(state.snapshot.messages.at(-1)).toMatchObject({
       error: expect.stringContaining("caiu durante a execução"),
     });
+
+    // Prende o retry pendente do SSE para ele não vazar para o próximo teste.
+    installFetch({ sseHang: true });
+    await settleSseRetry();
   });
 
   it("verifica a saúde do servidor periodicamente", async () => {
@@ -509,6 +526,46 @@ describe("service-worker: conexão e reconexão", () => {
     expect(state.snapshot.config.defaultAgent).toBe("opencode-browser");
   });
 
+  it("cria novas sessões com o agente do navegador por padrão", async () => {
+    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+
+    const response = await callWorker({ type: "session:new" });
+    expect(response.ok).toBe(true);
+    const created = apiCalls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
+    );
+    expect(created?.body).toMatchObject({ agent: "opencode-browser" });
+  });
+
+  it("respeita o agente padrão quando o agente do navegador está desligado", async () => {
+    installFetch({
+      agents: [
+        makeAgent({ id: "build" }),
+        makeAgent({ id: "opencode-browser" }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+    await callWorker({
+      type: "settings:update",
+      patch: { browserAgentDefault: false, defaultAgent: "build" },
+    });
+    apiCalls.length = 0;
+
+    await callWorker({ type: "session:new" });
+    const created = apiCalls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
+    );
+    expect(created?.body).toMatchObject({ agent: "build" });
+  });
+
   it("volta a offline quando o stream termina", async () => {    await loadWorker();
     await pairWorker();
 
@@ -521,6 +578,8 @@ describe("service-worker: conexão e reconexão", () => {
       failure: "stream_closed",
       attempts: 1,
     });
+
+    await settleSseRetry();
   });
 
   it("reconectar sem configuração devolve instrução", async () => {

@@ -606,8 +606,14 @@ function pickModel(explicit?: ModelRef): ModelRef | undefined {
 async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   const chosen = pickModel(model);
+  const browserAgent =
+    config?.browserAgentDefault !== false &&
+    agents.some((item) => item.id === BROWSER_AGENT_ID)
+      ? BROWSER_AGENT_ID
+      : undefined;
   const chosenAgent =
     agent ??
+    browserAgent ??
     config?.defaultAgent ??
     agents.find((item) => item.id === "build")?.id;
   const session = await client.createSession(chosen, chosenAgent);
@@ -673,10 +679,14 @@ async function cancelForm(
 async function hydrate(id: string): Promise<void> {
   if (!client) return;
   const token = ++hydrateToken;
+  const startedAt = Date.now();
   try {
     const raw = await client.context(id);
     if (token !== hydrateToken || activeSessionID !== id) return;
     if (busy) return;
+    // Um evento ao vivo chegou durante a leitura: ele é mais novo que o
+    // snapshot e sobrescrever aqui apagaria texto/erro recém-recebidos.
+    if (lastSseEventAt > startedAt) return;
     messages = mapContext(raw);
     busy = messages.some(
       (message) => message.kind === "assistant" && message.streaming,

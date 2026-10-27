@@ -192,6 +192,8 @@ export interface OpencodeConfig {
   notifyEnabled?: boolean;
   /** Como as tools aparecem no chat. Padrão: agrupadas em um modal. */
   toolDisplay?: "grouped" | "rows" | "full";
+  /** Usa o agente `opencode-browser` nas novas sessões. Padrão: true. */
+  browserAgentDefault?: boolean;
 }
 
 export interface PermissionRequest {

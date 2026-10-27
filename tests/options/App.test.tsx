@@ -99,6 +99,20 @@ describe("options/App", () => {
     expect(sent("settings:update").patch.toolDisplay).toBe("full")
   })
 
+  it("salva a preferência de agente do navegador", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const toggle = screen.getByRole("checkbox", {
+      name: /opencode-browser.*novas sessões/,
+    })
+    expect(toggle).toBeChecked()
+
+    await user.click(toggle)
+    await user.click(screen.getByRole("button", { name: "Salvar", exact: true }))
+
+    expect(sent("settings:update").patch.browserAgentDefault).toBe(false)
+  })
+
   it("salva a pasta das conversas informada", async () => {
     const { user } = await renderOptions(makeSnapshot())
 
@@ -227,6 +241,7 @@ describe("options/App", () => {
         soundEnabled: false,
         notifyEnabled: false,
         toolDisplay: "grouped",
+        browserAgentDefault: true,
         directory: undefined,
       },
     })
