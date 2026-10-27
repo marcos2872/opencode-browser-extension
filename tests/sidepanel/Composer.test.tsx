@@ -259,8 +259,8 @@ describe("sidepanel/Composer", () => {
       />,
     )
 
-    const line = screen.getByText(/Contexto 12\.000 \/ 200\.000 \(6%\)/)
-    expect(line).toHaveTextContent("Sessão US$ 0,03")
+    const line = screen.getByText(/Contexto 12\.000 \(6%\)/)
+    expect(line).toHaveTextContent("Sessão US$ 0,0300")
     expect(
       screen.queryByText("Enter envia · Shift+Enter quebra linha"),
     ).not.toBeInTheDocument()

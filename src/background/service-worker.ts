@@ -94,6 +94,7 @@ let syncInFlight = false;
 let syncPending = false;
 let lastSseEventAt = 0;
 let connectStartedAt = 0;
+let refreshSessionTimer: ReturnType<typeof setTimeout> | null = null;
 
 function playSound(): void {
   if (config?.soundEnabled === false) return;
@@ -563,6 +564,14 @@ async function refreshAgents(): Promise<void> {
     }
   }
   broadcastNow();
+}
+
+function refreshSessionUsage(): void {
+  if (refreshSessionTimer) clearTimeout(refreshSessionTimer);
+  refreshSessionTimer = setTimeout(() => {
+    refreshSessionTimer = null;
+    void refreshSessions().catch(() => undefined);
+  }, 400);
 }
 
 async function refreshSessions(): Promise<void> {
@@ -1292,6 +1301,7 @@ function onOpencodeEvent(event: {
       for (const message of messages) {
         if (message.kind === "assistant") message.streaming = false;
       }
+      refreshSessionUsage();
       if (ports.size === 0) {
         playSound();
         if (config?.notifyEnabled !== false) {
@@ -1329,6 +1339,7 @@ function onOpencodeEvent(event: {
         for (const message of messages) {
           if (message.kind === "assistant") message.streaming = false;
         }
+        refreshSessionUsage();
         scheduleBroadcast();
       }
       break;
@@ -1343,6 +1354,7 @@ function onOpencodeEvent(event: {
 function markSessionError(error: unknown): void {
   busy = false;
   statusMessage = null;
+  refreshSessionUsage();
   for (const item of messages) {
     if (item.kind === "assistant") item.streaming = false;
   }

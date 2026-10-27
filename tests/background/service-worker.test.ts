@@ -1125,6 +1125,19 @@ describe("service-worker: eventos SSE", () => {
     expect(chrome.notifications.create).not.toHaveBeenCalled();
   });
 
+  it("atualiza o resumo da sessão depois da execução", async () => {
+    await withSse();
+    apiCalls.length = 0;
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_test" });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await flush();
+
+    expect(
+      apiCalls.some((call) => call.url.includes("/api/session")),
+    ).toBe(true);
+  });
+
   it("atualiza título de sessão renomeada", async () => {
     await withSse();
     pushEvent("session.renamed", {

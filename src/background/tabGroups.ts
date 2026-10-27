@@ -8,6 +8,15 @@ function isBlankUrl(url?: string): boolean {
   return !url || url === "about:blank" || url.startsWith("chrome://newtab");
 }
 
+function sameBaseUrl(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
 const STORAGE_KEY = "tabGroups";
 const COLORS = [
   "blue",
@@ -312,11 +321,11 @@ export class TabGroups {
         .query({ groupId: current.groupId })
         .catch(() => []);
       const main = tabs.find((tab) => tab.id === current.mainTabId);
-      // Grupo recém-criado: a única aba é a em branco; navega nela.
+      const mainUrl = main?.url ?? main?.pendingUrl;
+      // Reaproveita a aba principal se estiver em branco ou na mesma base.
       if (
-        tabs.length === 1 &&
         main?.id !== undefined &&
-        isBlankUrl(main.url ?? main.pendingUrl)
+        (isBlankUrl(mainUrl) || sameBaseUrl(mainUrl, url))
       ) {
         await chrome.tabs.update(main.id, { url, active });
         return main.id;

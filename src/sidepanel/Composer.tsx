@@ -86,8 +86,8 @@ export function Composer({
 
   const contextLabel =
     stats?.contextUsed !== undefined
-      ? stats.contextLimit
-        ? `Contexto ${formatTokens(stats.contextUsed)} / ${formatTokens(stats.contextLimit)} (${stats.percent}%)`
+      ? stats.percent !== undefined
+        ? `Contexto ${formatTokens(stats.contextUsed)} (${stats.percent}%)`
         : `Contexto ${formatTokens(stats.contextUsed)} tokens`
       : null
   const costLabel =

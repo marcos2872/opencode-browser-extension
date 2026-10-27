@@ -11,6 +11,7 @@ const tokenFormat = new Intl.NumberFormat("pt-BR")
 const costFormat = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "USD",
+  minimumFractionDigits: 4,
   maximumFractionDigits: 4,
 })
 
