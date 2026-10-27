@@ -1,4 +1,5 @@
 import type { ChatMessage, ToolCallView } from "../shared/types"
+import { normalizeToolName } from "./toolNames"
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
@@ -30,7 +31,7 @@ function computerActivity(input: Record<string, unknown>): string {
 /** Frase curta, no gerúndio, para o indicador de trabalho. */
 export function toolActivity(tool: ToolCallView): string {
   const input = (tool.input ?? {}) as Record<string, unknown>
-  switch (tool.name) {
+  switch (normalizeToolName(tool.name)) {
     case "navigate":
       if (text(input.direction) === "back") return "voltando uma página"
       if (text(input.direction) === "forward") return "avançando uma página"
@@ -64,6 +65,7 @@ export function toolActivity(tool: ToolCallView): string {
     case "update_plan":
       return "planejando os próximos passos"
     case "browser_batch":
+    case "batch":
       return "executando ações"
     case "upload_image":
       return "enviando um arquivo"
@@ -101,10 +103,17 @@ export function activityLabel(messages: ChatMessage[]): string {
   if (running) return toolActivity(running)
 
   const last = run.at(-1)
-  if (last?.kind === "assistant" && last.streaming && last.text.trim()) {
-    return "escrevendo a resposta"
+  if (last?.kind === "assistant" && last.streaming) {
+    return last.text.trim() ? "escrevendo a resposta" : "pensando"
   }
 
   const lastTool = tools.at(-1)
   return lastTool ? toolActivity(lastTool) : "trabalhando"
+}
+
+/** Texto completo do indicador, já com o prefixo "trabalhando:". */
+export function activityText(messages: ChatMessage[]): string {
+  const label = activityLabel(messages)
+  if (label === "trabalhando" || label === "pensando") return label
+  return `trabalhando: ${label}`
 }

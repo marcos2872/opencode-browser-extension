@@ -180,7 +180,7 @@ describe("sidepanel/Chat", () => {
   it("mostra a tool atual no indicador do modo oculto", () => {
     const message = makeMessage({
       text: "resposta",
-      tools: [{ id: "t1", name: "read_page", status: "running" }],
+      tools: [{ id: "t1", name: "browser_read_page", status: "running" }],
     })
     render(
       <Chat messages={[message]} busy onSuggestion={vi.fn()} toolDisplay="hidden" />,

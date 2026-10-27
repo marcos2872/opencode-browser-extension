@@ -17,6 +17,9 @@ describe("sidepanel/ToolCard", () => {
     rerender(<ToolCard tool={makeTool({ name: "javascript_tool" })} />)
     expect(screen.getByText("JavaScript")).toBeInTheDocument()
 
+    rerender(<ToolCard tool={makeTool({ name: "browser_javascript_tool" })} />)
+    expect(screen.getByText("JavaScript")).toBeInTheDocument()
+
     rerender(<ToolCard tool={makeTool({ name: "browser_batch" })} />)
     expect(screen.getByText("Lote de ações")).toBeInTheDocument()
   })

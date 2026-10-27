@@ -2,7 +2,8 @@ import { useState, type RefObject } from "react"
 import type { ChatMessage, FormAnswer, FormInfo, ToolCallView, TokenUsage } from "../shared/types"
 import { Markdown } from "../components/Markdown"
 import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
-import { activityLabel } from "./toolActivity"
+import { activityText } from "./toolActivity"
+import { normalizeToolName } from "./toolNames"
 import { ToolRun, ToolsModal } from "./ToolsModal"
 
 export type ToolDisplay = "grouped" | "rows" | "full" | "hidden"
@@ -69,7 +70,7 @@ function collectRunTools(messages: ChatMessage[]): Map<number, ToolCallView[]> {
 export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, toolDisplay = "grouped" }: Props) {
   const [openRunID, setOpenRunID] = useState<string | null>(null)
   const hidden = toolDisplay === "hidden"
-  const activity = hidden ? activityLabel(messages) : null
+  const activity = hidden ? activityText(messages) : "aguardando o OpenCode"
   const runTools = collectRunTools(messages)
   const hiddenRuns = new Map<number, HiddenRun>()
   if (hidden) {
@@ -84,7 +85,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
       if (message.text.trim()) run.texts.push(message.text)
       if (message.error) run.errors.push(message.error)
       for (const tool of message.tools) {
-        if (tool.name === "question") run.questions.push(tool)
+        if (normalizeToolName(tool.name) === "question") run.questions.push(tool)
       }
       if (message.usage) run.usage = message.usage
       hiddenRuns.set(start, run)
@@ -98,7 +99,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
   const matchedToolIDs = new Set(
     messages.flatMap((message) =>
       message.kind === "assistant"
-        ? message.tools.filter((tool) => tool.name === "question").map((tool) => tool.id)
+        ? message.tools.filter((tool) => normalizeToolName(tool.name) === "question").map((tool) => tool.id)
         : [],
     ),
   )
@@ -205,7 +206,8 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
             toolDisplay === "grouped"
               ? message.tools.filter(
                   (tool) =>
-                    tool.name === "question" || tool.status === "running",
+                    normalizeToolName(tool.name) === "question" ||
+                    tool.status === "running",
                 )
               : message.tools
 
@@ -274,12 +276,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
           <div className="thinking">
             <span />
             <span />
-            <span />{" "}
-            {hidden
-              ? activity && activity !== "trabalhando"
-                ? `trabalhando: ${activity}`
-                : "trabalhando"
-              : "aguardando o OpenCode"}
+            <span /> {activity}
           </div>
         ) : null}
         {orphanForms.map((form) => (

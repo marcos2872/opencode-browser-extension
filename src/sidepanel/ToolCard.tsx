@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { FormAnswer, FormInfo, ToolCallView } from "../shared/types"
 import { FormCard } from "../components/FormCard"
 import { BrowserIcon, CheckIcon, ChevronIcon, QuestionIcon, TerminalIcon, XIcon } from "../components/icons"
+import { normalizeToolName } from "./toolNames"
 
 const LABELS: Record<string, string> = {
   tabs_context: "Abas do grupo",
@@ -19,6 +20,7 @@ const LABELS: Record<string, string> = {
   resize_window: "Redimensionar",
   update_plan: "Plano",
   browser_batch: "Lote de ações",
+  batch: "Lote de ações",
 }
 
 interface ToolCardProps {
@@ -83,7 +85,8 @@ export function readQuestions(input: unknown): QuestionItem[] {
 }
 
 export function toolLabel(tool: ToolCallView): string {
-  return LABELS[tool.name] ?? tool.name
+  const name = normalizeToolName(tool.name)
+  return LABELS[name] ?? tool.name
 }
 
 export function toolSummary(tool: ToolCallView): string {
@@ -216,7 +219,7 @@ export function ToolCard({
 }: ToolCardProps) {
   const [expanded, setExpanded] = useState(false)
 
-  if (tool.name === "question") {
+  if (normalizeToolName(tool.name) === "question") {
     const form = forms?.find((item) => questionToolID(item) === tool.id)
     return (
       <QuestionCard
@@ -229,7 +232,8 @@ export function ToolCard({
     )
   }
 
-  const label = LABELS[tool.name] ?? tool.name
+  const name = normalizeToolName(tool.name)
+  const label = LABELS[name] ?? tool.name
   const detail = summary(tool)
   const state = statusLabel(tool)
   const hasBody =
@@ -285,7 +289,11 @@ function ToolHead({
   const content = (
     <>
       <span className="tool-icon">
-        {tool.name === "javascript_tool" ? <TerminalIcon size={13} /> : <BrowserIcon size={13} />}
+        {normalizeToolName(tool.name) === "javascript_tool" ? (
+          <TerminalIcon size={13} />
+        ) : (
+          <BrowserIcon size={13} />
+        )}
       </span>
       <span>{label}</span>
       {detail ? <span className="status">{detail.slice(0, 80)}</span> : null}

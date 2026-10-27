@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { ToolCallView } from "../shared/types"
 import { BrowserIcon, ChevronIcon, TerminalIcon, XIcon } from "../components/icons"
 import { ToolBody, firstLine, toolLabel, toolStatus, toolSummary } from "./ToolCard"
+import { normalizeToolName } from "./toolNames"
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`
@@ -145,7 +146,7 @@ export function ToolsModal({
                   onClick={() => setExpanded(open ? null : tool.id)}
                 >
                   <span className="tool-icon">
-                    {tool.name === "javascript_tool" ? (
+                    {normalizeToolName(tool.name) === "javascript_tool" ? (
                       <TerminalIcon size={13} />
                     ) : (
                       <BrowserIcon size={13} />
