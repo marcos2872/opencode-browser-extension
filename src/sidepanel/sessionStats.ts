@@ -17,8 +17,11 @@ const costFormat = new Intl.NumberFormat("pt-BR", {
 
 /**
  * Resumo da sessão para o rodapé do composer: tokens da última requisição
- * (preenchimento da janela), limite do modelo e custo acumulado. Quando o
- * histórico vem hidratado (sem usage por mensagem), usa o resumo da sessão.
+ * (preenchimento da janela), limite do modelo e custo acumulado.
+ *
+ * O `contextUsage` vem da API (última mensagem do assistente) e é a fonte
+ * autoritativa; o usage das mensagens ao vivo pode ficar parcial durante o
+ * streaming e por isso só é usado como fallback.
  */
 export function sessionStats(
   messages: ChatMessage[],
@@ -26,31 +29,16 @@ export function sessionStats(
   session?: SessionInfo | null,
   contextUsage?: TokenUsage,
 ): SessionStats {
-  let contextUsed: number | undefined
+  let messageContext: number | undefined
   let messageCost: number | undefined
   for (const message of messages) {
     if (message.kind !== "assistant" || !message.usage) continue
     if (typeof message.usage.cost === "number") {
       messageCost = (messageCost ?? 0) + message.usage.cost
     }
-    if (typeof message.usage.input === "number") {
-      contextUsed =
-        message.usage.input +
-        (message.usage.cacheRead ?? message.usage.cache?.read ?? 0)
-    } else if (typeof message.usage.total === "number") {
-      contextUsed = message.usage.total
-    }
+    messageContext = usageContext(message.usage) ?? messageContext
   }
-  // Histórico hidratado não tem usage por mensagem: usa o dado da sessão.
-  if (contextUsed === undefined && contextUsage) {
-    if (typeof contextUsage.input === "number") {
-      contextUsed =
-        contextUsage.input +
-        (contextUsage.cacheRead ?? contextUsage.cache?.read ?? 0)
-    } else if (typeof contextUsage.total === "number") {
-      contextUsed = contextUsage.total
-    }
-  }
+  const contextUsed = usageContext(contextUsage) ?? messageContext
   // O custo da sessão é autoritativo; o somatório cobre runs antes do refresh.
   const cost =
     typeof session?.cost === "number" ? session.cost : messageCost
@@ -60,6 +48,15 @@ export function sessionStats(
       ? Math.min(100, Math.round((contextUsed / contextLimit) * 100))
       : undefined
   return { contextUsed, contextLimit, percent, cost }
+}
+
+function usageContext(usage?: TokenUsage): number | undefined {
+  if (!usage) return undefined
+  if (typeof usage.input === "number") {
+    return usage.input + (usage.cacheRead ?? usage.cache?.read ?? 0)
+  }
+  if (typeof usage.total === "number") return usage.total
+  return undefined
 }
 
 export function formatTokens(value: number): string {

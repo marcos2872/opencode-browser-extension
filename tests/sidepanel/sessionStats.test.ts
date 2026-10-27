@@ -56,6 +56,18 @@ describe("sessionStats", () => {
     expect(stats.contextUsed).toBe(1_500)
   })
 
+  it("prefere o usage da sessão ao das mensagens ao vivo", () => {
+    const stats = sessionStats(
+      conversation(makeMessage({ usage: { input: 451 } })),
+      model,
+      undefined,
+      { input: 1_128, cache: { read: 23_153 } },
+    )
+
+    expect(stats.contextUsed).toBe(24_281)
+    expect(stats.percent).toBe(12)
+  })
+
   it("usa o usage da última mensagem da sessão quando o histórico não tem usage", () => {
     const stats = sessionStats(
       conversation(makeMessage()),
