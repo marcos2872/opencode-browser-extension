@@ -177,6 +177,20 @@ describe("sidepanel/Chat", () => {
     expect(screen.getByText("Apagar tudo?")).toBeInTheDocument()
   })
 
+  it("mostra a tool atual no indicador do modo oculto", () => {
+    const message = makeMessage({
+      text: "resposta",
+      tools: [{ id: "t1", name: "read_page", status: "running" }],
+    })
+    render(
+      <Chat messages={[message]} busy onSuggestion={vi.fn()} toolDisplay="hidden" />,
+    )
+
+    expect(
+      screen.getByText(/trabalhando: lendo a página/),
+    ).toBeInTheDocument()
+  })
+
   it("agrupa o run em um único bloco no modo oculto", () => {
     const messages = [
       { kind: "user" as const, id: "u1", text: "faça", time: 1 },
