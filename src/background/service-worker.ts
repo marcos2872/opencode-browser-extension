@@ -237,6 +237,9 @@ function resetStreaming(): void {
 function markRunInterrupted(detail: string): void {
   busy = false;
   statusMessage = null;
+  for (const item of messages) {
+    if (item.kind === "assistant") item.streaming = false;
+  }
   let message = [...messages]
     .reverse()
     .find((item) => item.kind === "assistant");
@@ -1141,6 +1144,8 @@ function onOpencodeEvent(event: {
             ? `${message.text}\n\n${data.text}`
             : data.text;
       }
+      // O texto deste passo acabou; o run pode continuar em outro passo.
+      message.streaming = false;
       scheduleBroadcast();
       break;
     }
@@ -1253,11 +1258,11 @@ function onOpencodeEvent(event: {
       markSessionError(data.error ?? data.message);
       break;
     case "session.step.ended":
-      if (data.finish !== "tool-calls") {
-        busy = false;
-        for (const message of messages) {
-          if (message.kind === "assistant") message.streaming = false;
-        }
+      if (data.finish !== "tool-calls") busy = false;
+      // O passo terminou; nenhuma mensagem dele continua "streaming", mesmo
+      // quando o run segue para as ferramentas ou para o próximo passo.
+      for (const message of messages) {
+        if (message.kind === "assistant") message.streaming = false;
       }
       scheduleBroadcast();
       break;
@@ -1282,6 +1287,9 @@ function onOpencodeEvent(event: {
 function markSessionError(error: unknown): void {
   busy = false;
   statusMessage = null;
+  for (const item of messages) {
+    if (item.kind === "assistant") item.streaming = false;
+  }
   let message = [...messages]
     .reverse()
     .find((item) => item.kind === "assistant");
@@ -1315,6 +1323,11 @@ function ensureAssistant(
     time: Date.now(),
     streaming: true,
   };
+  // Só uma mensagem pode estar em produção por vez; passos anteriores já
+  // terminaram mesmo que o run continue.
+  for (const message of messages) {
+    if (message.kind === "assistant") message.streaming = false;
+  }
   messages.push(created);
   return created;
 }

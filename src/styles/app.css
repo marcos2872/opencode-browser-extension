@@ -641,6 +641,63 @@ a {
   max-width: 100%;
 }
 
+/* Linha compacta: só o cabeçalho, expandível ao clicar. */
+.tool-card.compact {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+  gap: 0;
+}
+
+.tool-card.compact.failed {
+  background: color-mix(in srgb, var(--err) 5%, transparent);
+}
+
+.tool-head-button {
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tool-head-button:hover {
+  background: var(--bg-elev);
+}
+
+.tool-head-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tool-head .chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.tool-head .chevron.open {
+  transform: rotate(90deg);
+}
+
+.tool-error-line {
+  margin: 0 8px 6px 36px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--err);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-card.compact > details,
+.tool-card.compact > .tool-images {
+  margin: 0 8px 8px;
+}
+
 .tool-head {
   display: flex;
   align-items: center;

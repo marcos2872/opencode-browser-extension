@@ -17,6 +17,7 @@ ou na página de opções.
 | `findMode` | Ranking do `find` | `heuristic` \| `model` | `heuristic` | Não | `tools/page.ts` |
 | `soundEnabled` | Aviso sonoro | boolean | `true` | Não | Offscreen |
 | `notifyEnabled` | Notificação do sistema | boolean | `true` | Não | `chrome.notifications` |
+| `showToolDetails` | Parâmetros e resultado das tools no chat | boolean | `false` | Não | `sidepanel/ToolCard` |
 
 ### Modos de permissão
 

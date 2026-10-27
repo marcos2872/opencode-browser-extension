@@ -1,6 +1,7 @@
+import { useState } from "react"
 import type { FormAnswer, FormInfo, ToolCallView } from "../shared/types"
 import { FormCard } from "../components/FormCard"
-import { BrowserIcon, CheckIcon, QuestionIcon, TerminalIcon, XIcon } from "../components/icons"
+import { BrowserIcon, CheckIcon, ChevronIcon, QuestionIcon, TerminalIcon, XIcon } from "../components/icons"
 
 const LABELS: Record<string, string> = {
   tabs_context: "Abas do grupo",
@@ -26,6 +27,8 @@ interface ToolCardProps {
   busyFormID?: string | null
   onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
   onFormCancel?: (form: FormInfo) => void
+  /** `false` usa a linha compacta expansível (padrão do chat). */
+  detailed?: boolean
 }
 
 /** O form da tool `question` guarda o id da chamada em `metadata.tool.id`. */
@@ -192,7 +195,16 @@ function QuestionCard({
   )
 }
 
-export function ToolCard({ tool, forms, busyFormID, onFormSubmit, onFormCancel }: ToolCardProps) {
+export function ToolCard({
+  tool,
+  forms,
+  busyFormID,
+  onFormSubmit,
+  onFormCancel,
+  detailed = true,
+}: ToolCardProps) {
+  const [expanded, setExpanded] = useState(false)
+
   if (tool.name === "question") {
     const form = forms?.find((item) => questionToolID(item) === tool.id)
     return (
@@ -209,21 +221,89 @@ export function ToolCard({ tool, forms, busyFormID, onFormSubmit, onFormCancel }
   const label = LABELS[tool.name] ?? tool.name
   const detail = summary(tool)
   const state = statusLabel(tool)
+  const hasBody =
+    Boolean(tool.images?.length) ||
+    Boolean(tool.output) ||
+    Boolean(tool.input && Object.keys(tool.input).length > 0)
+
+  if (detailed) {
+    return (
+      <div className="tool-card">
+        <ToolHead tool={tool} label={label} detail={detail} state={state} />
+        <ToolBody tool={tool} />
+      </div>
+    )
+  }
 
   return (
-    <div className="tool-card">
-      <div className="tool-head">
-        <span className="tool-icon">
-          {tool.name === "javascript_tool" ? <TerminalIcon size={13} /> : <BrowserIcon size={13} />}
-        </span>
-        <span>{label}</span>
-        {detail ? <span className="status">{detail.slice(0, 80)}</span> : null}
-        <span className="spacer" />
-        <span className={`tool-status ${state === "ok" ? "ok" : state === "erro" ? "error" : "running"}`}>
-          {state === "ok" ? <CheckIcon size={11} /> : state === "erro" ? <XIcon size={11} /> : null} {state}
-        </span>
-      </div>
+    <div className={`tool-card compact ${tool.status === "error" ? "failed" : ""}`}>
+      <ToolHead
+        tool={tool}
+        label={label}
+        detail={detail}
+        state={state}
+        expandable={hasBody}
+        expanded={expanded}
+        onToggle={() => setExpanded((value) => !value)}
+      />
+      {tool.status === "error" && tool.output && !expanded ? (
+        <div className="tool-error-line">{firstLine(tool.output)}</div>
+      ) : null}
+      {expanded ? <ToolBody tool={tool} /> : null}
+    </div>
+  )
+}
 
+function ToolHead({
+  tool,
+  label,
+  detail,
+  state,
+  expandable = false,
+  expanded = false,
+  onToggle,
+}: {
+  tool: ToolCallView
+  label: string
+  detail: string
+  state: string
+  expandable?: boolean
+  expanded?: boolean
+  onToggle?: () => void
+}) {
+  const content = (
+    <>
+      <span className="tool-icon">
+        {tool.name === "javascript_tool" ? <TerminalIcon size={13} /> : <BrowserIcon size={13} />}
+      </span>
+      <span>{label}</span>
+      {detail ? <span className="status">{detail.slice(0, 80)}</span> : null}
+      <span className="spacer" />
+      <span className={`tool-status ${state === "ok" ? "ok" : state === "erro" ? "error" : "running"}`}>
+        {state === "ok" ? <CheckIcon size={11} /> : state === "erro" ? <XIcon size={11} /> : null} {state}
+      </span>
+      {expandable ? (
+        <ChevronIcon size={12} className={`chevron${expanded ? " open" : ""}`} />
+      ) : null}
+    </>
+  )
+
+  if (!expandable) return <div className="tool-head">{content}</div>
+  return (
+    <button
+      type="button"
+      className="tool-head tool-head-button"
+      aria-expanded={expanded}
+      onClick={onToggle}
+    >
+      {content}
+    </button>
+  )
+}
+
+function ToolBody({ tool }: { tool: ToolCallView }) {
+  return (
+    <>
       {tool.images?.length ? (
         <div className="tool-images">
           {tool.images.slice(0, 3).map((image, index) => (
@@ -250,6 +330,11 @@ export function ToolCard({ tool, forms, busyFormID, onFormSubmit, onFormCancel }
           <div className="tool-output">{tool.output}</div>
         </details>
       ) : null}
-    </div>
+    </>
   )
+}
+
+function firstLine(text: string): string {
+  const line = text.split("\n").find((item) => item.trim()) ?? ""
+  return line.length > 160 ? `${line.slice(0, 160)}…` : line
 }

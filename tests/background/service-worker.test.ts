@@ -410,8 +410,59 @@ describe("service-worker: conexão e reconexão", () => {
     ).toBeGreaterThan(agentCallsBefore);
   });
 
-  it("volta a offline quando o stream termina", async () => {
+  it("não deixa mensagens de passos anteriores em streaming", async () => {
     await loadWorker();
+    await pairWorker();
+
+    pushEvent("session.execution.started", { sessionID: "ses_test" });
+    pushEvent("session.text.delta", {
+      sessionID: "ses_test",
+      assistantMessageID: "a1",
+      delta: "primeiro passo",
+    });
+    await flush();
+    let state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(true);
+
+    pushEvent("session.step.ended", {
+      sessionID: "ses_test",
+      finish: "tool-calls",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(false);
+
+    pushEvent("session.text.delta", {
+      sessionID: "ses_test",
+      assistantMessageID: "a2",
+      delta: "segundo passo",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a1").streaming,
+    ).toBe(false);
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a2").streaming,
+    ).toBe(true);
+
+    pushEvent("session.text.ended", {
+      sessionID: "ses_test",
+      assistantMessageID: "a2",
+      text: "segundo passo",
+    });
+    await flush();
+    state = await callWorker({ type: "state:get" });
+    expect(
+      state.snapshot.messages.find((item: any) => item.id === "a2").streaming,
+    ).toBe(false);
+  });
+
+  it("volta a offline quando o stream termina", async () => {    await loadWorker();
     await pairWorker();
 
     sseController?.close();

@@ -12,6 +12,8 @@ interface Props {
   busyFormID?: string | null
   onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
   onFormCancel?: (form: FormInfo) => void
+  /** Mostra parâmetros e resultado das tools; padrão é a linha compacta. */
+  showToolDetails?: boolean
 }
 
 const SUGGESTIONS = [
@@ -33,7 +35,7 @@ function usageLabel(usage: TokenUsage): string {
   return parts.join(" · ")
 }
 
-export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel }: Props) {
+export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, showToolDetails }: Props) {
   const matchedToolIDs = new Set(
     messages.flatMap((message) =>
       message.kind === "assistant"
@@ -112,6 +114,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                 busyFormID={busyFormID}
                 onFormSubmit={onFormSubmit}
                 onFormCancel={onFormCancel}
+                detailed={showToolDetails === true}
               />
             ))}
             {message.error ? <div className="error-banner">{message.error}</div> : null}

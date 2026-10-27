@@ -58,6 +58,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
+  const [showToolDetails, setShowToolDetails] = useState(false)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -79,6 +80,7 @@ export default function App() {
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
+        setShowToolDetails(response.snapshot.config?.showToolDetails === true)
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -131,6 +133,7 @@ export default function App() {
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
         notifyEnabled,
+        showToolDetails,
         directory: workspace.trim() || undefined,
       },
     })
@@ -385,6 +388,18 @@ export default function App() {
               onChange={(event) => setNotifyEnabled(event.target.checked)}
             />
             <span>Mostrar notificação do sistema quando o agente terminar com o painel fechado</span>
+          </label>
+
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={showToolDetails}
+              onChange={(event) => setShowToolDetails(event.target.checked)}
+            />
+            <span>
+              Mostrar parâmetros e resultado das ferramentas no chat (desligado mostra só o
+              nome e o status; a linha continua expandível)
+            </span>
           </label>
 
           <div className="field">

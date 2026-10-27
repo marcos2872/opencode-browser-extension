@@ -87,6 +87,20 @@ describe("options/App", () => {
     )
   })
 
+  it("salva a preferência de detalhes das ferramentas", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const toggle = screen.getByRole("checkbox", {
+      name: /Mostrar parâmetros e resultado das ferramentas/,
+    })
+    expect(toggle).not.toBeChecked()
+
+    await user.click(toggle)
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+
+    expect(sent("settings:update").patch.showToolDetails).toBe(true)
+  })
+
   it("salva a pasta das conversas informada", async () => {
     const { user } = await renderOptions(makeSnapshot())
 
@@ -214,6 +228,7 @@ describe("options/App", () => {
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
+        showToolDetails: false,
         directory: undefined,
       },
     })

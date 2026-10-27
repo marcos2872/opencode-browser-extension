@@ -188,6 +188,8 @@ export interface OpencodeConfig {
   findMode?: "heuristic" | "model";
   soundEnabled?: boolean;
   notifyEnabled?: boolean;
+  /** Mostra parâmetros e resultado das tools no chat. Padrão: compacto. */
+  showToolDetails?: boolean;
 }
 
 export interface PermissionRequest {
