@@ -1,4 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -42,6 +48,32 @@ describe("plugin: agente do navegador", () => {
     expect(readFileSync(path, "utf8")).toBe(
       "---\nmode: primary\n---\n\ncustomizado\n",
     )
+  })
+
+  it("atualiza um agente antigo e guarda backup", () => {
+    const directory = tempDir()
+    const path = ensureAgentFile(directory)
+    const antigo =
+      "---\nmode: primary\n---\n\n<!-- opencode-browser-agent v1 -->\n\ncustomizado\n"
+    writeFileSync(path, antigo, "utf8")
+
+    expect(ensureAgentFile(directory)).toBe(path)
+
+    const atual = readFileSync(path, "utf8")
+    expect(atual).toContain("<!-- opencode-browser-agent v2 -->")
+    expect(atual).not.toBe(antigo)
+    expect(existsSync(`${path}.bak-v1`)).toBe(true)
+    expect(readFileSync(`${path}.bak-v1`, "utf8")).toBe(antigo)
+  })
+
+  it("preserva um agente já atualizado", () => {
+    const directory = tempDir()
+    const path = ensureAgentFile(directory)
+    const atual = `${readFileSync(path, "utf8")}\n<!-- editado -->\n`
+    writeFileSync(path, atual, "utf8")
+
+    expect(ensureAgentFile(directory)).toBe(path)
+    expect(readFileSync(path, "utf8")).toBe(atual)
   })
 
   it("cria a pasta quando ela ainda não existe", () => {
