@@ -104,15 +104,18 @@ listagem por ela — só aparecem as conversas criadas ali. Se o usuário defini
 outro caminho nas opções, ele tem precedência. Sessões sem `location` continuam
 visíveis (defensivo).
 
-Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin cria
-o agente `opencode-browser` a partir do template
-`plugin/opencode-browser.agent.md`. Depois de criado, o arquivo não é
-sobrescrito — edite-o para personalizar. Quando o servidor lista esse agente, as
-novas sessões passam a usá-lo (`browserAgentDefault`, ligado por padrão;
-desligar nas opções volta a usar o agente padrão escolhido). Ele restringe as
-ferramentas a `browser_*` e `question` — o agente não lê arquivos, não executa
-comandos e não acessa dados da máquina. Por ser global, ele aparece em todos os
-projetos do OpenCode, não só nas conversas da extensão.
+Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin
+garante o agente `opencode-browser` a partir do template
+`plugin/opencode-browser.agent.md`. O arquivo é atualizado por versão
+(`<!-- opencode-browser-agent vN -->`): uma versão antiga é substituída com
+backup `.bak-vN`; um arquivo sem marcador ou já na versão atual é preservado.
+O template atual é **v4** (segurança, ambiente da extensão, abas por origem e
+economia de contexto). Quando o servidor lista esse agente, as novas sessões
+passam a usá-lo (`browserAgentDefault`, ligado por padrão; desligar nas opções
+volta a usar o agente padrão escolhido). Ele restringe as ferramentas a
+`browser_*` e `question` — o agente não lê arquivos, não executa comandos e não
+acessa dados da máquina. Por ser global, ele aparece em todos os projetos do
+OpenCode, não só nas conversas da extensão.
 
 ### Grupos de abas
 
@@ -120,6 +123,10 @@ Cada sessão do OpenCode ganha um grupo do Chrome com o título `OpenCode`, uma 
 principal e as demais abas usadas pelo agente. Ferramentas só enxergam abas do
 grupo. Ao iniciar, grupos sem sessão correspondente são desfeitos (abas reais são
 desagrupadas; abas em branco são fechadas).
+
+`tabs_create` reaproveita a aba principal quando ela está **em branco** ou na
+**mesma origem** (esquema + host + porta); se a URL for de outra origem, abre uma
+aba nova. Assim, pedir Hugging Face e depois TabNews mantém as duas abertas.
 
 ### Offscreen
 

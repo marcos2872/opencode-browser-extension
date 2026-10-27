@@ -40,9 +40,16 @@ chat funciona sem ele, mas as ferramentas do navegador não.
 | `A extensão OpenCode Browser não está conectada.` | Nenhum socket ativo | Abra o side panel e verifique o status do plugin |
 | `A extensão não respondeu em 180s.` | Ferramenta travada ou extensão suspensa | Verifique a página e tente de novo |
 | `Execução cancelada.` | Botão Parar ou cancelamento do OpenCode | Esperado |
-| `Relay HTTP 403.` | Token do arquivo não confere | Apague `/tmp/opencode-browser-relay.token` e recarregue o plugin |
-| `Relay HTTP 503.` | Servidor respondeu sem socket da extensão | Reconecte o painel |
-| `não foi possível abrir o relay em nenhuma porta candidata` | 8799–8802 ocupadas | Libere uma porta ou reinicie o OpenCode |
+| `Relay HTTP 403.` | Token do arquivo não confere | Apague `~/.cache/opencode-browser/relay.json` (ou `$XDG_RUNTIME_DIR/opencode-browser/relay.json`) e reinicie o OpenCode |
+| `Relay HTTP 503.` | Servidor respondeu sem socket da extensão, mesmo após a espera de 8 s | Reconecte o painel |
+| `não foi possível abrir o relay em nenhuma porta candidata` | 8799–8802 ocupadas e nenhuma responde como relay | Libere uma porta ou reinicie o OpenCode |
+
+### Ferramenta de fechar aba indisponível
+
+Se o agente disser que `browser_tabs_close` não existe, o plugin/agente está
+desatualizado ou colidiu com o browser nativo do OpenCode. Rode
+`npm run install:plugin` + `opencode service restart` e use o nome atual
+`browser_tabs_close_tab` (a extensão continua recebendo `tabs_close`).
 
 ## Erros de página e ferramentas
 
@@ -75,6 +82,6 @@ chat funciona sem ele, mas as ferramentas do navegador não.
 | `401` | Não autorizado | Token inválido/expirado na API do OpenCode |
 | `403` | Proibido | Origem/token inválidos no relay |
 | `404` | Não encontrado | Rota/tool inexistente ou sessão removida |
-| `409` | Conflito | Prompt concorrente na sessão |
+| `409` | Conflito | Prompt concorrente na sessão ou `id` de chamada do relay já em uso |
 | `500` | Erro interno | Falha inesperada do relay |
 | `503` | Indisponível | Extensão desconectada ou recurso do OpenCode desligado |

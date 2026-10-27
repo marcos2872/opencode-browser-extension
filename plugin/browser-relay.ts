@@ -36,6 +36,11 @@ const REQUIRE_HELLO = process.env.OPENCODE_BROWSER_REQUIRE_HELLO !== "0"
 const WS_SECRET = process.env.OPENCODE_BROWSER_WS_SECRET ?? ""
 const CALL_TIMEOUT_MS = 180_000
 const HELLO_TIMEOUT_MS = 5_000
+/**
+ * O service worker (MV3) da extensão pode dormir e reconectar. Em vez de falhar
+ * na hora, as chamadas esperam um pouco pela reconexão.
+ */
+const EXTENSION_GRACE_MS = 8_000
 const MAX_HTTP_BODY = 1_000_000
 const MAX_WS_PAYLOAD = 24 * 1024 * 1024
 const MAX_IMAGE_BASE64 = 8 * 1024 * 1024
@@ -193,10 +198,12 @@ interface RelayGlobal {
   /** Porta de um relay que roda em OUTRO processo (modo cliente HTTP). */
   remotePort?: number
   starting?: Promise<void>
+  /** Chamadas aguardando a extensão (re)conectar. */
+  waiters: Array<() => void>
 }
 
 /** Incrementar quando o servidor do relay mudar de forma incompatível. */
-const SERVER_VERSION = 4
+const SERVER_VERSION = 6
 
 type Carrier = typeof globalThis & { __opencodeBrowserRelay?: Partial<RelayGlobal> }
 
@@ -207,7 +214,10 @@ const carrier = ((globalThis as unknown as { process?: Carrier }).process ?? glo
 
 function relay(): RelayGlobal {
   const existing = carrier.__opencodeBrowserRelay
-  if (existing && existing.pending instanceof Map) return existing as RelayGlobal
+  if (existing && existing.pending instanceof Map) {
+    existing.waiters ??= []
+    return existing as RelayGlobal
+  }
   const created: RelayGlobal = {
     active: existing?.active ?? null,
     pending: new Map<string, Pending>(),
@@ -218,6 +228,7 @@ function relay(): RelayGlobal {
     token: existing?.token,
     remotePort: existing?.remotePort,
     starting: existing?.starting,
+    waiters: existing?.waiters ?? [],
   }
   carrier.__opencodeBrowserRelay = created
   return created
@@ -449,6 +460,27 @@ function dispatch(
   })
 }
 
+function waitForActive(ms: number): Promise<Socket | null> {
+  const state = relay()
+  if (state.active) return Promise.resolve(state.active)
+  return new Promise<Socket | null>((resolve) => {
+    const wake = () => {
+      clearTimeout(timer)
+      resolve(relay().active)
+    }
+    const timer = setTimeout(() => {
+      const list = relay().waiters
+      const index = list.indexOf(wake)
+      if (index >= 0) list.splice(index, 1)
+      resolve(null)
+    }, ms)
+    state.waiters.push(wake)
+  })
+}
+
+const NOT_CONNECTED =
+  "A extensão OpenCode Browser não está conectada. Verifique se o Chrome está aberto com a extensão ativa e tente de novo."
+
 async function callToolOverHttp(
   tool: string,
   args: Record<string, unknown>,
@@ -518,12 +550,9 @@ async function handleHttpTool(request: Request): Promise<Response> {
   if (body.args !== undefined && !isRecord(body.args)) {
     return Response.json({ ok: false, error: "Parâmetro args inválido." }, { status: 400 })
   }
-  const socket = relay().active
+  const socket = relay().active ?? (await waitForActive(EXTENSION_GRACE_MS))
   if (!socket) {
-    return Response.json(
-      { ok: false, error: "A extensão OpenCode Browser não está conectada." },
-      { status: 503 },
-    )
+    return Response.json({ ok: false, error: NOT_CONNECTED }, { status: 503 })
   }
   const id =
     typeof body.id === "string" && body.id.length > 0 && body.id.length <= 100
@@ -561,12 +590,17 @@ async function handleHttpCancel(request: Request): Promise<Response> {
   return Response.json({ ok: true })
 }
 
-function callTool(
+async function callTool(
   tool: string,
   args: Record<string, unknown>,
   context: { sessionID: string; signal: AbortSignal; progress: Progress },
 ): Promise<ToolResponse> {
-  const socket = relay().active
+  let socket = relay().active
+  // Este processo é o dono do relay: a extensão só pode estar reconectando.
+  if (!socket && relay().server) {
+    socket = await waitForActive(EXTENSION_GRACE_MS)
+    if (!socket) throw new Error(NOT_CONNECTED)
+  }
   if (!socket) {
     return callToolOverHttp(tool, args, context)
   }
@@ -627,7 +661,12 @@ const tools: ToolSpec[] = [
     },
   },
   {
-    name: "tabs_close",
+    // `browser.tabs.close` é uma operação do plugin nativo do OpenCode
+    // (`opencode.browser`) e vira `browser_tabs_close`. Como o catálogo nativo
+    // é negado por padrão, o nome era removido e a nossa tool sumia junto.
+    // Expomos `tabs_close_tab` e mantemos `tabs_close` no protocolo.
+    name: "tabs_close_tab",
+    wire: "tabs_close",
     description: "Fecha uma aba do grupo desta sessão.",
     input: { type: "object", properties: { tabId }, required: ["tabId"], additionalProperties: false },
   },
@@ -896,6 +935,7 @@ function activate(socket: Socket): void {
   state.active = socket
   log(`extensão conectada (${socket.data.origin})`)
   send(socket, { type: "ready", v: 1, home: homedir(), workspace: WORKSPACE })
+  for (const wake of state.waiters.splice(0)) wake()
 }
 
 function startServer(port: number): { stop(force?: boolean): void } {
@@ -1214,6 +1254,7 @@ export default {
       }
       current.remotePort = undefined
       current.active = null
+      for (const wake of current.waiters.splice(0)) wake()
     }
   },
 }

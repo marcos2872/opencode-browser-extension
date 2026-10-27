@@ -7,7 +7,7 @@ OpenCode.
 |---|---|
 | [architecture.md](architecture.md) | Visão geral da arquitetura, componentes e fluxos |
 | [extension.md](extension.md) | Como a extensão funciona por dentro (service worker, content scripts, páginas, offscreen) |
-| [plugin.md](plugin.md) | Plugin do OpenCode: relay WebSocket, portas, token, fallback HTTP e ciclo de vida |
+| [plugin.md](plugin.md) | Plugin do OpenCode: relay WebSocket, handshake, portas, token privado, fallback HTTP e ciclo de vida |
 | [tools.md](tools.md) | Catálogo das 18 ferramentas `browser_*` com parâmetros e permissões |
 | [api.md](api.md) | Endpoints da API v2 do OpenCode usados pela extensão |
 | [types.md](types.md) | Tipos e modelos TypeScript compartilhados |

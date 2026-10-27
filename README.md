@@ -40,9 +40,11 @@ npm run build
 
 1. Abra `chrome://extensions`, ative o **modo desenvolvedor** e clique em
    **Carregar sem compactação**, apontando para a pasta `dist/`.
-2. Instale o plugin no OpenCode (ele recarrega sozinho):
+2. Instale o plugin no OpenCode (relay + template do agente) e reinicie o
+   serviço para carregar a versão nova:
    ```bash
    npm run install:plugin
+   opencode service restart
    ```
    O script é multiplataforma (Linux, macOS e Windows): resolve a pasta de
    plugins do OpenCode, remove cópias antigas e cria a pasta das conversas.
@@ -55,6 +57,9 @@ apenas as que estão nessa pasta. O caminho é configurável nas opções.
 
 Pronto: escolha um modelo, crie uma conversa e peça algo como
 "abra o Hacker News e resuma as 5 principais notícias".
+
+> A tool de fechar aba se chama `browser_tabs_close_tab` para não colidir com
+> `browser.tabs.close` do plugin nativo `opencode.browser` do OpenCode v2.
 
 ## Comandos
 
@@ -70,7 +75,7 @@ Pronto: escolha um modelo, crie uma conversa e peça algo como
 | `npm run lint` | ESLint (qualidade de código) |
 | `npm run typecheck` | Checagem de tipos (sem emitir) |
 | `npm run verify` | `typecheck` + build completo |
-| `npm run install:plugin` | Copia `plugin/browser-relay.ts` para `~/.config/opencode/plugins/` |
+| `npm run install:plugin` | Copia o relay e o template do agente para `~/.config/opencode/plugins/` |
 | `npm run package` | Gera `opencode-browser-extension.zip` a partir de `dist/` |
 | `npm run dev` | Servidor de desenvolvimento do Vite (apenas UI) |
 

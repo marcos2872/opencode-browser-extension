@@ -51,6 +51,17 @@ pareamento.
 | `agent` | string | Agente atual |
 | `time` | `{ created?, updated? }` | Timestamps |
 | `location` | `{ directory? }` | Diretório da sessão |
+| `cost` | number | Custo acumulado informado pelo OpenCode |
+| `tokens` | TokenUsage | Usage da sessão (acumulado) |
+
+### `TokenUsage`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `input` / `output` / `reasoning` / `total` | number | Tokens da requisição |
+| `cacheRead` / `cacheWrite` | number | Cache lido/escrito (achatado) |
+| `cache` | `{ read?, write? }` | Formato bruto da API |
+| `cost` | number | Custo da mensagem |
 
 ### `AgentInfo` / `CommandInfo`
 
@@ -137,6 +148,7 @@ Enviado do service worker para as páginas.
 | `agents` | AgentInfo[] | Agentes disponíveis |
 | `commands` | CommandInfo[] | Comandos `/` |
 | `statusMessage` | string \| null | Aviso (ex.: retry) |
+| `contextUsage` | TokenUsage | Usage da última mensagem (contexto do rodapé) |
 
 ### `RelayState`
 

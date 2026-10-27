@@ -6,7 +6,7 @@ O sistema tem três processos/contextos:
 |---|---|---|---|
 | **Extensão** | UI, sessões, streaming, execução das ações no navegador | TypeScript, React 19, MV3 | `chrome-extension://<id>` |
 | **OpenCode local** | Modelos, sessões, agente, histórico, SSE | OpenCode v2 (API HTTP) | `http://127.0.0.1:<porta>` |
-| **Plugin `browser-relay`** | Registra as tools `browser_*` e faz a ponte com a extensão | TypeScript no runtime do OpenCode | `ws://127.0.0.1:8799` (ou 8800–8802) |
+| **Plugin `browser-relay`** | Registra as tools `browser_*` e faz a ponte com a extensão | TypeScript no runtime do OpenCode | `ws://127.0.0.1:8799` (ou 8800–8802; reutiliza um relay já ativo) |
 
 ```mermaid
 flowchart LR
@@ -29,6 +29,11 @@ flowchart LR
     SW -->|"HTTP + SSE<br/>Basic auth"| OC
     SW <-->|"WebSocket + fallback HTTP<br/>token local"| PL
 ```
+
+> O OpenCode v2 traz o plugin nativo `opencode.browser` (browser do app desktop)
+> com a operação `browser.tabs.close`, exposta como `browser_tabs_close`. Para
+> não colidir, a tool equivalente deste projeto é `browser_tabs_close_tab`
+> (wire `tabs_close`).
 
 ## Fluxo de uma conversa
 

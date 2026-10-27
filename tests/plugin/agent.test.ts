@@ -60,7 +60,7 @@ describe("plugin: agente do navegador", () => {
     expect(ensureAgentFile(directory)).toBe(path)
 
     const atual = readFileSync(path, "utf8")
-    expect(atual).toContain("<!-- opencode-browser-agent v2 -->")
+    expect(atual).toContain("<!-- opencode-browser-agent v4 -->")
     expect(atual).not.toBe(antigo)
     expect(existsSync(`${path}.bak-v1`)).toBe(true)
     expect(readFileSync(`${path}.bak-v1`, "utf8")).toBe(antigo)

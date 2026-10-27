@@ -39,14 +39,16 @@ Detalhes de implementação em [plugin.md](plugin.md).
 
 | Direção           | Mensagem       | Campos                                                   |
 | ----------------- | -------------- | -------------------------------------------------------- |
-| extensão → plugin | `hello`        | `v`, `extensionId`                                       |
+| extensão → plugin | `hello`        | `v`, `extensionId`, `secret?`                            |
 | extensão → plugin | `tool_result`  | `id`, `ok`, `content?`, `images?`, `error?`, `metadata?` |
 | extensão → plugin | `progress`     | `id`, `phase`, `detail?`                                 |
 | extensão → plugin | `pong`         | —                                                        |
-| plugin → extensão | `ready`        | `v`                                                      |
+| extensão → plugin | `ensure_agent` | `id`                                                     |
+| plugin → extensão | `ready`        | `v`, `home`, `workspace` (só depois do `hello`)          |
 | plugin → extensão | `tool_request` | `id`, `tool`, `args`, `sessionID?`                       |
 | plugin → extensão | `cancel`       | `id`                                                     |
 | plugin → extensão | `ping`         | —                                                        |
+| plugin → extensão | `ensure_agent_result` | `id`, `ok`, `path?`, `error?`                     |
 
 ## Mensagens internas (páginas ↔ service worker)
 

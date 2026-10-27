@@ -89,6 +89,9 @@ O buffer é limpo ao trocar de domínio.
 | `url` | string | Não | URL inicial (padrão `about:blank`) |
 | `active` | boolean | Não | Abre em primeiro plano (padrão true) |
 
+Reaproveita a aba principal se ela estiver em branco ou na mesma origem; com
+origem diferente, abre uma aba nova no grupo.
+
 ### `browser_tabs_attach`
 
 Move uma aba existente para o grupo da sessão.
@@ -99,11 +102,14 @@ Move uma aba existente para o grupo da sessão.
 
 Pede permissão e remove a aba do grupo atual do usuário, se houver.
 
-### `browser_tabs_close`
+### `browser_tabs_close_tab`
 
 | Parâmetro | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
 | `tabId` | number | Sim | Aba do grupo a fechar |
+
+O nome exposto evita colisão com `browser.tabs.close` do plugin nativo
+`opencode.browser`. No protocolo com a extensão o nome continua `tabs_close`.
 
 ### `browser_navigate`
 
@@ -208,6 +214,6 @@ devolve a imagem.
 | Categoria | Ferramentas | Comportamento |
 |---|---|---|
 | Leitura (sem prompt) | `tabs_context`, `tabs_create`, `read_page`, `get_page_text`, `find`, `read_console_messages`, `read_network_requests` | Executam direto |
-| Ação (com prompt) | `navigate`, `computer`, `form_input`, `javascript_tool`, `tabs_close`, `tabs_attach`, `upload_image`, `gif_creator` (export) | Prompt uma vez / nesta sessão / sempre / negar |
+| Ação (com prompt) | `navigate`, `computer`, `form_input`, `javascript_tool`, `tabs_close_tab` (wire `tabs_close`), `tabs_attach`, `upload_image`, `gif_creator` (export) | Prompt uma vez / nesta sessão / sempre / negar |
 | Planejamento | `update_plan` | Card de plano com domínios e passos |
 | Lote | `browser_batch` | Cada sub-ação segue sua própria regra |

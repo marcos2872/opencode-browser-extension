@@ -32,9 +32,9 @@ imagens). Fecha com ESC ou clique no fundo.
 
 **Arquivo:** `src/sidepanel/Composer.tsx`
 **Descrição:** Caixa de texto com auto-resize, envio por Enter, botão Parar e
-menu de comandos `/` filtrado por prefixo. O rodapé mostra o contexto da última
-requisição / janela do modelo e o custo da sessão; sem dados, mostra a dica de
-teclado.
+menu de comandos `/` filtrado por prefixo. O rodapé mostra apenas os tokens de
+contexto usados + porcentagem (`input + cache.read` da última mensagem) e o custo
+da sessão com 4 casas; sem dados, mostra a dica de teclado.
 
 ### `ModelPicker`
 
@@ -127,8 +127,8 @@ prompt, interrupção, contexto, geração stateless) e assinatura do SSE.
 
 **Arquivo:** `src/background/relay.ts`
 **Descrição:** Descobre a porta do plugin por `GET /health` (8799–8802), conecta
-o WebSocket, envia `hello`, mantém `pong` a cada 20 s, reconecta com backoff e
-entrega `tool_request`/`cancel`.
+o WebSocket, envia `hello` (só então recebe `ready`), mantém `pong` a cada 20 s,
+reconecta com backoff e entrega `tool_request`/`cancel`.
 
 ### `Cdp`
 
@@ -159,7 +159,8 @@ limite de 30 e `flush` para não perder quadros em corrida.
 
 **Arquivo:** `src/background/tools/registry.ts`
 **Descrição:** Mapeia nomes para handlers, normaliza prefixo `browser_` e executa
-`browser_batch` em sequência.
+`browser_batch` em sequência. O relay pode expor `tabs_close_tab` e enviar
+`tabs_close` (campo `wire`).
 
 ### `tools/a11y`
 

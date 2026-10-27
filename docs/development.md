@@ -20,9 +20,10 @@ Arquivos estáticos (`manifest.json`, ícones, `offscreen.html`) vêm de `public
 1. Edite o código em `src/` ou `plugin/`.
 2. `npm run verify` (typecheck + build).
 3. Recarregue a extensão em `chrome://extensions`.
-4. Para o plugin: `npm run install:plugin` (copia `browser-relay.ts` e o template
-   `opencode-browser.agent.md`; o OpenCode recarrega ao detectar a mudança;
-   confirme com `curl http://127.0.0.1:8800/health`).
+4. Para o plugin: `npm run install:plugin` (copia `browser-relay.ts` e o
+   template `opencode-browser.agent.md`) e depois `opencode service restart`.
+   O serviço carrega plugin e agente no startup; sem o restart, a versão antiga
+   continua em memória. Confirme com `curl http://127.0.0.1:8799/health`.
 
 > O Chrome mantém o service worker em cache. Se o comportamento não mudar após o
 > build, clique em **Recarregar** na extensão ou feche e reabra o navegador de
@@ -47,6 +48,10 @@ npm run test:watch       # modo interativo
 | `src/content` | Árvore de acessibilidade, ações de DOM e indicador |
 | `src/offscreen` | Keepalive, som e codificação de GIF |
 | `src/components`, `src/sidepanel`, `src/options`, `src/permission` | Componentes e fluxos de UI |
+| `tests/plugin` | Criação, atualização por versão e backup do agente |
+
+O `npm run typecheck` cobre apenas `src/` (`tsconfig.json` com `include:
+["src"]`). O plugin é validado por ESLint, `bun build` e pelos testes do agente.
 
 Os helpers de teste ficam em `tests/helpers/`:
 
@@ -86,14 +91,17 @@ A branch `main` é protegida por um ruleset do GitHub:
 | 10 | Trocar modelo e agente | Sessão passa a usar a nova escolha |
 | 11 | Fechar o painel e pedir uma ação | Popup de permissão abre |
 | 12 | `npm run build` + reload | Sem erros no console do service worker |
+| 13 | `npm run install:plugin` + `opencode service restart` | Agente v4 e relay versão 6 carregados |
+| 14 | Pedir para fechar uma aba | Tool `browser_tabs_close_tab` (wire `tabs_close`) pede permissão e fecha |
 
 ## Diagnóstico
 
 | O que | Como |
 |---|---|
 | Console do service worker | `chrome://extensions` → Detalhes → "service worker" |
-| Estado do relay | `curl http://127.0.0.1:8800/health` |
-| Token e porta | `cat /tmp/opencode-browser-relay.token` |
+| Estado do relay | `curl http://127.0.0.1:8799/health` (versão 6) |
+| Token e porta | `cat "${XDG_RUNTIME_DIR:-$HOME/.cache}/opencode-browser/relay.json"` |
+| Agente instalado | `grep opencode-browser-agent ~/.config/opencode/agents/opencode-browser.md` (v4) |
 | Log do OpenCode | `~/.local/share/opencode/log/opencode.log` (Windows: `%USERPROFILE%\.local\share\opencode\log`); procure `browser-relay` |
 | Plugins do OpenCode | `~/.config/opencode/plugins` (Windows: `%USERPROFILE%\.config\opencode\plugins`) |
 | Pasta das conversas | `~/.opencode-browser-extensions` (criada pelo plugin) |

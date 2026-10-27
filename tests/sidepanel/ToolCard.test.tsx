@@ -22,6 +22,9 @@ describe("sidepanel/ToolCard", () => {
 
     rerender(<ToolCard tool={makeTool({ name: "browser_batch" })} />)
     expect(screen.getByText("Lote de ações")).toBeInTheDocument()
+
+    rerender(<ToolCard tool={makeTool({ name: "browser_tabs_close_tab" })} />)
+    expect(screen.getByText("Fechar aba")).toBeInTheDocument()
   })
 
   it("usa o nome cru quando não há rótulo conhecido", () => {

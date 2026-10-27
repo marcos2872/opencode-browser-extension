@@ -21,6 +21,9 @@ describe("toolActivity", () => {
       "executando script",
     )
     expect(toolActivity(tool({ name: "tabs_create" }))).toBe("abrindo uma aba")
+    expect(toolActivity(tool({ name: "browser_tabs_close_tab" }))).toBe(
+      "fechando uma aba",
+    )
     expect(toolActivity(tool({ name: "question" }))).toBe(
       "aguardando sua resposta",
     )
