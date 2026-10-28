@@ -27,7 +27,11 @@ mudanças no arquivo.
 5. Quando o modelo chama uma ferramenta, envia um `tool_request` para a
    extensão e aguarda o `tool_result` (timeout de 180 s). Se a extensão estiver
    reconectando, espera até 8 s antes de falhar.
-6. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo.
+6. Converte imagens retornadas (base64) em conteúdo de arquivo para o modelo e
+   grava cada uma em `~/.cache/opencode-browser/capturas/` (ou em
+   `$XDG_CACHE_HOME`), devolvendo o caminho no texto da resposta — o agente
+   precisa do arquivo, não só da imagem na conversa, para montar páginas que
+   embutem a tela.
 
 ## Agente do navegador
 
