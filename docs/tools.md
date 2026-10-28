@@ -149,6 +149,11 @@ Pede permissão para domínios novos (card de transição quando muda de host).
 | `region` | [number, number, number, number] | Não | Região para `zoom` |
 | `tabId` | number | Não | Aba alvo |
 
+Em `screenshot`, a imagem também é gravada em disco
+(`~/.cache/opencode-browser/capturas/`, ou em `$XDG_CACHE_HOME`) e o caminho
+volta no texto da resposta (`Arquivo: …`), além da imagem no conteúdo — é o que
+permite montar páginas que embutem a tela, como o mapa de requisitos.
+
 Cliques e digitação usam eventos confiáveis via CDP. Refs de iframe usam eventos
 de DOM. Com o DevTools aberto, click/hover caem para eventos de DOM quando há
 ref.

@@ -380,6 +380,39 @@ function tokenMatches(provided: string): boolean {
 // Imagens
 // ---------------------------------------------------------------------------
 
+/** Pasta onde as capturas do agente ficam: `~/.cache/opencode-browser/capturas` (ou em `$XDG_CACHE_HOME`). */
+export function captureDir(): string {
+  const base = process.env.XDG_CACHE_HOME || join(homedir(), ".cache")
+  return join(base, "opencode-browser", "capturas")
+}
+
+const IMAGE_EXT: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" }
+
+/**
+ * Grava as imagens da resposta em disco e devolve os caminhos.
+ *
+ * A extensão entrega a captura em base64 e ela só existiria dentro da conversa; o agente que precisa montar um HTML
+ * com a tela embutida (mapa de requisitos, guia do usuário) precisa do arquivo. Falha de escrita não derruba a tool: o
+ * texto da resposta apenas sai sem o caminho.
+ */
+export function saveImages(images: ImagePayload[]): string[] {
+  if (images.length === 0) return []
+  const carimbo = new Date().toISOString().replace(/[-:]/g, "").replace(/\..*$/, "").replace("T", "-")
+  const caminhos: string[] = []
+  try {
+    mkdirSync(captureDir(), { recursive: true, mode: 0o700 })
+    images.forEach((image, index) => {
+      const extensao = IMAGE_EXT[image.mime] ?? "bin"
+      const caminho = join(captureDir(), `captura-${carimbo}-${index + 1}.${extensao}`)
+      writeFileSync(caminho, Buffer.from(image.data, "base64"), { mode: 0o600 })
+      caminhos.push(caminho)
+    })
+  } catch (error) {
+    log("não foi possível gravar a captura em disco", error)
+  }
+  return caminhos
+}
+
 function sanitizeImages(value: unknown): { images?: ImagePayload[]; dropped: number } {
   if (!Array.isArray(value)) return { dropped: 0 }
   const images: ImagePayload[] = []
@@ -396,6 +429,10 @@ function sanitizeImages(value: unknown): { images?: ImagePayload[]; dropped: num
 
 function buildContent(result: ToolResponse) {
   const text = result.content?.trim() || "(sem saída)"
+  // As capturas também vão para o disco, e o caminho volta no texto: o agente precisa do arquivo para montar páginas
+  // que embutem a tela (mapa de requisitos, guias), não só da imagem na conversa.
+  const arquivos = saveImages(result.images ?? [])
+  const resposta = arquivos.length ? `${text}\nArquivo: ${arquivos.join(" ")}` : text
   // O OpenCode aceita bytes em base64 no campo `uri` de Tool.FileContent.
   const images = (result.images ?? []).slice(0, 3).map((image) => ({
     type: "file" as const,
@@ -403,8 +440,8 @@ function buildContent(result: ToolResponse) {
     mime: image.mime,
     name: image.name,
   }))
-  if (images.length === 0) return text
-  return [{ type: "text" as const, text }, ...images]
+  if (images.length === 0) return resposta
+  return [{ type: "text" as const, text: resposta }, ...images]
 }
 
 // ---------------------------------------------------------------------------
@@ -741,7 +778,7 @@ const tools: ToolSpec[] = [
   {
     name: "computer",
     description:
-      "Interage com a página via eventos confiáveis: click, type, key, scroll, hover, screenshot, zoom e wait. Use ref de read_page/find ou coordinate [x,y]. Refs de iframe (f<id>_ref_N) funcionam para click/hover/scroll/type via eventos de DOM.",
+      "Interage com a página via eventos confiáveis: click, type, key, scroll, hover, screenshot, zoom e wait. Use ref de read_page/find ou coordinate [x,y]. O screenshot também é gravado em disco e o caminho do arquivo vem na resposta (use para montar páginas que embutem a tela). Refs de iframe (f<id>_ref_N) funcionam para click/hover/scroll/type via eventos de DOM.",
     input: {
       type: "object",
       properties: {
