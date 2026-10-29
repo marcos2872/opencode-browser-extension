@@ -803,6 +803,11 @@ describe("service-worker: sessões e conversa", () => {
   it("entrega o pedido de permissão pendente ao painel ao conectar", async () => {
     await loadWorker();
     await pairWorker();
+    // O padrão atual é `allow`; este teste cobre o modo `ask` sem painel.
+    await callWorker({
+      type: "settings:update",
+      patch: { permissionMode: "ask" },
+    });
     chrome.__state.addTab({
       id: 78,
       url: "https://exemplo.com/",
