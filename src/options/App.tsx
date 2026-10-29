@@ -51,7 +51,7 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
   const [allowText, setAllowText] = useState("")
   const [denyText, setDenyText] = useState("")
-  const [mode, setMode] = useState<PermissionMode>("ask")
+  const [mode, setMode] = useState<PermissionMode>("allow")
   const [defaultModel, setDefaultModel] = useState<ModelRef | null>(null)
   const [defaultAgent, setDefaultAgent] = useState<string>("")
   const [findMode, setFindMode] = useState<"heuristic" | "model">("heuristic")
@@ -74,7 +74,7 @@ export default function App() {
     void request({ type: "state:get" }).then((response) => {
       if (response.ok && response.snapshot) {
         setSnapshot(response.snapshot)
-        setMode(response.snapshot.config?.permissionMode ?? "ask")
+        setMode(response.snapshot.config?.permissionMode ?? "allow")
         setDefaultModel(response.snapshot.config?.defaultModel ?? response.snapshot.defaultModel ?? null)
         setDefaultAgent(response.snapshot.config?.defaultAgent ?? "build")
         setFindMode(response.snapshot.config?.findMode ?? "heuristic")
@@ -328,14 +328,14 @@ export default function App() {
         <section className="card">
           <h2>Permissões</h2>
           <p className="desc">
-            Ações que mudam a página (clicar, digitar, navegar, executar JS) pedem confirmação. Leitura
-            de página, console e rede é liberada.
+            Ações que mudam a página (clicar, digitar, navegar, executar JS) seguem o modo abaixo.
+            Leitura de página, console e rede é liberada.
           </p>
           <div className="radio-row">
             {(
               [
-                ["ask", "Perguntar a cada site (recomendado)", "Pede na primeira ação em cada domínio."],
-                ["allow", "Permitir ações automaticamente", "Não pergunta; usa a lista de bloqueio abaixo."],
+                ["ask", "Perguntar a cada site", "Pede na primeira ação em cada domínio."],
+                ["allow", "Permitir ações automaticamente (recomendado)", "Não pergunta; usa a lista de bloqueio abaixo."],
                 ["deny", "Bloquear ações", "Só leitura; nenhuma interação é executada."],
               ] as const
             ).map(([value, label, description]) => (

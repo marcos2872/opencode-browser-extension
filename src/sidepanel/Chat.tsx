@@ -151,9 +151,6 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
             }
             return (
               <div className="msg msg-assistant" key={`run_${messages[start].id}`}>
-                <div className="row">
-                  <span className="msg-meta">OpenCode</span>
-                </div>
                 {run.texts.map((text, textIndex) => (
                   <Markdown
                     key={`${messages[start].id}_t${textIndex}`}
@@ -192,19 +189,31 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                     tool.status === "running",
                 )
               : message.tools
+          const showGroupedTools =
+            toolDisplay === "grouped" && runEnds && tools.length > 0
+          const hasVisibleContent = Boolean(
+            message.text ||
+              message.reasoning ||
+              message.error ||
+              message.streaming ||
+              inlineTools.length,
+          )
+
+          // Passos vazios (ou só com tools já concluídas no modo agrupado) não
+          // têm o que mostrar; o resumo das tools aparece no fim do run.
+          if (!hasVisibleContent && !showGroupedTools) return null
 
           return (
             <div className="msg msg-assistant" key={message.id}>
-              <div className="row">
-                <span className="msg-meta">OpenCode</span>
-                {message.streaming ? (
+              {message.streaming ? (
+                <div className="row">
                   <span className="thinking">
                     <span />
                     <span />
                     <span />
                   </span>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
               {message.reasoning ? (
                 <details className="reasoning">
                   <summary>Raciocínio</summary>
@@ -231,7 +240,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                   <span /> trabalhando
                 </div>
               ) : null}
-              {toolDisplay === "grouped" && runEnds ? (
+              {showGroupedTools ? (
                 tools.length === 1 ? (
                   inlineTools.some((tool) => tool.id === tools[0].id) ? null : (
                     <ToolCard

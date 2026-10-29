@@ -300,6 +300,7 @@ describe("service-worker: pareamento", () => {
     expect(stored["opencode.config"]).toMatchObject({
       baseUrl: "http://127.0.0.1:49374",
       token: "token-teste",
+      permissionMode: "allow",
     });
     expect(apiCalls.some((call) => call.url.includes("/api/model"))).toBe(true);
     expect(response.snapshot.activeSessionID).toBe("ses_test");

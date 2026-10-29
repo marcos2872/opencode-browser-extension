@@ -99,6 +99,18 @@ describe("options/App", () => {
     expect(sent("settings:update").patch.toolDisplay).toBe("hidden")
   })
 
+  it("usa permitir ações automaticamente quando a config não traz o modo", async () => {
+    await renderOptions(
+      makeSnapshot({
+        config: { ...makeConfig(), permissionMode: undefined } as unknown as OpencodeConfig,
+      }),
+    )
+
+    expect(
+      screen.getByRole("radio", { name: /Permitir ações automaticamente/ }),
+    ).toBeChecked()
+  })
+
   it("salva a preferência de agente do navegador", async () => {
     const { user } = await renderOptions(makeSnapshot())
 
