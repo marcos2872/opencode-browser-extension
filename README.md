@@ -4,6 +4,8 @@
 [![Qualidade de código](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 
+<img src="assets/screenshots/05-resumo-hacker-news.jpg" alt="Chrome com o painel do OpenCode Browser aberto ao lado do Hacker News: o agente leu a página e resumiu as cinco notícias do dia" width="100%" />
+
 > Extensão MV3 que conecta o Chrome ao OpenCode instalado na sua máquina: usa os
 > modelos locais para conversar e dá ao agente um grupo de abas isolado para
 > navegar, ler e interagir com páginas — sempre com confirmação do usuário.
@@ -17,6 +19,16 @@ O projeto tem duas partes que trabalham juntas:
 
 Nada sai da sua máquina: a extensão fala apenas com o servidor local do OpenCode
 (`127.0.0.1`) e o plugin escuta apenas em loopback.
+
+## Como é
+
+| Painel | O agente pergunta | Configurações |
+|:--:|:--:|:--:|
+| ![Painel novo, com as sugestões de partida](assets/screenshots/01-painel-vazio.png) | ![Card de pergunta do agente, com opções e campo de resposta livre](assets/screenshots/06-pergunta-do-agente.jpg) | ![Tela de configurações: conexão, modelo padrão e agente](assets/screenshots/02-configuracoes-conexao.png) |
+| Conversas em execução continuam rodando; o painel mostra a que você escolher | Quando precisa de uma decisão, o agente pergunta no próprio chat | Modelo, agente, permissões e avisos em um só lugar |
+
+Mais capturas — execução em andamento, detalhe de notícia e configurações de
+permissões — em [`assets/screenshots/`](assets/screenshots).
 
 ## Stack
 
@@ -88,6 +100,7 @@ então o reload é obrigatório.
 | Documento | Conteúdo |
 |---|---|
 | [docs/index.md](docs/index.md) | Índice geral da documentação |
+| [docs/guia-do-usuario.md](docs/guia-do-usuario.md) | Guia do usuário final (também em [HTML](docs/guia-do-usuario.html)) |
 | [docs/architecture.md](docs/architecture.md) | Visão de arquitetura e componentes |
 | [docs/extension.md](docs/extension.md) | Como a extensão funciona (service worker, content scripts, UI) |
 | [docs/plugin.md](docs/plugin.md) | Plugin do OpenCode, relay, protocolo e portas |
