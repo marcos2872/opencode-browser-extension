@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guia do usuário — OpenCode Browser</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --fundo: #ffffff;
+    --fundo-alt: #f6f7f9;
+    --texto: #1c2024;
+    --texto-suave: #5c6670;
+    --borda: #e3e6ea;
+    --destaque: #c2410c;
+    --destaque-suave: #fff4ed;
+    --codigo: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundo: #16181c;
+      --fundo-alt: #1d2025;
+      --texto: #e6e8eb;
+      --texto-suave: #9aa4af;
+      --borda: #2c3138;
+      --destaque: #fb923c;
+      --destaque-suave: #2a1d14;
+      --codigo: #22262c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--texto);
+    font: 16px/1.68 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+  nav {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 20px 60px;
+    background: var(--fundo-alt);
+    border-right: 1px solid var(--borda);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  nav .marca {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  nav .sub { color: var(--texto-suave); font-size: 12px; margin-bottom: 18px; }
+  nav a {
+    display: block;
+    color: var(--texto-suave);
+    text-decoration: none;
+    padding: 3px 8px;
+    border-left: 2px solid transparent;
+    border-radius: 0 4px 4px 0;
+  }
+  nav a.n2 { font-weight: 600; color: var(--texto); margin-top: 9px; }
+  nav a.n3 { padding-left: 20px; font-size: 12.5px; }
+  nav a:hover { background: var(--fundo); border-left-color: var(--destaque); color: var(--texto); }
+  main { padding: 44px 56px 96px; max-width: 900px; }
+  h1 {
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 8px;
+  }
+  h1 + p { color: var(--texto-suave); font-size: 17px; }
+  h2 {
+    font-size: 23px;
+    letter-spacing: -0.015em;
+    margin: 14px 0 12px;
+  }
+  h3 { font-size: 17px; margin: 26px 0 8px; }
+  h4 { font-size: 15px; margin: 20px 0 6px; }
+  p { margin: 12px 0; }
+  a { color: var(--destaque); }
+  code {
+    background: var(--codigo);
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    font: 0.875em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--fundo-alt);
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 14px 0;
+  }
+  pre code { background: none; padding: 0; font-size: 13px; }
+  .tabela { overflow-x: auto; margin: 16px 0; border: 1px solid var(--borda); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 9px 13px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  th { background: var(--fundo-alt); font-weight: 600; text-align: left; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--destaque-suave); }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 4px 0; }
+  blockquote {
+    margin: 16px 0;
+    padding: 2px 16px;
+    border-left: 3px solid var(--destaque);
+    background: var(--destaque-suave);
+    border-radius: 0 6px 6px 0;
+    color: var(--texto);
+  }
+  hr { border: none; border-top: 1px solid var(--borda); margin: 34px 0; }
+  strong { font-weight: 650; }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--borda); }
+    main { padding: 28px 20px 64px; }
+    h2 { font-size: 20px; }
+  }
+  @media print {
+    nav { display: none; }
+    .layout { display: block; }
+    main { max-width: none; padding: 0; }
+    h2 { page-break-after: avoid; }
+    .tabela, pre, blockquote { page-break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+    body { font-size: 11pt; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <div class="marca">OpenCode Browser</div>
+    <div class="sub">Guia do usuário</div>
+    <a class="n2" href="#1-o-que-voce-precisa">1. O que você precisa</a>
+<a class="n2" href="#2-instalar-a-extensao">2. Instalar a extensão</a>
+<a class="n3" href="#2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</a>
+<a class="n3" href="#2-2-manual">2.2 Manual</a>
+<a class="n3" href="#2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</a>
+<a class="n2" href="#3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</a>
+<a class="n3" href="#se-o-pareamento-falhar">Se o pareamento falhar</a>
+<a class="n2" href="#4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</a>
+<a class="n3" href="#se-o-plugin-nao-conectar">Se o plugin não conectar</a>
+<a class="n2" href="#5-conhecer-a-tela">5. Conhecer a tela</a>
+<a class="n3" href="#atalhos">Atalhos</a>
+<a class="n2" href="#6-sua-primeira-conversa">6. Sua primeira conversa</a>
+<a class="n3" href="#comandos-com-barra">Comandos com barra</a>
+<a class="n3" href="#rascunho-por-conversa">Rascunho por conversa</a>
+<a class="n3" href="#contexto-e-custo">Contexto e custo</a>
+<a class="n3" href="#parar-uma-execucao">Parar uma execução</a>
+<a class="n2" href="#7-o-que-o-agente-consegue-fazer-no-navegador">7. O que o agente consegue fazer no navegador</a>
+<a class="n3" href="#cards-de-ferramenta">Cards de ferramenta</a>
+<a class="n2" href="#8-abas-e-grupos-onde-o-agente-trabalha">8. Abas e grupos: onde o agente trabalha</a>
+<a class="n3" href="#abas-em-segundo-plano">Abas em segundo plano</a>
+<a class="n3" href="#conectar-uma-aba-sua-ao-agente">Conectar uma aba sua ao agente</a>
+<a class="n3" href="#o-grupo-nasce-quando-e-preciso">O grupo nasce quando é preciso</a>
+<a class="n2" href="#9-varias-conversas-ao-mesmo-tempo">9. Várias conversas ao mesmo tempo</a>
+<a class="n3" href="#criar-uma-conversa">Criar uma conversa</a>
+<a class="n3" href="#trocar-de-conversa">Trocar de conversa</a>
+<a class="n3" href="#seguir-o-grupo-de-abas-em-foco">Seguir o grupo de abas em foco</a>
+<a class="n3" href="#criar-o-grupo-junto-com-a-conversa-opcional">Criar o grupo junto com a conversa (opcional)</a>
+<a class="n3" href="#excluir-uma-conversa">Excluir uma conversa</a>
+<a class="n3" href="#limites">Limites</a>
+<a class="n2" href="#10-permissoes">10. Permissões</a>
+<a class="n3" href="#modos">Modos</a>
+<a class="n3" href="#o-que-nunca-pede-permissao">O que nunca pede permissão</a>
+<a class="n3" href="#o-card-de-permissao">O card de permissão</a>
+<a class="n3" href="#tempo-para-responder">Tempo para responder</a>
+<a class="n3" href="#com-o-painel-fechado">Com o painel fechado</a>
+<a class="n3" href="#varias-conversas-pedindo-ao-mesmo-tempo">Várias conversas pedindo ao mesmo tempo</a>
+<a class="n3" href="#listas-de-permitidos-e-bloqueados">Listas de permitidos e bloqueados</a>
+<a class="n2" href="#11-quando-o-agente-faz-uma-pergunta">11. Quando o agente faz uma pergunta</a>
+<a class="n2" href="#12-configuracoes">12. Configurações</a>
+<a class="n3" href="#conexao">Conexão</a>
+<a class="n3" href="#conversas-e-modelo">Conversas e modelo</a>
+<a class="n3" href="#permissoes">Permissões</a>
+<a class="n3" href="#avisos-e-exibicao">Avisos e exibição</a>
+<a class="n2" href="#13-avisos-e-sinais">13. Avisos e sinais</a>
+<a class="n2" href="#14-problemas-comuns">14. Problemas comuns</a>
+<a class="n2" href="#15-limites-e-privacidade">15. Limites e privacidade</a>
+<a class="n2" href="#16-referencia-rapida">16. Referência rápida</a>
+<a class="n3" href="#caminhos">Caminhos</a>
+<a class="n3" href="#comandos-uteis">Comandos úteis</a>
+<a class="n3" href="#pedidos-que-funcionam-bem">Pedidos que funcionam bem</a>
+  </nav>
+  <main>
+<h1 id="guia-do-usuario-opencode-browser">Guia do usuário — OpenCode Browser</h1>
+<p>Este guia percorre <strong>todas as funcionalidades</strong> da extensão, na ordem em que você vai encontrar cada uma: instalar, conectar, conversar, deixar o agente mexer no navegador, aprovar permissões, rodar várias conversas ao mesmo tempo e ajustar as configurações.</p>
+<p>O OpenCode Browser é um painel lateral do Chrome que conversa com o <strong>OpenCode Terminal</strong> rodando na sua máquina. O agente lê páginas, clica, preenche formulários e navega dentro de um grupo de abas isolado por conversa — e cada ação que muda algo pede a sua permissão (ou não, conforme o modo escolhido).</p>
+<p><strong>Nada sai do seu computador</strong>: a extensão fala com <code>127.0.0.1</code>, e o plugin que dá as ferramentas ao agente só escuta em loopback.</p>
+<hr />
+<h2 id="1-o-que-voce-precisa">1. O que você precisa</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Versão mínima</th><th style="text-align:left">Observação</th></tr></thead><tbody><tr><td style="text-align:left">Chrome ou Chromium</td><td style="text-align:left">116</td><td style="text-align:left">A extensão usa o painel lateral (side panel)</td></tr>
+<tr><td style="text-align:left">Node.js</td><td style="text-align:left">20</td><td style="text-align:left">Usado só para gerar o build e instalar o plugin</td></tr>
+<tr><td style="text-align:left">npm</td><td style="text-align:left">vem com o Node</td><td style="text-align:left">—</td></tr>
+<tr><td style="text-align:left">OpenCode Terminal</td><td style="text-align:left">v2</td><td style="text-align:left">É quem roda os modelos e as conversas</td></tr></tbody></table></div>
+<p>Os modelos são os mesmos que você já usa no OpenCode: se o seu OpenCode funciona no terminal, a extensão funciona.</p>
+<hr />
+<h2 id="2-instalar-a-extensao">2. Instalar a extensão</h2>
+<h3 id="2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</h3>
+<p>Na pasta do projeto:</p>
+<pre data-linguagem="bash"><code>./scripts/install.sh        # Linux e macOS</code></pre>
+<pre data-linguagem="powershell"><code>.\scripts\install.ps1       # Windows (PowerShell 5.1+)</code></pre>
+<p>O script, nesta ordem:</p>
+<ol>
+<li>confere se existem <strong>Node.js 20+</strong>, <strong>npm</strong> e <strong>OpenCode v2+</strong> (para com uma mensagem clara se faltar algum);</li>
+<li>instala as dependências (<code>npm install</code>);</li>
+<li>gera o build da extensão (<code>npm run build</code>) em <code>dist/</code>;</li>
+<li>copia o plugin e o template do agente para a pasta de plugins do OpenCode (<code>npm run install:plugin</code>);</li>
+<li>reinicia o serviço do OpenCode (<code>opencode service restart</code>);</li>
+<li>espera o plugin responder em <code>http://127.0.0.1:8799/health</code>.</li>
+</ol>
+<p>Se o passo 6 falhar, o próprio script avisa: abra o painel da extensão e verifique.</p>
+<blockquote><p>O <code>install.sh</code> reinicia o serviço do OpenCode. Se você estiver usando o OpenCode em um terminal, a sessão atual cai por alguns segundos e reconecta — não é erro.</p></blockquote>
+<h3 id="2-2-manual">2.2 Manual</h3>
+<pre data-linguagem="bash"><code>npm install
+npm run build
+npm run install:plugin
+opencode service restart</code></pre>
+<p>Depois, no Chrome:</p>
+<ol>
+<li>abra <code>chrome://extensions</code>;</li>
+<li>ligue o <strong>modo desenvolvedor</strong> (canto superior direito);</li>
+<li>clique em <strong>Carregar sem compactação</strong> e escolha a pasta <strong><code>dist/</code></strong> do projeto (não a raiz);</li>
+<li>o ícone do OpenCode Browser aparece na barra.</li>
+</ol>
+<h3 id="2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</h3>
+<p>O Chrome mantém o service worker em cache. Sempre que você rodar <code>npm run build</code> de novo:</p>
+<ol>
+<li>abra <code>chrome://extensions</code>;</li>
+<li>clique em <strong>Recarregar</strong> no cartão da extensão.</li>
+</ol>
+<p>Sem esse passo, o comportamento antigo continua no ar mesmo com o código novo.</p>
+<hr />
+<h2 id="3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</h2>
+<ol>
+<li>Abra o painel: clique no ícone da extensão, ou use o atalho <strong>Ctrl+Shift+O</strong> (<strong>Command+Shift+O</strong> no macOS).</li>
+<li>Na primeira vez aparece a tela <strong>“Conecte o navegador ao OpenCode da sua máquina”</strong>.</li>
+<li>No terminal, rode:</li>
+</ol>
+<p><code></code><code>bash opencode pair </code><code></code></p>
+<ol>
+<li>Copie o link exibido (é o mesmo que abre a interface web do OpenCode) e cole no campo <strong>“Link do <code>opencode pair</code>”</strong>.</li>
+<li>Clique em <strong>“Conectar ao OpenCode”</strong>. Ao terminar aparece o aviso <strong>“Conectado ao OpenCode.”</strong></li>
+</ol>
+<p>O link é de uso único e <strong>expira em 5 minutos</strong>. Se expirar, rode <code>opencode pair</code> de novo. O token anterior continua válido até você desconectar.</p>
+<h3 id="se-o-pareamento-falhar">Se o pareamento falhar</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Mensagem</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">“Link inválido. Cole o link completo exibido por <code>opencode pair</code>.”</td><td style="text-align:left">Copie o link inteiro, sem cortar o código final</td></tr>
+<tr><td style="text-align:left">“O link precisa começar com http:// ou https://.”</td><td style="text-align:left">Você colou só o código; cole a URL completa</td></tr>
+<tr><td style="text-align:left">“O link não contém /auth/connect/&lt;código&gt;.”</td><td style="text-align:left">Não é um link de pareamento</td></tr>
+<tr><td style="text-align:left">“Não foi possível falar com o OpenCode em … Ele está rodando?”</td><td style="text-align:left">O servidor não está no ar: rode <code>opencode serve</code></td></tr>
+<tr><td style="text-align:left">“Link expirado ou já usado. Rode <code>opencode pair</code> novamente.”</td><td style="text-align:left">Gere um link novo</td></tr>
+<tr><td style="text-align:left">“O servidor não devolveu um token de sessão.”</td><td style="text-align:left">Versão do OpenCode incompatível: atualize para a v2</td></tr></tbody></table></div>
+<hr />
+<h2 id="4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</h2>
+<p>O chat funciona só com a API — para o agente <strong>controlar o Chrome</strong>, ele precisa do plugin:</p>
+<pre data-linguagem="bash"><code>npm run install:plugin
+opencode service restart</code></pre>
+<p>O comando copia, para a pasta de plugins do OpenCode:</p>
+<ul>
+<li><code>browser-relay.ts</code> — o servidor que expõe as ferramentas do navegador;</li>
+<li><code>opencode-browser.agent.md</code> — o template do agente <code>opencode-browser</code>.</li>
+</ul>
+<p>e cria a pasta padrão das conversas do navegador (<code>~/.opencode-browser-extensions</code>).</p>
+<p>Confira se está tudo certo:</p>
+<pre data-linguagem="bash"><code>curl http://127.0.0.1:8799/health</code></pre>
+<p>No painel, o rodapé do composer mostra <strong>“ferramentas conectadas”</strong> quando o plugin está ativo.</p>
+<h3 id="se-o-plugin-nao-conectar">Se o plugin não conectar</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Status</th><th style="text-align:left">Significado</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">“Plugin conectado”</td><td style="text-align:left">Tudo certo</td><td style="text-align:left">—</td></tr>
+<tr><td style="text-align:left">“Plugin não encontrado — instale o plugin e reinicie o OpenCode”</td><td style="text-align:left">O plugin não foi carregado</td><td style="text-align:left"><code>npm run install:plugin</code> + <code>opencode service restart</code></td></tr>
+<tr><td style="text-align:left">“Plugin recusou a conexão — confira o ID da extensão”</td><td style="text-align:left">A extensão não é a esperada</td><td style="text-align:left">Recarregue a extensão ou ajuste <code>OPENCODE_BROWSER_EXTENSION_ID</code></td></tr>
+<tr><td style="text-align:left">“Plugin parou de responder — reinicie o OpenCode”</td><td style="text-align:left">O plugin travou ou o worker dormiu</td><td style="text-align:left">Reinicie o OpenCode</td></tr>
+<tr><td style="text-align:left">“Plugin desconectado — reinicie o OpenCode para reconectar”</td><td style="text-align:left">O socket caiu</td><td style="text-align:left">Reinicie o OpenCode ou use <strong>Reconectar plugin</strong> nas configurações</td></tr></tbody></table></div>
+<blockquote><p>Mantenha <strong>uma única</strong> cópia do plugin na pasta de plugins. Duas cópias registram o mesmo plugin e uma delas falha.</p></blockquote>
+<hr />
+<h2 id="5-conhecer-a-tela">5. Conhecer a tela</h2>
+<p>O painel tem cinco regiões:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Região</th><th style="text-align:left">O que tem</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Cabeçalho</strong></td><td style="text-align:left">Marca “OpenCode”, título da conversa, ponto de status da API (online/offline/conectando) e o botão <strong>Configurações</strong></td></tr>
+<tr><td style="text-align:left"><strong>Barra de conversas</strong></td><td style="text-align:left">Seletor de conversas, seletor de agente, botão de abas, <strong>+</strong> (nova conversa) e excluir</td></tr>
+<tr><td style="text-align:left"><strong>Chat</strong></td><td style="text-align:left">Mensagens, raciocínio do modelo, cards de ferramentas e pedidos de permissão</td></tr>
+<tr><td style="text-align:left"><strong>Composer</strong></td><td style="text-align:left">Campo de texto, menu de comandos <code>/</code>, botão Enviar/Parar e o rodapé com contexto e custo</td></tr>
+<tr><td style="text-align:left"><strong>Avisos</strong></td><td style="text-align:left">Banner de conexão, faixa de status, cards de permissão e avisos temporários (toasts)</td></tr></tbody></table></div>
+<h3 id="atalhos">Atalhos</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Tecla</th><th style="text-align:left">Onde</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Enter</strong></td><td style="text-align:left">Composer</td><td style="text-align:left">Envia a mensagem</td></tr>
+<tr><td style="text-align:left"><strong>Shift+Enter</strong></td><td style="text-align:left">Composer</td><td style="text-align:left">Quebra a linha sem enviar</td></tr>
+<tr><td style="text-align:left"><strong>Enter</strong></td><td style="text-align:left">Card de permissão</td><td style="text-align:left">“Permitir uma vez”</td></tr>
+<tr><td style="text-align:left"><strong>Esc</strong></td><td style="text-align:left">Card de permissão</td><td style="text-align:left">Nega o pedido e fecha o card</td></tr>
+<tr><td style="text-align:left"><strong>Esc</strong></td><td style="text-align:left">Modal de ferramentas</td><td style="text-align:left">Fecha o modal</td></tr>
+<tr><td style="text-align:left"><strong>Ctrl+Shift+O</strong> / <strong>Cmd+Shift+O</strong></td><td style="text-align:left">Em qualquer aba</td><td style="text-align:left">Abre o painel</td></tr></tbody></table></div>
+<blockquote><p>O composer não tem atalho de “parar”: para interromper, use o botão <strong>Parar</strong> (o mesmo ícone aparece na página, dentro do indicador do agente).</p></blockquote>
+<hr />
+<h2 id="6-sua-primeira-conversa">6. Sua primeira conversa</h2>
+<ol>
+<li>Digite no campo <strong>“Peça algo ao OpenCode...”</strong> e pressione <strong>Enter</strong>.</li>
+<li>A resposta aparece em streaming; enquanto o agente trabalha, o campo mostra <strong>“O agente está trabalhando...”</strong>.</li>
+<li>Quando ele usa uma ferramenta, surgem os cards (veja a seção 7).</li>
+<li>Se ele precisar de permissão, o card aparece sobre o painel (seção 10).</li>
+</ol>
+<p>A tela vazia traz quatro sugestões prontas:</p>
+<ul>
+<li>“Abra o Hacker News e resuma as 5 principais notícias de hoje.”</li>
+<li>“Leia a página atual, encontre o formulário de contato e preencha com dados de teste.”</li>
+<li>“Investigue os erros do console e as requisições de rede desta página.”</li>
+<li>“Pesquise o preço de um produto em três lojas e compare em uma tabela.”</li>
+</ul>
+<h3 id="comandos-com-barra">Comandos com barra</h3>
+<p>Digite <code>/</code> (sem espaço depois) para abrir o menu de comandos. A lista vem do seu OpenCode e mostra até 6 sugestões; escolher uma completa o campo com <code>/nome </code>. Depois de escolher, escreva o resto e envie — por exemplo <code>/review corrija o diff</code>.</p>
+<p>Se você enviar <code>/nome</code> e mais nada, o comando roda sem argumentos.</p>
+<h3 id="rascunho-por-conversa">Rascunho por conversa</h3>
+<p>O texto que você digitou fica guardado <strong>por conversa</strong>. Trocar de conversa e voltar não apaga o que estava escrito. Se você digitar antes de existir conversa nenhuma, o texto acompanha a conversa que for criada.</p>
+<h3 id="contexto-e-custo">Contexto e custo</h3>
+<p>O rodapé do composer mostra, quando disponível:</p>
+<ul>
+<li><strong>“Contexto 1.234 (12%)”</strong> — tokens da última requisição e quanto isso ocupa da janela do modelo;</li>
+<li><strong>“Sessão US$ 0,0000”</strong> — custo informado pelo OpenCode.</li>
+</ul>
+<p>Sem esses dados, o rodapé mostra a dica “Enter envia · Shift+Enter quebra linha”.</p>
+<h3 id="parar-uma-execucao">Parar uma execução</h3>
+<p>Com o botão <strong>Parar</strong> no composer você interrompe <strong>a conversa exibida</strong>. Cada conversa tem seu próprio botão: parar uma não afeta as outras.</p>
+<hr />
+<h2 id="7-o-que-o-agente-consegue-fazer-no-navegador">7. O que o agente consegue fazer no navegador</h2>
+<p>O agente recebe 18 ferramentas. Algumas são só de leitura e <strong>nunca</strong> pedem permissão; as outras mudam algo e passam pela sua aprovação (conforme o modo).</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Ferramenta</th><th style="text-align:left">O que faz</th><th style="text-align:left">Permissão</th></tr></thead><tbody><tr><td style="text-align:left"><code>browser_tabs_context</code></td><td style="text-align:left">Lista as abas do grupo da conversa</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_create</code></td><td style="text-align:left">Abre uma URL no grupo (em segundo plano)</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_attach</code></td><td style="text-align:left">Traz uma aba já aberta para o grupo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_close_tab</code></td><td style="text-align:left">Fecha uma aba do grupo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_navigate</code></td><td style="text-align:left">Navega, volta ou avança no histórico</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_read_page</code></td><td style="text-align:left">Lê a página e devolve os elementos com referências</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_find</code></td><td style="text-align:left">Procura elementos por texto, papel ou nome</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_get_page_text</code></td><td style="text-align:left">Extrai o texto principal, sem HTML</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_form_input</code></td><td style="text-align:left">Preenche um campo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_computer</code></td><td style="text-align:left">Clica, digita, pressiona teclas, rola, passa o mouse, tira screenshot, dá zoom, espera</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_javascript_tool</code></td><td style="text-align:left">Executa JavaScript na página</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_read_console_messages</code></td><td style="text-align:left">Lê o console e os erros da aba</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_read_network_requests</code></td><td style="text-align:left">Lê as requisições de rede da aba</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_resize_window</code></td><td style="text-align:left">Redimensiona a janela para testar layout</td><td style="text-align:left">Sem pedido</td></tr>
+<tr><td style="text-align:left"><code>browser_update_plan</code></td><td style="text-align:left">Mostra domínios e passos para você aprovar antes</td><td style="text-align:left">Card de plano</td></tr>
+<tr><td style="text-align:left"><code>browser_upload_image</code></td><td style="text-align:left">Envia arquivos para um campo de arquivo ou área de arrastar</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_gif_creator</code></td><td style="text-align:left">Grava quadros das ações e exporta um GIF</td><td style="text-align:left">Exportar pede</td></tr>
+<tr><td style="text-align:left"><code>browser_batch</code></td><td style="text-align:left">Executa várias ferramentas em sequência (até 20)</td><td style="text-align:left">Cada ação pede a sua</td></tr></tbody></table></div>
+<h3 id="cards-de-ferramenta">Cards de ferramenta</h3>
+<p>Cada chamada aparece no chat com um rótulo em português — “Navegar”, “Ler página”, “Clicar na página”, “Preencher campo”, “Console”, “Rede” — e um status: <strong>ok</strong>, <strong>erro</strong> ou <strong>rodando</strong>.</p>
+<p>Você escolhe quanto detalhe quer ver em <strong>Configurações → Ferramentas no chat</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Modo</th><th style="text-align:left">Como fica</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Agrupadas (abrem em um modal)</strong> (padrão)</td><td style="text-align:left">Uma linha-resumo por execução (“4 ferramentas · ver”); o detalhe abre no modal “Ferramentas desta execução”</td></tr>
+<tr><td style="text-align:left"><strong>Linhas compactas, uma por chamada</strong></td><td style="text-align:left">Uma linha por ferramenta, com o erro resumido na própria linha</td></tr>
+<tr><td style="text-align:left"><strong>Cards completos, com parâmetros e resultado</strong></td><td style="text-align:left">Tudo aberto no chat, incluindo o JSON de entrada e a saída</td></tr>
+<tr><td style="text-align:left"><strong>Ocultar tools e raciocínio (só “trabalhando”)</strong></td><td style="text-align:left">O chat mostra só a atividade (“trabalhando: lendo a página”)</td></tr></tbody></table></div>
+<p>No modo agrupado, o modal tem filtro <strong>“Somente erros”</strong> e fecha com <strong>Esc</strong> ou clicando fora.</p>
+<p>Screenshots aparecem como imagem dentro do card (até 3 por vez) e também são salvas em disco: o caminho do arquivo vem na resposta do agente.</p>
+<hr />
+<h2 id="8-abas-e-grupos-onde-o-agente-trabalha">8. Abas e grupos: onde o agente trabalha</h2>
+<p>Cada conversa tem o seu <strong>grupo de abas</strong>, com título <strong>“OpenCode · nome da conversa”</strong> e uma cor própria. É o espaço de trabalho daquele agente — ele não mexe nas suas outras abas.</p>
+<h3 id="abas-em-segundo-plano">Abas em segundo plano</h3>
+<p>Por padrão a extensão <strong>não rouba o foco</strong>: abas criadas ou anexadas pelo agente nascem em segundo plano, e a janela em que você está trabalhando continua onde está. Se você preferir ver as abas surgindo, ligue <strong>“Permitir que abas abertas ou anexadas pelo agente venham para frente”</strong> nas configurações.</p>
+<p>Na página em que o agente está agindo aparece uma moldura laranja com o aviso <strong>“OpenCode está nesta aba”</strong>, um <strong>Parar</strong> e um cursor animado mostrando onde ele clica.</p>
+<h3 id="conectar-uma-aba-sua-ao-agente">Conectar uma aba sua ao agente</h3>
+<ul>
+<li><strong>Conectar aba atual</strong> (ícone de link na barra de conversas): traz a aba ativa para o grupo da conversa.</li>
+<li>Com abas conectadas, o mesmo botão abre a lista: <strong>“Conectar nova aba”</strong> e, em cada aba, <strong>“Remover … do contexto”</strong>.</li>
+</ul>
+<p>Remover uma aba do contexto <strong>não fecha</strong> a aba: apenas a tira do grupo, e ela volta a ser uma aba normal sua.</p>
+<blockquote><p>Abas de <strong>outra janela</strong> não podem ser anexadas. A extensão responde: “A aba está em outra janela. Abra uma aba nova pela sessão ou mova a aba para a janela do grupo antes de anexá-la.”</p></blockquote>
+<h3 id="o-grupo-nasce-quando-e-preciso">O grupo nasce quando é preciso</h3>
+<p>Se a opção de criar grupo ao iniciar conversa estiver desligada (padrão), o grupo aparece no primeiro uso do navegador pelo agente — ou quando você conecta uma aba. É o fluxo mais econômico: nenhuma aba em branco acumulada.</p>
+<hr />
+<h2 id="9-varias-conversas-ao-mesmo-tempo">9. Várias conversas ao mesmo tempo</h2>
+<p>Este é o ponto forte da extensão: cada conversa corre sozinha, no seu grupo de abas, e você alterna entre elas sem parar nada.</p>
+<h3 id="criar-uma-conversa">Criar uma conversa</h3>
+<p>Clique em <strong>+</strong> (Nova conversa). O botão <strong>funciona mesmo com a conversa atual executando</strong> — ele só fica bloqueado durante a própria criação, para não criar duas conversas com um clique duplo.</p>
+<p>A conversa nova nasce vazia, com o modelo (e o agente) selecionados, e já fica em foco no painel.</p>
+<h3 id="trocar-de-conversa">Trocar de conversa</h3>
+<p>Use o seletor <strong>“Sessões do OpenCode”</strong>. Cada item mostra o nome da conversa e um sufixo:</p>
+<ul>
+<li><strong>“ · executando”</strong> — aquela conversa está rodando;</li>
+<li><strong>“ · nova resposta”</strong> — chegou algo novo enquanto você estava em outra.</li>
+</ul>
+<p>Escolher a conversa limpa o aviso de novidade.</p>
+<h3 id="seguir-o-grupo-de-abas-em-foco">Seguir o grupo de abas em foco</h3>
+<p>Com <strong>“Mostrar no painel a conversa do grupo de abas que está em foco”</strong> ligado (padrão), basta clicar em uma aba de um grupo: o painel troca para a conversa daquele grupo. A troca tem uma pequena espera (150 ms) para não piscar quando você passa por várias abas.</p>
+<p>Criar ou selecionar uma conversa manualmente cancela essa troca automática — o painel não vai “voltar sozinho” para outra conversa logo depois do seu clique.</p>
+<h3 id="criar-o-grupo-junto-com-a-conversa-opcional">Criar o grupo junto com a conversa (opcional)</h3>
+<p>Ligando <strong>“Criar um grupo de abas ao iniciar uma nova conversa”</strong>, o <strong>+</strong> já abre uma aba em branco (em segundo plano, na janela do painel) e o grupo com o nome da conversa. É útil quando você quer ver a “âncora” de cada conversa na barra de abas desde o começo; o custo é uma aba em branco por conversa.</p>
+<p>Desligado (padrão), o grupo nasce no primeiro uso do navegador ou no anexo de uma aba.</p>
+<h3 id="excluir-uma-conversa">Excluir uma conversa</h3>
+<p>Use a lixeira (<strong>Excluir sessão</strong>). A confirmação diz: “Excluir esta sessão? O histórico será removido do OpenCode.”</p>
+<p>Ao excluir:</p>
+<ul>
+<li>o histórico sai do OpenCode;</li>
+<li>o grupo é liberado: as abas em branco são fechadas e as páginas reais são apenas <strong>desagrupadas</strong> (nada seu é fechado);</li>
+<li>se era a conversa exibida, a mais recente passa a ser mostrada.</li>
+</ul>
+<h3 id="limites">Limites</h3>
+<ul>
+<li>O painel mantém estado detalhado de até <strong>4 conversas</strong>. As demais continuam existindo no OpenCode e recarregam quando você as abre.</li>
+<li>O vínculo conversa↔grupo fica na sessão do navegador: <strong>fechar o Chrome completamente</strong> desfaz o vínculo (as abas continuam lá, sem dono).</li>
+<li>O painel é uma visão só: duas janelas abertas mostram a mesma conversa.</li>
+</ul>
+<hr />
+<h2 id="10-permissoes">10. Permissões</h2>
+<h3 id="modos">Modos</h3>
+<p>Em <strong>Configurações → Permissões</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Modo</th><th style="text-align:left">Comportamento</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Perguntar a cada site</strong></td><td style="text-align:left">Pede na primeira ação em cada domínio</td></tr>
+<tr><td style="text-align:left"><strong>Permitir ações automaticamente (recomendado)</strong> (<em>padrão</em>)</td><td style="text-align:left">Não pergunta; respeita a lista de bloqueio</td></tr>
+<tr><td style="text-align:left"><strong>Bloquear ações</strong></td><td style="text-align:left">Só leitura; nenhuma interação é executada</td></tr></tbody></table></div>
+<h3 id="o-que-nunca-pede-permissao">O que nunca pede permissão</h3>
+<p>Leitura e coisas de bastidor: listar abas, abrir aba, ler a página, buscar elemento, extrair texto, ler console, ler rede, redimensionar janela e gravar quadros do GIF. Também não pedem: iniciar e parar a gravação de GIF.</p>
+<h3 id="o-card-de-permissao">O card de permissão</h3>
+<p>Quando uma ação precisa de aprovação, o card aparece <strong>sobre o painel</strong> e mostra:</p>
+<ul>
+<li>o host em destaque, com um ponto de alerta;</li>
+<li>o que será feito (“Navegar de a.com para b.com”, “Clicar na página”, “Preencher campo ref_3”, “Executar JavaScript na página”…);</li>
+<li>detalhes: título da aba, URL de destino, valor que será digitado (até 2.000 caracteres), nomes dos arquivos;</li>
+<li>uma prévia (screenshot) quando existir;</li>
+<li>o nome da conversa, se o pedido for de <strong>outra</strong> conversa (“Sessão: …”).</li>
+</ul>
+<p>As opções:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Botão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Permitir uma vez</strong> (Enter)</td><td style="text-align:left">Só esta ação</td></tr>
+<tr><td style="text-align:left"><strong>Permitir nesta sessão</strong></td><td style="text-align:left">Libera o host enquanto essa conversa existir (guardado só em memória)</td></tr>
+<tr><td style="text-align:left"><strong>Permitir sempre para exemplo.com</strong></td><td style="text-align:left">Grava o host na lista de permitidos</td></tr>
+<tr><td style="text-align:left"><strong>Negar</strong> (Esc)</td><td style="text-align:left">Recusa a ação</td></tr></tbody></table></div>
+<p>Pedidos de navegação entre domínios e de plano têm botões próprios: <strong>Permitir</strong> / <strong>Permitir sempre para …</strong> / <strong>Recusar</strong> e <strong>Aprovar plano</strong> / <strong>Recusar</strong>.</p>
+<p>O rodapé do card lembra: “Você pode revogar permissões em Configurações. O agente nunca deve comprar, criar contas ou burlar captchas sem sua confirmação.”</p>
+<h3 id="tempo-para-responder">Tempo para responder</h3>
+<p>O padrão é <strong>60 segundos</strong>. Se você não responder, a ação é <strong>negada</strong>. O tempo pode ser mudado em Configurações (30 s, 1 min, 2 min, 5 min).</p>
+<h3 id="com-o-painel-fechado">Com o painel fechado</h3>
+<p>O pedido vira <strong>notificação do sistema</strong> (“OpenCode Browser: aprovação pendente”) e toca um aviso sonoro. Clicar na notificação abre o painel já com o pedido na tela.</p>
+<h3 id="varias-conversas-pedindo-ao-mesmo-tempo">Várias conversas pedindo ao mesmo tempo</h3>
+<p>Os pedidos entram numa <strong>fila</strong>: o da conversa que você está vendo aparece primeiro; ao responder, o próximo entra — com o nome da conversa de origem. Nada é perdido nem expira escondido, e ao reabrir o painel todos os pendentes reaparecem.</p>
+<blockquote><p>Enquanto um card está aberto ele cobre o painel, inclusive se for de outra conversa. Para liberar rápido, use <strong>Esc</strong> (nega) ou responda.</p></blockquote>
+<h3 id="listas-de-permitidos-e-bloqueados">Listas de permitidos e bloqueados</h3>
+<p>Em <strong>Configurações → Permissões</strong>:</p>
+<ul>
+<li><strong>Sites sempre permitidos (um por linha)</strong></li>
+<li><strong>Sites sempre bloqueados (um por linha)</strong></li>
+</ul>
+<p>O bloqueio é avaliado <strong>antes</strong> de tudo: se o host está na lista de bloqueados, nem o modo “permitir automaticamente” libera.</p>
+<p><strong>O formato é só o host, minúsculo, exatamente como aparece na barra de endereços</strong> — sem <code>https://</code>, sem caminho, sem porta e sem curinga:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Entrada</th><th style="text-align:left">Funciona?</th><th style="text-align:left">Por quê</th></tr></thead><tbody><tr><td style="text-align:left"><code>github.com</code></td><td style="text-align:left">Sim</td><td style="text-align:left">É o host</td></tr>
+<tr><td style="text-align:left"><code>docs.github.com</code></td><td style="text-align:left">Sim</td><td style="text-align:left">Subdomínio é outro host (precisa de linha própria)</td></tr>
+<tr><td style="text-align:left"><code>localhost</code></td><td style="text-align:left">Sim</td><td style="text-align:left">Host sem porta</td></tr>
+<tr><td style="text-align:left"><code>https://github.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">O esquema não faz parte do host</td></tr>
+<tr><td style="text-align:left"><code>github.com/repo</code></td><td style="text-align:left">Não</td><td style="text-align:left">Caminho não faz parte do host</td></tr>
+<tr><td style="text-align:left"><code>*.github.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">Não existe curinga</td></tr>
+<tr><td style="text-align:left"><code>GitHub.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">A comparação diferencia maiúsculas</td></tr></tbody></table></div>
+<p>Cada linha é comparada por igualdade. Digitar <code>https://…</code> não dá erro na tela, mas <strong>não tem efeito</strong> — vale a pena conferir depois de salvar.</p>
+<hr />
+<h2 id="11-quando-o-agente-faz-uma-pergunta">11. Quando o agente faz uma pergunta</h2>
+<p>Além de permissões, o agente pode pedir uma <strong>resposta</strong> sua — uma escolha, um número, um sim/não. Isso aparece como um card no chat, com o título da pergunta e o status “aguardando”.</p>
+<p>Os campos possíveis são: texto livre, número, sim/não, escolha única, múltipla escolha (com a opção “Outra resposta”) e link externo. Campos obrigatórios precisam ser preenchidos para liberar o botão.</p>
+<ul>
+<li><strong>Responder</strong> — envia sua resposta e o agente continua;</li>
+<li><strong>Cancelar</strong> — encerra a pergunta sem resposta (sem confirmação).</li>
+</ul>
+<p>Com o painel fechado, chega uma notificação: “O agente precisa de uma resposta: …”.</p>
+<hr />
+<h2 id="12-configuracoes">12. Configurações</h2>
+<p>Abra pelo botão <strong>Configurações</strong> no cabeçalho do painel.</p>
+<h3 id="conexao">Conexão</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo / botão</th><th style="text-align:left">Para que serve</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Link do <code>opencode pair</code></strong> + <strong>Conectar</strong></td><td style="text-align:left">Aparece só quando não há pareamento; cola o link e conecta</td></tr>
+<tr><td style="text-align:left"><strong>Servidor</strong></td><td style="text-align:left">Mostra o endereço, só leitura</td></tr>
+<tr><td style="text-align:left"><strong>Token</strong></td><td style="text-align:left">Mostra os primeiros e últimos caracteres, só leitura</td></tr>
+<tr><td style="text-align:left"><strong>Abrir painel</strong></td><td style="text-align:left">Abre o painel lateral na janela atual</td></tr>
+<tr><td style="text-align:left"><strong>Reconectar</strong></td><td style="text-align:left">Reconecta à API do OpenCode</td></tr>
+<tr><td style="text-align:left"><strong>Reconectar plugin</strong></td><td style="text-align:left">Reconecta ao plugin das ferramentas</td></tr>
+<tr><td style="text-align:left"><strong>Desconectar</strong></td><td style="text-align:left">Remove o token (pede confirmação)</td></tr></tbody></table></div>
+<p>Duas linhas de status: <strong>API:</strong> (online, conectando, não configurada ou o motivo do offline) e <strong>Ferramentas:</strong> (estado do plugin).</p>
+<h3 id="conversas-e-modelo">Conversas e modelo</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Pasta das conversas do navegador</strong></td><td style="text-align:left"><code>~/.opencode-browser-extensions</code></td><td style="text-align:left">Só lista conversas dessa pasta</td></tr>
+<tr><td style="text-align:left"><strong>Modelo padrão</strong> (+ variante)</td><td style="text-align:left">modelo padrão do servidor</td><td style="text-align:left">Modelo das novas conversas; modelos sem ferramentas aparecem como “(sem tools)”</td></tr>
+<tr><td style="text-align:left"><strong>Agente padrão</strong></td><td style="text-align:left"><code>build</code></td><td style="text-align:left">Usado quando o agente do navegador está desligado</td></tr>
+<tr><td style="text-align:left"><strong>Usar o agente <code>opencode-browser</code> nas novas sessões</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Novas conversas nascem no agente que sabe usar o navegador</td></tr>
+<tr><td style="text-align:left"><strong>Mostrar no painel a conversa do grupo de abas que está em foco</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">O painel segue o grupo da aba em foco</td></tr>
+<tr><td style="text-align:left"><strong>Criar um grupo de abas ao iniciar uma nova conversa</strong></td><td style="text-align:left">desligado</td><td style="text-align:left">O <strong>+</strong> já cria grupo e aba em branco</td></tr>
+<tr><td style="text-align:left"><strong>Permitir que abas abertas ou anexadas pelo agente venham para frente</strong></td><td style="text-align:left">desligado</td><td style="text-align:left">Ligado, a extensão passa a ativar abas</td></tr></tbody></table></div>
+<h3 id="permissoes">Permissões</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left">Modo (perguntar / permitir / bloquear)</td><td style="text-align:left">permitir</td><td style="text-align:left">Ver seção 10</td></tr>
+<tr><td style="text-align:left"><strong>Tempo para responder a um pedido</strong></td><td style="text-align:left">1 minuto</td><td style="text-align:left">Depois disso, a ação é negada</td></tr>
+<tr><td style="text-align:left"><strong>Busca por elemento</strong></td><td style="text-align:left">Heurística (grátis)</td><td style="text-align:left">A opção “Modelo do OpenCode” usa tokens no <code>find</code></td></tr>
+<tr><td style="text-align:left">Sites sempre permitidos / bloqueados</td><td style="text-align:left">vazio</td><td style="text-align:left">Listas de host, uma por linha</td></tr></tbody></table></div>
+<h3 id="avisos-e-exibicao">Avisos e exibição</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Tocar um aviso sonoro quando o agente terminar ou pedir permissão com o painel fechado</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Bipe curto</td></tr>
+<tr><td style="text-align:left"><strong>Mostrar notificação do sistema quando o agente terminar com o painel fechado</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Notificação do Chrome</td></tr>
+<tr><td style="text-align:left"><strong>Ferramentas no chat</strong></td><td style="text-align:left">Agrupadas</td><td style="text-align:left">Agrupadas, linhas compactas, cards completos ou ocultar</td></tr></tbody></table></div>
+<p>Os botões <strong>Salvar</strong> (modelo/agente) e <strong>Salvar permissões</strong> gravam as alterações; o aviso <strong>“Permissões salvas.”</strong> confirma.</p>
+<hr />
+<h2 id="13-avisos-e-sinais">13. Avisos e sinais</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Sinal</th><th style="text-align:left">O que significa</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Badge “!”</strong> no ícone</td><td style="text-align:left">Falta configurar o pareamento</td></tr>
+<tr><td style="text-align:left"><strong>Badge com número</strong></td><td style="text-align:left">Quantas conversas têm novidade (no máximo 9)</td></tr>
+<tr><td style="text-align:left"><strong>Ponto verde/vermelho/âmbar</strong> no cabeçalho</td><td style="text-align:left">API online, offline ou conectando</td></tr>
+<tr><td style="text-align:left"><strong>Banner de conexão</strong></td><td style="text-align:left">Explica a falha e oferece <strong>Tentar novamente</strong>, <strong>Reconectar</strong> ou <strong>Abrir configurações</strong></td></tr>
+<tr><td style="text-align:left"><strong>Faixa de status</strong> abaixo do chat</td><td style="text-align:left">Tentativas de reconexão e mensagens do backend</td></tr>
+<tr><td style="text-align:left"><strong>Moldura laranja na página</strong></td><td style="text-align:left">O agente está agindo naquela aba; tem botão <strong>Parar</strong></td></tr>
+<tr><td style="text-align:left"><strong>“ferramentas conectadas” / “ferramentas offline”</strong></td><td style="text-align:left">Estado do plugin no rodapé do composer</td></tr>
+<tr><td style="text-align:left"><strong>Som + notificação</strong></td><td style="text-align:left">Algo aconteceu com o painel fechado (fim de execução, permissão, pergunta)</td></tr>
+<tr><td style="text-align:left"><strong>Aviso temporário no rodapé</strong></td><td style="text-align:left">Confirmação ou erro de uma ação sua</td></tr></tbody></table></div>
+<hr />
+<h2 id="14-problemas-comuns">14. Problemas comuns</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Sintoma</th><th style="text-align:left">Causa provável</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">Painel diz que o OpenCode não está respondendo</td><td style="text-align:left">Servidor parado</td><td style="text-align:left">Rode <code>opencode serve</code> e clique em <strong>Tentar novamente</strong></td></tr>
+<tr><td style="text-align:left">“Token do OpenCode inválido ou expirado”</td><td style="text-align:left">Token revogado ou trocado</td><td style="text-align:left"><code>opencode pair</code> e cole o link novo nas configurações</td></tr>
+<tr><td style="text-align:left">“O OpenCode demorou demais para responder”</td><td style="text-align:left">Servidor travado</td><td style="text-align:left">Reinicie o OpenCode</td></tr>
+<tr><td style="text-align:left">Ferramentas offline</td><td style="text-align:left">Plugin não instalado ou serviço antigo em memória</td><td style="text-align:left"><code>npm run install:plugin</code> + <code>opencode service restart</code></td></tr>
+<tr><td style="text-align:left">“Plugin recusou a conexão”</td><td style="text-align:left">ID da extensão diferente do esperado</td><td style="text-align:left">Recarregue a extensão; se persistir, ajuste <code>OPENCODE_BROWSER_EXTENSION_ID</code></td></tr>
+<tr><td style="text-align:left">O agente não acha <code>browser_tabs_close</code></td><td style="text-align:left">Nome reservado por outro plugin</td><td style="text-align:left">Use <code>browser_tabs_close_tab</code> e reagende as ferramentas</td></tr>
+<tr><td style="text-align:left">Mudança no código não aparece</td><td style="text-align:left">Service worker em cache</td><td style="text-align:left"><strong>Recarregar</strong> em <code>chrome://extensions</code></td></tr>
+<tr><td style="text-align:left">“Não foi possível preparar a página…”</td><td style="text-align:left">Página <code>chrome://</code>, Chrome Web Store ou aba em branco</td><td style="text-align:left">Abra uma página normal e tente de novo</td></tr>
+<tr><td style="text-align:left">“O DevTools está aberto nesta aba…”</td><td style="text-align:left">DevTools interfere na automação</td><td style="text-align:left">Feche o DevTools daquela aba</td></tr>
+<tr><td style="text-align:left">“A ref … está dentro de um iframe…”</td><td style="text-align:left">Ação por coordenadas em elemento de iframe</td><td style="text-align:left">Peça a ação por referência (clicar/preencher)</td></tr>
+<tr><td style="text-align:left">“Ref … não encontrada”</td><td style="text-align:left">A página mudou depois da leitura</td><td style="text-align:left">Peça ao agente para ler a página de novo</td></tr>
+<tr><td style="text-align:left">“Só é possível anexar abas http(s).”</td><td style="text-align:left">Aba interna do navegador</td><td style="text-align:left">Use uma página comum</td></tr>
+<tr><td style="text-align:left">“A aba está em outra janela…”</td><td style="text-align:left">Grupo pertence a outra janela</td><td style="text-align:left">Abra uma aba pela conversa ou mova a aba de janela</td></tr>
+<tr><td style="text-align:left">“O arquivo … excede o limite de ~5 MB.”</td><td style="text-align:left">Upload grande demais</td><td style="text-align:left">Reduza o arquivo</td></tr>
+<tr><td style="text-align:left">“Nenhum quadro gravado…”</td><td style="text-align:left">GIF sem <code>start</code></td><td style="text-align:left">Peça para iniciar a gravação antes</td></tr>
+<tr><td style="text-align:left">“Falha ao gerar o GIF (offscreen indisponível).”</td><td style="text-align:left">Documento offscreen não subiu</td><td style="text-align:left">Recarregue a extensão</td></tr>
+<tr><td style="text-align:left">Erro <code>403</code> nas ferramentas</td><td style="text-align:left">Token do relay desatualizado</td><td style="text-align:left">Apague <code>~/.cache/opencode-browser/relay.json</code> (ou em <code>$XDG_RUNTIME_DIR/opencode-browser/</code>) e reinicie o OpenCode</td></tr></tbody></table></div>
+<hr />
+<h2 id="15-limites-e-privacidade">15. Limites e privacidade</h2>
+<ul>
+<li><strong>Tudo local</strong>: a extensão fala com <code>127.0.0.1</code>; o plugin escuta apenas em loopback (portas 8799–8802) e exige um “hello” da extensão antes de atender.</li>
+<li><strong>O painel é uma visão só</strong>: duas janelas abertas mostram a mesma conversa.</li>
+<li><strong>Vínculo conversa↔grupo</strong> não sobrevive a fechar o Chrome por completo.</li>
+<li><strong>Até 4 conversas</strong> com estado detalhado em memória ao mesmo tempo.</li>
+<li><strong>Uma resposta em streaming por vez</strong>, mas várias conversas podem executar em paralelo.</li>
+<li><strong>Grupo automático</strong> cria uma aba em branco por conversa; grupos de conversas apagadas fora da extensão só são liberados no próximo início do navegador.</li>
+<li><strong>O card de permissão é modal</strong>: enquanto houver um pedido aberto, o painel fica coberto — responda (ou use <strong>Esc</strong>) para continuar.</li>
+</ul>
+<hr />
+<h2 id="16-referencia-rapida">16. Referência rápida</h2>
+<h3 id="caminhos">Caminhos</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">O quê</th><th style="text-align:left">Onde</th></tr></thead><tbody><tr><td style="text-align:left">Build da extensão</td><td style="text-align:left"><code>dist/</code> (é a pasta a carregar no Chrome)</td></tr>
+<tr><td style="text-align:left">Plugin e agente</td><td style="text-align:left"><code>~/.config/opencode/plugins/</code></td></tr>
+<tr><td style="text-align:left">Conversas do navegador</td><td style="text-align:left"><code>~/.opencode-browser-extensions</code></td></tr>
+<tr><td style="text-align:left">Capturas do agente</td><td style="text-align:left"><code>~/.cache/opencode-browser/capturas/</code></td></tr>
+<tr><td style="text-align:left">Token e porta do relay</td><td style="text-align:left"><code>$XDG_RUNTIME_DIR/opencode-browser/relay.json</code> ou <code>~/.cache/opencode-browser/relay.json</code></td></tr></tbody></table></div>
+<h3 id="comandos-uteis">Comandos úteis</h3>
+<pre data-linguagem="bash"><code>npm run build              # gera dist/
+npm run install:plugin     # copia plugin e agente
+opencode service restart   # recarrega plugin e agente
+opencode pair              # gera o link de pareamento
+curl http://127.0.0.1:8799/health</code></pre>
+<h3 id="pedidos-que-funcionam-bem">Pedidos que funcionam bem</h3>
+<ul>
+<li>“Abra example.com e me diga o título da página.”</li>
+<li>“Leia a página atual e liste os links do menu.”</li>
+<li>“Preencha o formulário de contato com dados de teste e me mostre um print antes de enviar.”</li>
+<li>“Investigue por que o botão Salvar não responde: veja o console e a rede.”</li>
+<li>“Pesquise o preço deste produto em três lojas e monte uma tabela.”</li>
+<li>“Grave um GIF mostrando o passo a passo do login.”</li>
+</ul>
+  </main>
+</div>
+</body>
+</html>

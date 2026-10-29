@@ -5,6 +5,7 @@ OpenCode.
 
 | Documento | Descrição |
 |---|---|
+| [guia-do-usuario.md](guia-do-usuario.md) · [versão HTML](guia-do-usuario.html) | Guia do usuário final: instalar, parear, conversar, abas, sessões paralelas, permissões e configurações |
 | [architecture.md](architecture.md) | Visão geral da arquitetura, componentes e fluxos |
 | [extension.md](extension.md) | Como a extensão funciona por dentro (service worker, content scripts, páginas, offscreen) |
 | [plugin.md](plugin.md) | Plugin do OpenCode: relay WebSocket, handshake, portas, token privado, fallback HTTP e ciclo de vida |
@@ -22,7 +23,7 @@ OpenCode.
 
 ## Leitura sugerida
 
-1. **Quero usar:** [README](../README.md) → [security.md](security.md)
+1. **Quero usar:** [guia-do-usuario.md](guia-do-usuario.md) → [security.md](security.md)
 2. **Quero entender o fluxo:** [architecture.md](architecture.md) → [extension.md](extension.md) → [plugin.md](plugin.md)
 3. **Quero contribuir:** [development.md](development.md) → [components.md](components.md) → [types.md](types.md)
 4. **Quero revisar decisões:** [adr/](adr/)
