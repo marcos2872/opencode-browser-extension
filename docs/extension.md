@@ -15,7 +15,8 @@ src/
 │   ├── relay.ts                 # cliente WebSocket do plugin (descoberta de porta)
 │   ├── cdp.ts                   # chrome.debugger + CDP (input, screenshot, console, rede)
 │   ├── tabGroups.ts             # grupos de abas por sessão + limpeza de órfãos
-│   ├── permissions.ts           # modos, allowlist, popup e timeout
+│   ├── permissions.ts           # modos, allowlist, notificação e timeout
+│   ├── focus.ts                # política de foco (activateTab)
 │   ├── recording.ts             # gravação de quadros para GIF
 │   └── tools/                   # implementação das ferramentas
 │       ├── registry.ts          # despacho + browser_batch
@@ -32,7 +33,6 @@ src/
 │   └── index.ts                 # instala os dois
 ├── sidepanel/                   # chat (App, Chat, Composer, ModelPicker, SessionBar...)
 ├── options/                     # configurações
-├── permission/                  # popup de permissão
 ├── components/                  # Markdown, ícones, card de permissão
 ├── shared/                      # types.ts, protocol.ts, storage.ts
 ├── styles/app.css               # tema claro/escuro, layout e scrollbars
@@ -122,11 +122,31 @@ OpenCode, não só nas conversas da extensão.
 Cada sessão do OpenCode ganha um grupo do Chrome com o título `OpenCode`, uma aba
 principal e as demais abas usadas pelo agente. Ferramentas só enxergam abas do
 grupo. Ao iniciar, grupos sem sessão correspondente são desfeitos (abas reais são
-desagrupadas; abas em branco são fechadas).
+desagrupadas; abas em branco são fechadas, exceto a que o usuário está usando).
+
+Nada disso traz abas para frente: criar o grupo, abrir ou anexar abas trabalha em
+segundo plano, e as ações de `computer` usam emulação de foco via CDP
+(`Emulation.setFocusEmulationEnabled`) para digitar e clicar sem ativar a aba. A
+única exceção é o `bringTabsToFront` ligado nas opções, que libera
+`background/focus.ts → activateTab()`.
 
 `tabs_create` reaproveita a aba principal quando ela está **em branco** ou na
 **mesma origem** (esquema + host + porta); se a URL for de outra origem, abre uma
 aba nova. Assim, pedir Hugging Face e depois TabNews mantém as duas abertas.
+
+Anexar uma aba de outra janela é recusado: `chrome.tabs.group` moveria a aba para
+a janela do grupo, tirando o que o usuário está usando do lugar.
+
+### Permissões sem roubar foco
+
+Com o painel aberto, o pedido é um modal dentro do painel. Com o painel fechado
+(uso pelo plugin/CLI) não existe superfície da extensão na tela — e
+`chrome.sidePanel.open()` exige gesto do usuário, então o service worker não pode
+abrir o painel sozinho. Nesse caso o pedido é sinalizado por som + notificação do
+sistema; o clique na notificação (gesto) abre o side panel, que recebe o pedido
+pendente ao conectar e já mostra o modal. Se o usuário não responder, o pedido
+expira negado pelo timeout. Com `notifyEnabled` desligado não há notificação: o
+pedido fica pendente e só aparece no modal quando o painel for aberto.
 
 ### Offscreen
 
@@ -172,7 +192,6 @@ As refs são estáveis por elemento (mapa fraco + contador) e valores sensíveis
 |---|---|---|
 | Side panel | `sidepanel.html` → `src/sidepanel/App.tsx` | Chat, modelos, agentes, comandos `/`, sessões, cards de ferramenta e permissão |
 | Options | `options.html` → `src/options/App.tsx` | Conexão, modelo/agente padrão, permissões, sites, som/notificação, ferramentas |
-| Permissão | `permission.html` → `src/permission/App.tsx` | Popup 560×680 aberto quando o painel está fechado |
 
 O side panel conversa com o service worker por um `Port` (`opencode-browser-ui`)
 e reconecta sozinho se o worker reiniciar. As mensagens estão em

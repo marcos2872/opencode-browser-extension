@@ -69,7 +69,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `session:delete`      | `id`                    | Remove a sessão                       |
 | `session:model`       | `model`                 | Troca o modelo da sessão              |
 | `session:agent`       | `agent`                 | Troca o agente da sessão              |
-| `tabs:attach-current` | —                       | Move a aba ativa para o grupo         |
+| `tabs:attach-current` | —                       | Anexa a aba ativa ao grupo (recusa aba de outra janela) |
 | `tabs:list`           | `sessionID`             | Lista abas no contexto da sessão      |
 | `tabs:detach`         | `sessionID`, `tabID`    | Remove a aba do contexto sem fechá-la |
 | `prompt`              | `text`                  | Envia mensagem                        |
@@ -97,7 +97,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | -------------------- | -------------- | ---------------------------------------------------- |
 | `SW_KEEPALIVE`       | service worker | Offscreen mantém o worker acordado                   |
 | `browser:stop`       | service worker | Botão Parar na página                                |
-| `permission:respond` | service worker | Resposta do popup/card                               |
+| `permission:respond` | service worker | Resposta do modal do painel                          |
 | `PLAY_NOTIFICATION`  | offscreen      | Toca o aviso sonoro                                  |
 | `ENCODE_GIF`         | offscreen      | Codifica quadros; responde `{ data }` ou `{ error }` |
 

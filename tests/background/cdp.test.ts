@@ -217,6 +217,45 @@ describe("background/cdp", () => {
       stubCommands({ "Page.captureScreenshot": {} })
       await expect(cdp.screenshot(1)).rejects.toThrow("O Chrome não retornou a imagem.")
     })
+
+    it("expande o grupo colapsado antes de capturar", async () => {
+      const cdp = new Cdp()
+      stubCommands({ "Page.captureScreenshot": { data: "AAAA" } })
+      chromeMock.__state.addTab({ id: 1, groupId: 100 })
+      chromeMock.__state.addGroup({ id: 100, collapsed: true, title: "OpenCode" })
+
+      await expect(cdp.screenshot(1)).resolves.toBe("AAAA")
+      expect(chromeMock.tabGroups.update).toHaveBeenCalledWith(100, { collapsed: false })
+      expect(chromeMock.__state.groups.get(100)?.collapsed).toBe(false)
+
+      // Grupo já expandido: não mexe de novo.
+      await expect(cdp.screenshot(1)).resolves.toBe("AAAA")
+      expect(chromeMock.tabGroups.update).toHaveBeenCalledTimes(1)
+    })
+
+    it("faz fallback para fromSurface:false quando a primeira captura falha", async () => {
+      const cdp = new Cdp()
+      chromeMock.debugger.sendCommand.mockImplementation(
+        (_target: unknown, method: string, params: unknown, callback?: (result: unknown) => void) => {
+          if (method !== "Page.captureScreenshot") {
+            callback?.(undefined)
+            return
+          }
+          const { fromSurface } = params as { fromSurface?: boolean }
+          callback?.(fromSurface ? undefined : { data: "BBBB" })
+        },
+      )
+
+      await expect(cdp.screenshot(1)).resolves.toBe("BBBB")
+
+      const calls = chromeMock.debugger.sendCommand.mock.calls.filter(
+        (call) => call[1] === "Page.captureScreenshot",
+      )
+      expect(calls.map((call) => (call[2] as { fromSurface?: boolean }).fromSurface)).toEqual([
+        true,
+        false,
+      ])
+    })
   })
 
   describe("entrada", () => {
@@ -283,6 +322,47 @@ describe("background/cdp", () => {
         deltaX: 0,
         deltaY: 120,
       })
+    })
+
+    it("emula foco uma vez por documento e reemula após navegação", async () => {
+      const cdp = new Cdp()
+      stubCommands()
+
+      const emulations = (): number =>
+        sentMethods().filter((method) => method === "Emulation.setFocusEmulationEnabled").length
+
+      await cdp.mouse(1, "mousePressed", 1, 2)
+      await cdp.mouse(1, "mouseReleased", 1, 2)
+      await cdp.text(1, "olá")
+
+      expect(emulations()).toBe(1)
+      expect(lastParams("Emulation.setFocusEmulationEnabled")).toEqual({ enabled: true })
+
+      // Navegação de iframe não troca o documento principal.
+      chromeMock.debugger.onEvent.emit({ tabId: 1 }, "Page.frameNavigated", {
+        frame: { url: "https://example.com/iframe", parentId: "parent" },
+      })
+      await cdp.text(1, "ainda")
+      expect(emulations()).toBe(1)
+
+      chromeMock.debugger.onEvent.emit({ tabId: 1 }, "Page.frameNavigated", {
+        frame: { url: "https://example.com/outra" },
+      })
+      await cdp.text(1, "depois")
+      expect(emulations()).toBe(2)
+    })
+
+    it("emula foco em key e wheel sem repetir", async () => {
+      const cdp = new Cdp()
+      stubCommands()
+
+      await cdp.text(2, "a")
+      await cdp.key(2, "keyDown", "Enter")
+      await cdp.wheel(2, 1, 1, 0, 1)
+
+      expect(
+        sentMethods().filter((method) => method === "Emulation.setFocusEmulationEnabled"),
+      ).toHaveLength(1)
     })
   })
 

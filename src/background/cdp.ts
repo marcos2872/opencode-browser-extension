@@ -24,6 +24,8 @@ interface TabState {
   runtime: boolean
   network: boolean
   page: boolean
+  /** Emulação de foco ativa (aba em segundo plano recebendo input). */
+  focusEmulated: boolean
   domain: string
   console: ConsoleEntry[]
   networkEntries: NetworkEntry[]
@@ -52,6 +54,7 @@ export class Cdp {
         runtime: false,
         network: false,
         page: false,
+        focusEmulated: false,
         domain: "",
         console: [],
         networkEntries: [],
@@ -74,6 +77,7 @@ export class Cdp {
         state.runtime = false
         state.network = false
         state.page = false
+        state.focusEmulated = false
       }
     })
     chrome.tabs.onRemoved.addListener((tabId) => {
@@ -117,6 +121,7 @@ export class Cdp {
         state.runtime = false
         state.network = false
         state.page = false
+        state.focusEmulated = false
         resolve()
       })
     })
@@ -165,6 +170,19 @@ export class Cdp {
     state.network = true
   }
 
+  /**
+   * Emula foco no documento para que a aba aceite input mesmo em segundo
+   * plano — é o que permite agir sem trazer a aba (e a janela) para frente.
+   * A emulação é por documento, então é reaplicada após cada navegação.
+   */
+  async enableFocusEmulation(tabId: number): Promise<void> {
+    const state = this.state(tabId)
+    if (state.focusEmulated) return
+    await this.enablePage(tabId)
+    await this.command(tabId, "Emulation.setFocusEmulationEnabled", { enabled: true })
+    state.focusEmulated = true
+  }
+
   async evaluate(
     tabId: number,
     expression: string,
@@ -198,14 +216,40 @@ export class Cdp {
     options: { clip?: { x: number; y: number; width: number; height: number; scale?: number } } = {},
   ): Promise<string> {
     await this.enablePage(tabId)
-    const result = await this.command<{ data?: string }>(tabId, "Page.captureScreenshot", {
+    await this.revealGroup(tabId)
+    const base = {
       format: "png",
       captureBeyondViewport: false,
-      fromSurface: true,
       ...(options.clip ? { clip: options.clip } : {}),
-    })
-    if (!result?.data) throw new Error("O Chrome não retornou a imagem.")
-    return result.data
+    }
+    // `fromSurface: true` exige uma superfície renderizada; em aba de segundo
+    // plano pode falhar, então tentamos a captura da viewport como fallback.
+    let lastError: unknown
+    for (const fromSurface of [true, false]) {
+      try {
+        const result = await this.command<{ data?: string }>(tabId, "Page.captureScreenshot", {
+          ...base,
+          fromSurface,
+        })
+        if (result?.data) return result.data
+        lastError = new Error("O Chrome não retornou a imagem.")
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Não foi possível capturar a imagem da aba.")
+  }
+
+  /** Aba dentro de grupo colapsado não é renderizada; expandir não muda o foco. */
+  private async revealGroup(tabId: number): Promise<void> {
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+    const groupId = tab?.groupId
+    if (groupId === undefined || groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return
+    const group = await chrome.tabGroups.get(groupId).catch(() => undefined)
+    if (!group?.collapsed) return
+    await chrome.tabGroups.update(groupId, { collapsed: false }).catch(() => undefined)
   }
 
   async mouse(
@@ -215,6 +259,7 @@ export class Cdp {
     y: number,
     options: { button?: "left" | "right" | "middle"; clickCount?: number; modifiers?: number } = {},
   ): Promise<void> {
+    await this.enableFocusEmulation(tabId)
     await this.command(tabId, "Input.dispatchMouseEvent", {
       type,
       x,
@@ -231,6 +276,7 @@ export class Cdp {
     key: string,
     options: { code?: string; windowsVirtualKeyCode?: number; modifiers?: number } = {},
   ): Promise<void> {
+    await this.enableFocusEmulation(tabId)
     await this.command(tabId, "Input.dispatchKeyEvent", {
       type,
       key,
@@ -241,6 +287,7 @@ export class Cdp {
   }
 
   async wheel(tabId: number, x: number, y: number, deltaX: number, deltaY: number): Promise<void> {
+    await this.enableFocusEmulation(tabId)
     await this.command(tabId, "Input.dispatchMouseEvent", {
       type: "mouseWheel",
       x,
@@ -251,6 +298,7 @@ export class Cdp {
   }
 
   async text(tabId: number, value: string): Promise<void> {
+    await this.enableFocusEmulation(tabId)
     await this.command(tabId, "Input.insertText", { text: value })
   }
 
@@ -305,10 +353,14 @@ export class Cdp {
     }
     if (method === "Page.frameNavigated") {
       const frame = params.frame as { url?: string; parentId?: string } | undefined
-      if (!frame?.parentId && frame?.url) {
-        const next = domainOf(frame.url)
-        if (state.domain && next && state.domain !== next) state.networkEntries = []
-        state.domain = next
+      if (!frame?.parentId) {
+        // Documento novo: a emulação de foco não sobrevive à navegação.
+        state.focusEmulated = false
+        if (frame?.url) {
+          const next = domainOf(frame.url)
+          if (state.domain && next && state.domain !== next) state.networkEntries = []
+          state.domain = next
+        }
       }
       return
     }

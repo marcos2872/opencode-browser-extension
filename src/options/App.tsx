@@ -58,6 +58,7 @@ export default function App() {
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [notifyEnabled, setNotifyEnabled] = useState(true)
+  const [bringTabsToFront, setBringTabsToFront] = useState(false)
   const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full" | "hidden">("grouped")
   const [browserAgentDefault, setBrowserAgentDefault] = useState(true)
   const [workspace, setWorkspace] = useState("")
@@ -81,6 +82,7 @@ export default function App() {
         setTimeoutSeconds(Math.round((response.snapshot.config?.permissionTimeoutMs ?? 60_000) / 1000))
         setSoundEnabled(response.snapshot.config?.soundEnabled !== false)
         setNotifyEnabled(response.snapshot.config?.notifyEnabled !== false)
+        setBringTabsToFront(response.snapshot.config?.bringTabsToFront === true)
         setToolDisplay(response.snapshot.config?.toolDisplay ?? "grouped")
         setBrowserAgentDefault(response.snapshot.config?.browserAgentDefault !== false)
         setWorkspace(response.snapshot.config?.directory ?? "")
@@ -135,6 +137,7 @@ export default function App() {
         permissionTimeoutMs: timeoutSeconds * 1000,
         soundEnabled,
         notifyEnabled,
+        bringTabsToFront,
         toolDisplay,
         browserAgentDefault,
         directory: workspace.trim() || undefined,
@@ -402,6 +405,19 @@ export default function App() {
               onChange={(event) => setNotifyEnabled(event.target.checked)}
             />
             <span>Mostrar notificação do sistema quando o agente terminar com o painel fechado</span>
+          </label>
+
+          <label className="row" style={{ gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={bringTabsToFront}
+              onChange={(event) => setBringTabsToFront(event.target.checked)}
+            />
+            <span>
+              Permitir que abas abertas ou anexadas pelo agente venham para frente
+              (desligado, a extensão trabalha em segundo plano e não tira o foco da janela em
+              que você está)
+            </span>
           </label>
 
           <div className="field">

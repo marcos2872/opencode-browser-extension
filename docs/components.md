@@ -64,7 +64,7 @@ erro visível) ou `full` (card completo com imagens, parâmetros e resultado).
 ### `PermissionCard`
 
 **Arquivo:** `src/components/PermissionCard.tsx`
-**Descrição:** Card reutilizado no painel e no popup. Mostra host, detalhe,
+**Descrição:** Card exibido no modal do painel. Mostra host, detalhe,
 screenshot, texto, domínios do plano e as decisões (uma vez / sessão / sempre /
 negar).
 
@@ -85,12 +85,6 @@ refresh, chevron, link, check, x, terminal, navegador).
 **Descrição:** Conexão e pareamento, modelo/agente padrão, modo de permissão,
 timeout, sites permitidos/bloqueados, som, notificação, lista de ferramentas e
 notas de segurança.
-
-### `App` (permissão)
-
-**Arquivo:** `src/permission/App.tsx`
-**Descrição:** Lê o pedido em `chrome.storage.session`, renderiza o
-`PermissionCard` e responde via `chrome.runtime.sendMessage`.
 
 ## Módulos do background
 
@@ -135,19 +129,31 @@ reconecta com backoff e entrega `tool_request`/`cancel`.
 **Arquivo:** `src/background/cdp.ts`
 **Descrição:** Anexa o depurador (`1.3`), envia comandos CDP, captura
 screenshots, despacha mouse/tecla/texto e mantém buffers de console e rede por
-aba (limpos ao trocar de domínio).
+aba (limpos ao trocar de domínio). Habilita `Emulation.setFocusEmulationEnabled`
+antes do primeiro input (e reaplica após navegação) para agir em aba de segundo
+plano; no screenshot, expande grupo colapsado e cai para `fromSurface: false`.
+
+### `focus`
+
+**Arquivo:** `src/background/focus.ts`
+**Descrição:** Política de foco. `shouldBringTabsToFront()` lê
+`opencode.config.bringTabsToFront` (padrão `false`) e `activateTab(tabId, reason)`
+é o único ponto que chama `chrome.tabs.update({ active: true })`.
 
 ### `TabGroups`
 
 **Arquivo:** `src/background/tabGroups.ts`
 **Descrição:** Cria/recupera o grupo da sessão, resolve a aba alvo, cria/anexa/
-fecha abas, devolve o id do grupo e limpa grupos órfãos na inicialização.
+fecha abas, devolve o id do grupo e limpa grupos órfãos na inicialização. Cria e
+reaproveita abas em segundo plano, recusa anexar aba de outra janela e não fecha a
+aba ativa no `cleanup()`.
 
 ### `Permissions`
 
 **Arquivo:** `src/background/permissions.ts`
 **Descrição:** Avalia modo, allowlist persistente, allowlist da sessão e lista de
-bloqueio; abre card no painel ou popup; aplica timeout; registra decisões.
+bloqueio; abre modal no painel e, sem UI, avisa por som + notificação que abre o painel no clique;
+aplica timeout; registra decisões.
 
 ### `Recording`
 

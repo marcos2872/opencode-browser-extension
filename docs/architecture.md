@@ -106,7 +106,7 @@ flowchart TD
 |---|---|---|
 | Background | `src/background/**` | Cliente do OpenCode, SSE, relay, CDP, grupos de abas, permissões, registro de tools |
 | Conteúdo | `src/content/**` | Árvore de acessibilidade com refs, ações de DOM, indicador visual e botão Parar |
-| UI | `src/sidepanel`, `src/options`, `src/permission` | Chat, configurações e popup de permissão |
+| UI | `src/sidepanel`, `src/options` | Chat e configurações; permissão é modal dentro do painel |
 | Offscreen | `src/offscreen.ts` | Keepalive do service worker, aviso sonoro e codificação de GIF |
 | Compartilhado | `src/shared/**` | Tipos, protocolo do relay, armazenamento |
 

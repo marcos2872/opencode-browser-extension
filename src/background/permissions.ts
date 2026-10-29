@@ -1,5 +1,5 @@
 import type { PermissionDecision, PermissionMode, PermissionRequest } from "../shared/types"
-import { getAllowList, getDenyList, setAllowList, setDenyList } from "../shared/storage"
+import { getAllowList, getConfig, getDenyList, setAllowList, setDenyList } from "../shared/storage"
 
 const READ_ONLY = new Set([
   "tabs_context",
@@ -12,6 +12,7 @@ const READ_ONLY = new Set([
 ])
 
 const REQUEST_KEY = "permission.request."
+const NOTIFY_PREFIX = "oc-permission-"
 
 interface Pending {
   request: PermissionRequest
@@ -38,6 +39,7 @@ export class Permissions {
   private deny: string[] = []
   private sessionAllow = new Map<string, Set<string>>()
   private pending = new Map<string, Pending>()
+  private windowByRequest = new Map<string, number>()
 
   constructor(
     private readonly mode: () => PermissionMode,
@@ -52,6 +54,20 @@ export class Permissions {
       this.respond(message.requestId, message.decision as PermissionDecision)
       sendResponse({ ok: true })
       return true
+    })
+    // Sem UI, o pedido só aparece em um modal do painel: a notificação avisa e
+    // o clique (gesto do usuário) abre o side panel, onde o modal é renderizado.
+    chrome.notifications.onClicked.addListener((notificationId) => {
+      if (!notificationId.startsWith(NOTIFY_PREFIX)) return
+      const requestId = notificationId.slice(NOTIFY_PREFIX.length)
+      if (!this.pending.has(requestId)) return
+      const windowId = this.windowByRequest.get(requestId)
+      if (windowId === undefined) return
+      // `sidePanel.open` consome a ativação do clique: nada de `await` antes.
+      void chrome.sidePanel.open({ windowId }).then(
+        () => chrome.notifications.clear(notificationId).catch(() => undefined),
+        () => undefined,
+      )
     })
   }
 
@@ -143,19 +159,35 @@ export class Permissions {
       if (this.hasUi()) {
         this.notify(request)
       } else {
-        chrome.windows
-          .create({
-            url: chrome.runtime.getURL(`permission.html?requestId=${encodeURIComponent(request.id)}`),
-            type: "popup",
-            width: 560,
-            height: 680,
-            focused: true,
-          })
-          .catch(() => {
-            this.finish(request.id, { allowed: false })
-          })
+        // Sem painel aberto não existe superfície para o modal: avisa por som +
+        // notificação e deixa o clique trazer o painel para frente.
+        void this.notifyPending(request)
       }
     })
+  }
+
+  private async notifyPending(request: PermissionRequest): Promise<void> {
+    const config = await getConfig().catch(() => null)
+    if (!this.pending.has(request.id)) return
+    if (config?.notifyEnabled === false) return
+    // Guarda a janela agora: no clique da notificação precisamos chamar
+    // `sidePanel.open` sem nenhum `await` antes, para preservar o gesto.
+    const window = await chrome.windows.getLastFocused().catch(() => undefined)
+    if (window?.id !== undefined) this.windowByRequest.set(request.id, window.id)
+    await chrome.notifications
+      .create(`${NOTIFY_PREFIX}${request.id}`, {
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+        title: "OpenCode Browser: aprovação pendente",
+        message: request.title.slice(0, 180),
+      })
+      .catch(() => undefined)
+  }
+
+  /** Pedido pendente mais antigo, para a UI mostrar ao conectar. */
+  current(): PermissionRequest | null {
+    const first = this.pending.values().next()
+    return first.done ? null : first.value.request
   }
 
   respond(requestId: string, decision: PermissionDecision): void {
@@ -176,6 +208,10 @@ export class Permissions {
     if (!pending) return
     clearTimeout(pending.timer)
     this.pending.delete(requestId)
+    this.windowByRequest.delete(requestId)
+    void chrome.notifications
+      .clear(`${NOTIFY_PREFIX}${requestId}`)
+      .catch(() => undefined)
     void chrome.storage.session.remove(REQUEST_KEY + requestId)
     this.resolved(requestId)
     pending.resolve(decision)

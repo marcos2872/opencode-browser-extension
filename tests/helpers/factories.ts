@@ -111,6 +111,7 @@ export function makeToolContext(overrides: Partial<ToolContext> = {}): ToolConte
     ensure: vi.fn(async () => ({ sessionID: "ses_test", groupId: 100, mainTabId: 1 })),
     currentTabId: vi.fn(async () => null),
     addTab: vi.fn(async () => 100),
+    assertAttachable: vi.fn(async () => undefined),
     createTab: vi.fn(async () => 2),
     closeTab: vi.fn(async () => undefined),
   }

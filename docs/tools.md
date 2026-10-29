@@ -87,10 +87,12 @@ O buffer é limpo ao trocar de domínio.
 | Parâmetro | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
 | `url` | string | Não | URL inicial (padrão `about:blank`) |
-| `active` | boolean | Não | Abre em primeiro plano (padrão true) |
+| `active` | boolean | Não | Traz a aba para frente (padrão false) |
 
 Reaproveita a aba principal se ela estiver em branco ou na mesma origem; com
-origem diferente, abre uma aba nova no grupo.
+origem diferente, abre uma aba nova no grupo. A aba nasce **em segundo plano**:
+só é ativada com `active: true` e se `bringTabsToFront` estiver ligado nas
+opções.
 
 ### `browser_tabs_attach`
 
@@ -100,7 +102,10 @@ Move uma aba existente para o grupo da sessão.
 |---|---|---|---|
 | `tabId` | number | Não | Aba alvo (padrão: aba ativa do navegador) |
 
-Pede permissão e remove a aba do grupo atual do usuário, se houver.
+Pede permissão e remove a aba do grupo atual do usuário, se houver. A aba não é
+trazida para frente. Como `chrome.tabs.group` move a aba para a janela do grupo,
+anexar uma aba de **outra janela** é recusado com mensagem de erro — abra uma aba
+nova pela sessão ou mova a aba antes.
 
 ### `browser_tabs_close_tab`
 

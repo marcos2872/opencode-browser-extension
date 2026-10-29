@@ -252,6 +252,7 @@ describe("options/App", () => {
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
+        bringTabsToFront: false,
         toolDisplay: "grouped",
         browserAgentDefault: true,
         directory: undefined,

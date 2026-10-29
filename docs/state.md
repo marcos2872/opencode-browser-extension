@@ -41,7 +41,7 @@
 | Chave | Tipo | Quem grava | Descrição |
 |---|---|---|---|
 | `tabGroups` | `{ sessionID, groupId, mainTabId }[]` | TabGroups | Mapa sessão → grupo do Chrome |
-| `permission.request.<id>` | PermissionRequest | Permissions | Pedido aberto no popup |
+| `permission.request.<id>` | PermissionRequest | Permissions | Pedido aberto (mostrado no modal do painel) |
 
 ### Em memória do content script
 

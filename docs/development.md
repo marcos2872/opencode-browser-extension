@@ -7,7 +7,7 @@ requisitos diferentes:
 
 | Configuração | Entrada | Formato | Saída |
 |---|---|---|---|
-| `vite.config.ts` | `sidepanel.html`, `options.html`, `permission.html` | ESM + HTML | páginas + `assets/*-[hash].js/css` |
+| `vite.config.ts` | `sidepanel.html`, `options.html` | ESM + HTML | páginas + `assets/*-[hash].js/css` |
 | `vite.background.config.ts` | `src/background/service-worker.ts` | ESM (lib) | `assets/background.js` |
 | `vite.content.config.ts` | `src/content/index.ts` | IIFE | `assets/content.js` |
 | `vite.offscreen.config.ts` | `src/offscreen.ts` | IIFE | `assets/offscreen.js` |
@@ -47,7 +47,7 @@ npm run test:watch       # modo interativo
 | `src/background/tools` | As 18 ferramentas, caminhos de erro e permissões |
 | `src/content` | Árvore de acessibilidade, ações de DOM e indicador |
 | `src/offscreen` | Keepalive, som e codificação de GIF |
-| `src/components`, `src/sidepanel`, `src/options`, `src/permission` | Componentes e fluxos de UI |
+| `src/components`, `src/sidepanel`, `src/options` | Componentes e fluxos de UI |
 | `tests/plugin` | Criação, atualização por versão e backup do agente |
 
 O `npm run typecheck` cobre apenas `src/` (`tsconfig.json` com `include:

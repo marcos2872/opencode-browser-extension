@@ -56,9 +56,16 @@ export const tabsTools: ToolMap = {
 
   async tabs_create(args, ctx) {
     const url = typeof args.url === "string" && args.url.length > 0 ? args.url : "about:blank"
-    const tabId = await ctx.tabs.createTab(ctx.sessionID, url, args.active !== false)
+    // Criar aba não traz a janela para frente, a menos que o usuário peça
+    // `active: true` e tenha liberado a ativação nas configurações.
+    const wantsActive = args.active === true
+    const tabId = await ctx.tabs.createTab(ctx.sessionID, url, wantsActive)
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined)
+    const note = tab?.active === false
+      ? "\n\nA aba ficou em segundo plano. Ative “Trazer abas para frente” nas configurações para vê-la em primeiro plano."
+      : ""
     return {
-      content: `Aba criada. Tab ID: ${tabId}\n\n${await tabContext(ctx, tabId)}`,
+      content: `Aba criada. Tab ID: ${tabId}${note}\n\n${await tabContext(ctx, tabId)}`,
       metadata: { tabId },
     }
   },
@@ -98,6 +105,8 @@ export const tabsTools: ToolMap = {
     if (!/^https?:/i.test(tab.url ?? "")) {
       throw new Error("Só é possível anexar abas http(s).")
     }
+    // Falha rápido: não pede permissão para uma anexação que será recusada.
+    await ctx.tabs.assertAttachable(ctx.sessionID, tabId)
     const allowed = await ctx.ask({
       kind: "action",
       tool: "tabs_attach",
@@ -106,7 +115,7 @@ export const tabsTools: ToolMap = {
       url: tab.url,
     })
     if (!allowed) return { content: "Anexação negada pelo usuário." }
-    await ctx.tabs.addTab(ctx.sessionID, tabId, { makeMain: true })
+    await ctx.tabs.addTab(ctx.sessionID, tabId, { makeMain: true, activate: true })
     return {
       content: `Aba anexada ao grupo desta sessão.\n\n${await tabContext(ctx, tabId)}`,
       metadata: { tabId },

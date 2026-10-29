@@ -199,6 +199,12 @@ export interface OpencodeConfig {
   toolDisplay?: "grouped" | "rows" | "full" | "hidden";
   /** Usa o agente `opencode-browser` nas novas sessões. Padrão: true. */
   browserAgentDefault?: boolean;
+  /**
+   * Permite que as ações do agente ativem abas/janelas do Chrome. Padrão:
+   * `false` — a extensão trabalha em segundo plano para não tirar o foco da
+   * janela em que o usuário está.
+   */
+  bringTabsToFront?: boolean;
 }
 
 export interface PermissionRequest {

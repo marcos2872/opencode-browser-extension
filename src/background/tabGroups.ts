@@ -1,3 +1,5 @@
+import { activateTab } from "./focus"
+
 interface GroupRecord {
   sessionID: string;
   groupId: number;
@@ -134,10 +136,12 @@ export class TabGroups {
       const window = await chrome.windows
         .getLastFocused()
         .catch(() => undefined);
+      // A aba reserva nasce em segundo plano: criar o grupo não deve tirar o
+      // foco da aba/janela em que o usuário está trabalhando.
       const tab = await chrome.tabs.create({
         windowId: window?.id,
         url: "about:blank",
-        active: true,
+        active: false,
       });
       if (tab.id === undefined)
         throw new Error("Não foi possível criar a aba do grupo.");
@@ -203,6 +207,7 @@ export class TabGroups {
     requested?: number,
   ): Promise<{ tabId: number; groupId: number }> {
     const record = await this.ensure(sessionID);
+    await this.expandGroup(record.groupId);
     const tabs = await chrome.tabs.query({ groupId: record.groupId });
     if (requested !== undefined) {
       const match = tabs.find((tab) => tab.id === requested);
@@ -223,7 +228,7 @@ export class TabGroups {
   async addTab(
     sessionID: string,
     tabId: number,
-    options: { makeMain?: boolean } = {},
+    options: { makeMain?: boolean; activate?: boolean } = {},
   ): Promise<number> {
     return this.serialize(async () => {
       const records = await this.load();
@@ -236,27 +241,65 @@ export class TabGroups {
           alive = false;
         }
         if (alive) {
+          await this.assertSameWindow(record.groupId, tabId);
           await chrome.tabs.group({ tabIds: [tabId], groupId: record.groupId });
           if (options.makeMain) {
             record.mainTabId = tabId;
             await this.save();
-            await chrome.tabs
-              .update(tabId, { active: true })
-              .catch(() => undefined);
           }
+          if (options.activate) await activateTab(tabId, "anexar aba à sessão");
           return record.groupId;
         }
         this.records = records.filter((item) => item !== record);
       }
       // Sem grupo: a aba anexada vira a principal, sem criar about:blank.
       const groupId = await this.createGroupLocked(sessionID, tabId);
-      if (options.makeMain) {
-        await chrome.tabs
-          .update(tabId, { active: true })
-          .catch(() => undefined);
-      }
+      if (options.activate) await activateTab(tabId, "anexar aba à sessão");
       return groupId;
     });
+  }
+
+  /**
+   * `chrome.tabs.group` move a aba para a janela do grupo. Anexar uma aba de
+   * outra janela arrastaria justamente o que o usuário está usando, então
+   * recusamos e explicamos como proceder.
+   */  private async assertSameWindow(groupId: number, tabId: number): Promise<void> {
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+    if (tab?.windowId === undefined) return;
+    const groupTabs = await chrome.tabs
+      .query({ groupId })
+      .catch(() => [] as chrome.tabs.Tab[]);
+    const windowId = groupTabs.find(
+      (item) => item.windowId !== undefined,
+    )?.windowId;
+    if (windowId === undefined || windowId === tab.windowId) return;
+    throw new Error(
+      "A aba está em outra janela. Abra uma aba nova pela sessão ou mova a aba para a janela do grupo antes de anexá-la.",
+    );
+  }
+
+  /** Valida a anexação antes de pedir permissão, para não aprovar algo que falha. */
+  async assertAttachable(sessionID: string, tabId: number): Promise<void> {
+    const record = await this.get(sessionID);
+    if (!record) return;
+    try {
+      await chrome.tabGroups.get(record.groupId);
+    } catch {
+      return;
+    }
+    await this.assertSameWindow(record.groupId, tabId);
+  }
+
+  /**
+   * Grupo colapsado não renderiza as abas (leitura volta vazia e input por
+   * coordenada erra o alvo). Expandir não muda o foco nem a aba ativa.
+   */
+  private async expandGroup(groupId: number): Promise<void> {
+    const group = await chrome.tabGroups.get(groupId).catch(() => undefined);
+    if (!group?.collapsed) return;
+    await chrome.tabGroups
+      .update(groupId, { collapsed: false })
+      .catch(() => undefined);
   }
 
   /** Aba que as ferramentas usam quando nenhum `tabId` é informado. */
@@ -285,7 +328,7 @@ export class TabGroups {
   async createTab(
     sessionID: string,
     url = "about:blank",
-    active = true,
+    active = false,
   ): Promise<number> {
     return this.serialize(async () => {
       const records = await this.load();
@@ -300,20 +343,23 @@ export class TabGroups {
       const current = this.records?.find(
         (item) => item.sessionID === sessionID,
       );
+      if (current) await this.expandGroup(current.groupId);
 
       // Sem grupo: a aba já nasce dentro dele, sem about:blank intermediário.
       if (!current) {
         const window = await chrome.windows
           .getLastFocused()
           .catch(() => undefined);
+        // Nasce em segundo plano; ativar é decisão explícita do usuário.
         const created = await chrome.tabs.create({
           windowId: window?.id,
           url,
-          active,
+          active: false,
         });
         if (created.id === undefined)
           throw new Error("Não foi possível criar a aba.");
         await this.createGroupLocked(sessionID, created.id);
+        if (active) await activateTab(created.id, "abrir aba da sessão");
         return created.id;
       }
 
@@ -327,7 +373,8 @@ export class TabGroups {
         main?.id !== undefined &&
         (isBlankUrl(mainUrl) || sameBaseUrl(mainUrl, url))
       ) {
-        await chrome.tabs.update(main.id, { url, active });
+        await chrome.tabs.update(main.id, { url });
+        if (active) await activateTab(main.id, "abrir aba da sessão");
         return main.id;
       }
 
@@ -337,7 +384,7 @@ export class TabGroups {
       const tab = await chrome.tabs.create({
         windowId: source?.windowId,
         url,
-        active,
+        active: false,
       });
       if (tab.id === undefined) throw new Error("Não foi possível criar a aba.");
       await chrome.tabs.group({ tabIds: [tab.id], groupId: current.groupId });
@@ -345,6 +392,7 @@ export class TabGroups {
         current.mainTabId = tab.id;
         await this.save();
       }
+      if (active) await activateTab(tab.id, "abrir aba da sessão");
       return tab.id;
     });
   }
@@ -374,9 +422,6 @@ export class TabGroups {
         const tabs = await chrome.tabs
           .query({ groupId: group.id })
           .catch(() => []);
-        const ids = tabs
-          .map((tab) => tab.id)
-          .filter((id): id is number => id !== undefined);
         const blanks = tabs.filter(
           (tab) =>
             !tab.url ||
@@ -386,7 +431,12 @@ export class TabGroups {
         const keep = tabs.filter((tab) => !blanks.includes(tab));
         try {
           if (keep.length === 0) {
-            for (const id of ids) await chrome.tabs.remove(id);
+            for (const tab of blanks) {
+              if (tab.id === undefined) continue;
+              // Nunca fecha a aba que o usuário está usando: só desagrupa.
+              if (tab.active) await chrome.tabs.ungroup(tab.id);
+              else await chrome.tabs.remove(tab.id);
+            }
           } else {
             const keepIds = keep
               .map((tab) => tab.id)

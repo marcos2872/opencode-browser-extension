@@ -14,6 +14,23 @@ function storedRecords(): StoredRecord[] {
   return (chromeMock.storage.session.data.get(STORAGE_KEY) as StoredRecord[] | undefined) ?? []
 }
 
+async function setConfig(patch: Record<string, unknown> = {}): Promise<void> {
+  await chromeMock.storage.local.set({
+    "opencode.config": {
+      baseUrl: "http://127.0.0.1:4096",
+      token: "t",
+      permissionMode: "ask",
+      ...patch,
+    },
+  })
+}
+
+function activationUpdates(tabId: number): unknown[] {
+  return chromeMock.tabs.update.mock.calls.filter(
+    (call) => call[0] === tabId && (call[1] as { active?: boolean }).active === true,
+  )
+}
+
 describe("background/tabGroups", () => {
   let groups: TabGroups
 
@@ -26,11 +43,13 @@ describe("background/tabGroups", () => {
       const record = await groups.ensure("ses_1")
 
       expect(record).toEqual({ sessionID: "ses_1", groupId: 100, mainTabId: 1 })
+      // A aba reserva nasce em segundo plano para não roubar o foco.
       expect(chromeMock.tabs.create).toHaveBeenCalledWith({
         windowId: 1,
         url: "about:blank",
-        active: true,
+        active: false,
       })
+      expect(chromeMock.__state.tabs.get(record.mainTabId)?.active).toBe(false)
       expect(chromeMock.tabs.group).toHaveBeenCalledWith({ tabIds: [record.mainTabId] })
       expect(chromeMock.tabGroups.update).toHaveBeenCalledWith(record.groupId, {
         title: "OpenCode",
@@ -118,7 +137,7 @@ describe("background/tabGroups", () => {
         id: record.mainTabId,
         title: "",
         url: "about:blank",
-        active: true,
+        active: false,
       })
       expect(tabs[1]).toEqual({ id: extra.id, title: "Extra", url: "https://extra.com/", active: false })
     })
@@ -173,6 +192,31 @@ describe("background/tabGroups", () => {
       )
     })
 
+    it("expande o grupo colapsado antes de resolver a aba", async () => {
+      const record = await groups.ensure("ses_1")
+      chromeMock.__state.groups.get(record.groupId)!.collapsed = true
+      chromeMock.tabGroups.update.mockClear()
+
+      await groups.resolveTab("ses_1")
+
+      expect(chromeMock.tabGroups.update).toHaveBeenCalledWith(record.groupId, {
+        collapsed: false,
+      })
+      // Expandir não ativa a aba.
+      expect(activationUpdates(record.mainTabId)).toEqual([])
+    })
+
+    it("não mexe no grupo quando ele já está expandido", async () => {
+      const record = await groups.ensure("ses_1")
+      chromeMock.tabGroups.update.mockClear()
+
+      await groups.resolveTab("ses_1")
+
+      expect(chromeMock.tabGroups.update).not.toHaveBeenCalledWith(record.groupId, {
+        collapsed: false,
+      })
+    })
+
     it("falha quando o grupo não tem abas", async () => {
       await groups.ensure("ses_1")
       chromeMock.tabs.query.mockResolvedValue([])
@@ -195,15 +239,47 @@ describe("background/tabGroups", () => {
       await expect(groups.currentTabId("ses_1")).resolves.toBe(outsider.id)
     })
 
-    it("addTab com makeMain troca a aba principal e ativa", async () => {
+    it("addTab com makeMain troca a aba principal sem ativar", async () => {
+      await setConfig({ bringTabsToFront: true })
       const record = await groups.ensure("ses_1")
       const outsider = chromeMock.__state.addTab({ groupId: -1 })
 
       const groupId = await groups.addTab("ses_1", outsider.id, { makeMain: true })
 
       expect(groupId).toBe(record.groupId)
-      expect(chromeMock.tabs.update).toHaveBeenCalledWith(outsider.id, { active: true })
+      expect(chromeMock.tabs.update).not.toHaveBeenCalledWith(outsider.id, { active: true })
+      expect(chromeMock.tabs.update).not.toHaveBeenCalled()
       await expect(groups.currentTabId("ses_1")).resolves.toBe(outsider.id)
+    })
+
+    it("addTab de aba em outra janela lança e não agrupa", async () => {
+      const record = await groups.ensure("ses_1")
+      const outsider = chromeMock.__state.addTab({ groupId: -1, windowId: 2 })
+
+      await expect(groups.addTab("ses_1", outsider.id)).rejects.toThrow(/^A aba está em outra janela\./)
+      expect(chromeMock.__state.tabs.get(outsider.id)?.groupId).toBe(-1)
+      expect(chromeMock.tabs.group).not.toHaveBeenCalledWith({ tabIds: [outsider.id], groupId: record.groupId })
+    })
+
+    it("assertAttachable recusa aba de outra janela antes de pedir permissão", async () => {
+      const record = await groups.ensure("ses_1")
+      const outsider = chromeMock.__state.addTab({ windowId: 2, active: false })
+
+      await expect(groups.assertAttachable("ses_1", outsider.id)).rejects.toThrow(
+        /A aba está em outra janela\./,
+      )
+      expect(record.groupId).toBe(100)
+    })
+
+    it("assertAttachable passa quando o grupo está vivo mas sem abas", async () => {
+      await groups.ensure("ses_1")
+      chromeMock.__state.tabs.clear()
+
+      await expect(groups.assertAttachable("ses_1", 999)).resolves.toBeUndefined()
+    })
+
+    it("assertAttachable não bloqueia quando a sessão não tem grupo", async () => {
+      await expect(groups.assertAttachable("ses_outra", 1)).resolves.toBeUndefined()
     })
 
     it("currentTabId é nulo sem sessão registrada", async () => {
@@ -229,7 +305,6 @@ describe("background/tabGroups", () => {
       expect(chromeMock.tabs.create).not.toHaveBeenCalled()
       expect(chromeMock.tabs.update).toHaveBeenCalledWith(record.mainTabId, {
         url: "https://nova.com/",
-        active: false,
       })
       expect(chromeMock.__state.tabs.get(id)).toMatchObject({
         url: "https://nova.com/",
@@ -253,7 +328,6 @@ describe("background/tabGroups", () => {
       expect(chromeMock.tabs.create).not.toHaveBeenCalled()
       expect(chromeMock.tabs.update).toHaveBeenCalledWith(record.mainTabId, {
         url: "https://app.com/outra",
-        active: false,
       })
     })
 
@@ -275,17 +349,80 @@ describe("background/tabGroups", () => {
       expect(chromeMock.__state.tabs.get(id)?.groupId).toBe(record.groupId)
     })
 
-    it("createTab sem grupo cria a aba já dentro dele", async () => {
+    it("createTab sem grupo cria a aba já dentro dele sem ativar", async () => {
       const id = await groups.createTab("ses_1", "https://nova.com/", true)
 
       expect(chromeMock.tabs.create).toHaveBeenCalledWith({
         windowId: 1,
         url: "https://nova.com/",
-        active: true,
+        active: false,
       })
+      expect(activationUpdates(id)).toEqual([])
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(false)
       const record = await groups.get("ses_1")
       expect(record?.mainTabId).toBe(id)
       await expect(groups.currentTabId("ses_1")).resolves.toBe(id)
+    })
+
+    it("createTab sem active não ativa a aba mesmo com a config ligada", async () => {
+      await setConfig({ bringTabsToFront: true })
+      const id = await groups.createTab("ses_1", "https://nova.com/")
+
+      expect(chromeMock.tabs.create).toHaveBeenCalledWith({
+        windowId: 1,
+        url: "https://nova.com/",
+        active: false,
+      })
+      expect(activationUpdates(id)).toEqual([])
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(false)
+    })
+
+    it("createTab com active e bringTabsToFront ligado ativa a aba", async () => {
+      await setConfig({ bringTabsToFront: true })
+      const id = await groups.createTab("ses_1", "https://nova.com/", true)
+
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(true)
+      expect(activationUpdates(id)).toEqual([[id, { active: true }]])
+    })
+
+    it("createTab com active mas sem bringTabsToFront não ativa", async () => {
+      const id = await groups.createTab("ses_1", "https://nova.com/", true)
+
+      expect(activationUpdates(id)).toEqual([])
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(false)
+    })
+
+    it("createTab com active e bringTabsToFront=false não ativa", async () => {
+      await setConfig({ bringTabsToFront: false })
+      const id = await groups.createTab("ses_1", "https://nova.com/", true)
+
+      expect(activationUpdates(id)).toEqual([])
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(false)
+    })
+
+    it("createTab não reativa a aba que já estava ativa", async () => {
+      await setConfig({ bringTabsToFront: true })
+      const id = await groups.createTab("ses_1", "https://nova.com/", true)
+      chromeMock.tabs.update.mockClear()
+
+      await groups.createTab("ses_1", "https://nova.com/outra", true)
+
+      expect(activationUpdates(id)).toEqual([])
+      expect(chromeMock.__state.tabs.get(id)?.active).toBe(true)
+    })
+
+    it("createTab ativa a aba principal reaproveitada quando a config permite", async () => {
+      await setConfig({ bringTabsToFront: true })
+      const record = await groups.ensure("ses_1")
+
+      const id = await groups.createTab("ses_1", "https://app.com/", true)
+
+      expect(id).toBe(record.mainTabId)
+      expect(chromeMock.tabs.update).toHaveBeenCalledWith(record.mainTabId, {
+        url: "https://app.com/",
+      })
+      expect(activationUpdates(record.mainTabId)).toHaveLength(1)
+      expect(chromeMock.__state.tabs.get(record.mainTabId)?.active).toBe(true)
     })
 
     it("createTab sem aba principal não passa windowId", async () => {
@@ -300,7 +437,7 @@ describe("background/tabGroups", () => {
       expect(chromeMock.tabs.create).toHaveBeenCalledWith({
         windowId: undefined,
         url: "https://c.com/",
-        active: true,
+        active: false,
       })
       expect(chromeMock.__state.tabs.get(id)?.groupId).toBe(record.groupId)
     })
@@ -375,17 +512,29 @@ describe("background/tabGroups", () => {
   })
 
   describe("cleanup", () => {
-    it("fecha abas em branco de grupos órfãos e preserva grupos conhecidos", async () => {
+    it("desagrupa a aba ativa em branco e remove as inativas de grupos órfãos", async () => {
       const known = await groups.ensure("ses_1")
       const orphan = chromeMock.__state.addGroup({ id: 500, title: "OpenCode" })
-      const blank1 = chromeMock.__state.addTab({ groupId: orphan.id, url: "about:blank" })
-      const blank2 = chromeMock.__state.addTab({ groupId: orphan.id, url: "chrome://newtab/" })
+      const activeBlank = chromeMock.__state.addTab({
+        groupId: orphan.id,
+        url: "about:blank",
+        active: true,
+      })
+      const inactiveBlank = chromeMock.__state.addTab({
+        groupId: orphan.id,
+        url: "chrome://newtab/",
+        active: false,
+      })
       const knownTab = chromeMock.__state.addTab({ groupId: known.groupId, url: "https://keep.com/" })
 
       await groups.cleanup()
 
-      expect(chromeMock.__state.tabs.has(blank1.id)).toBe(false)
-      expect(chromeMock.__state.tabs.has(blank2.id)).toBe(false)
+      // A aba que o usuário está usando nunca é fechada, só sai do grupo.
+      expect(chromeMock.tabs.ungroup).toHaveBeenCalledWith(activeBlank.id)
+      expect(chromeMock.__state.tabs.get(activeBlank.id)?.groupId).toBe(-1)
+      expect(chromeMock.tabs.remove).toHaveBeenCalledWith(inactiveBlank.id)
+      expect(chromeMock.__state.tabs.has(inactiveBlank.id)).toBe(false)
+      expect(chromeMock.tabs.remove).toHaveBeenCalledTimes(1)
       expect(chromeMock.__state.tabs.has(knownTab.id)).toBe(true)
       expect(chromeMock.__state.tabs.has(known.mainTabId)).toBe(true)
       expect(storedRecords()).toEqual([known])

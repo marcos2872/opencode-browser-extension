@@ -60,6 +60,7 @@ desatualizado ou colidiu com o browser nativo do OpenCode. Rode
 | `A ref <x> está dentro de um iframe e não tem coordenadas...` | Coordenada pedida para ref de iframe | Use `ref` em click/type/form_input |
 | `Ref <x> não encontrada.` | Ref expirada após navegação | Rode `read_page` de novo |
 | `A aba <id> não pertence ao grupo desta sessão.` | Aba fora do grupo | `tabs_context` ou `tabs_attach` |
+| `A aba está em outra janela...` | `tabs_attach` de aba em janela diferente da do grupo | Abra uma aba pela sessão ou mova a aba para a janela do grupo |
 | `Só é possível anexar abas http(s).` | Aba interna | Use uma aba comum |
 | `O arquivo <nome> excede o limite de ~5 MB.` | Base64 grande | Reduza o arquivo |
 | `Nenhum quadro gravado...` | `gif_creator export` sem `start` | Inicie a gravação antes |
