@@ -6,7 +6,7 @@
 <title>Guia do usuário — OpenCode Browser</title>
 <style>
   :root {
-    color-scheme: dark light;
+    color-scheme: dark;
     --mono: "OpenTUI Mono", ui-monospace, SFMono-Regular, "JetBrains Mono",
       "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
     --bg: #090909;
@@ -23,9 +23,9 @@
     --frame-width: 96rem;
     --content-width: 60rem;
   }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #ffffff;
+  :root[data-tema="claro"] {
+    color-scheme: light;
+    --bg: #ffffff;
       --fg: #1a1a1a;
       --muted: #6b6b6b;
       --border: #e2e2e2;
@@ -35,7 +35,6 @@
       --code-bg: rgba(26, 26, 26, 0.07);
       --header-bg: rgba(255, 255, 255, 0.82);
       --header-border: rgba(226, 226, 226, 0.8);
-    }
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-height) + 24px); }
@@ -71,6 +70,22 @@
   header nav { display: flex; gap: 16px; margin-left: auto; }
   header nav a { color: var(--muted); text-decoration: none; }
   header nav a:hover { color: var(--fg); }
+  header .tema {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  header .tema:hover { color: var(--fg); border-color: var(--muted); }
+  header .tema:focus-visible { outline: 1px solid var(--link); outline-offset: 2px; }
+  header .tema .icone { font-size: 13px; line-height: 1; }
 
   .layout {
     display: flex;
@@ -238,12 +253,42 @@
     p, td, th { color: #000; }
   }
 </style>
+<script>
+  // Resolve o tema antes de pintar: preferência salva ou a do sistema.
+  (() => {
+    const chave = "guia-do-usuario-tema";
+    const sistema = window.matchMedia("(prefers-color-scheme: light)");
+    const guardado = localStorage.getItem(chave);
+    const preferencia =
+      guardado === "claro" || guardado === "escuro" || guardado === "sistema"
+        ? guardado
+        : "sistema";
+    const resolver = (valor) =>
+      valor === "claro" || valor === "escuro"
+        ? valor
+        : sistema.matches
+          ? "claro"
+          : "escuro";
+    document.documentElement.dataset.tema = resolver(preferencia);
+    window.__tema = { chave, sistema, preferencia, resolver };
+  })();
+</script>
 </head>
 <body>
 <header>
   <a class="marca" href="#">opencode <span>browser</span></a>
   <nav>
     <a href="guia-do-usuario.md">Markdown</a>
+    <button
+      id="alternar-tema"
+      class="tema"
+      type="button"
+      aria-label="Tema: sistema"
+      title="Tema: sistema"
+    >
+      <span class="icone" aria-hidden="true">◐</span>
+      <span class="rotulo">sistema</span>
+    </button>
   </nav>
 </header>
 <div class="layout">
@@ -667,6 +712,37 @@ curl http://127.0.0.1:8799/health</code></pre>
 </div>
 <script>
   (() => {
+    const { chave, sistema, resolver } = window.__tema;
+    const botao = document.getElementById("alternar-tema");
+    const rotulo = botao.querySelector(".rotulo");
+    const icone = botao.querySelector(".icone");
+    const ORDEM = ["sistema", "claro", "escuro"];
+    const ICONES = { sistema: "◐", claro: "☀", escuro: "☾" };
+    let preferencia = window.__tema.preferencia;
+
+    function aplicar() {
+      const efetivo = resolver(preferencia);
+      document.documentElement.dataset.tema = efetivo;
+      rotulo.textContent = preferencia;
+      icone.textContent = ICONES[preferencia];
+      botao.setAttribute("aria-label", `Tema: ${preferencia}`);
+      botao.title = `Tema: ${preferencia} (clique para alternar)`;
+      localStorage.setItem(chave, preferencia);
+    }
+
+    botao.addEventListener("click", () => {
+      const proximo = ORDEM[(ORDEM.indexOf(preferencia) + 1) % ORDEM.length];
+      preferencia = proximo;
+      aplicar();
+    });
+
+    // "sistema" acompanha a mudança do SO enquanto a página está aberta.
+    sistema.addEventListener("change", () => {
+      if (preferencia === "sistema") aplicar();
+    });
+
+    aplicar();
+
     const links = [...document.querySelectorAll("aside a[href^='#']")];
     const secoes = links
       .map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1))))
