@@ -1,12 +1,15 @@
 import { useState } from "react"
 import type { AgentInfo, SessionInfo, SessionMeta } from "../shared/types"
 import type { BrowserTabContext } from "../shared/types"
+import { sessionLabel } from "../shared/sessionLabel"
 import { LinkIcon, PlusIcon, TrashIcon, XIcon } from "../components/icons"
 
 interface Props {
   sessions: SessionInfo[]
   activeID: string | null
   busy: boolean
+  /** Requisição de nova conversa em andamento (evita duplo clique). */
+  creating?: boolean
   meta?: SessionMeta[]
   contextTabs: BrowserTabContext[]
   contextError: string | null
@@ -18,12 +21,6 @@ interface Props {
   onAttach: () => void
   onDetach: (tabID: number) => void
   onAgent: (agent: string) => void
-}
-
-export function titleOf(session: SessionInfo): string {
-  if (session.title?.trim()) return session.title.trim()
-  if (session.slug?.trim()) return session.slug.trim()
-  return `Sessão ${session.id.slice(-6)}`
 }
 
 /** Marca na lista as conversas executando ou com resultado não lido. */
@@ -45,6 +42,7 @@ export function SessionBar({
   sessions,
   activeID,
   busy,
+  creating = false,
   meta = [],
   contextTabs,
   contextError,
@@ -74,7 +72,7 @@ export function SessionBar({
         {sessions.length === 0 ? <option value="">Nenhuma sessão</option> : null}
         {sessions.map((session) => (
           <option key={session.id} value={session.id}>
-            {`${titleOf(session)}${metaSuffix(metaBySession.get(session.id))}`}
+            {`${sessionLabel(session)}${metaSuffix(metaBySession.get(session.id))}`}
           </option>
         ))}
       </select>
@@ -157,7 +155,14 @@ export function SessionBar({
           </div>
         ) : null}
       </div>
-      <button className="icon-btn" onClick={onNew} disabled={busy} title="Nova conversa">
+      <button
+        className="icon-btn"
+        onClick={onNew}
+        disabled={creating}
+        aria-busy={creating}
+        aria-label="Nova conversa"
+        title={creating ? "Criando conversa…" : "Nova conversa"}
+      >
         <PlusIcon size={16} />
       </button>
       <button className="icon-btn" onClick={onDelete} disabled={!activeID || busy} title="Excluir sessão">

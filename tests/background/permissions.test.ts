@@ -682,3 +682,33 @@ describe("background/permissions: sessão de origem", () => {
     await expect(decision).resolves.toEqual({ allowed: false })
   })
 })
+
+describe("background/permissions: fila", () => {
+  it("lista todos os pedidos abertos para o painel reconstituir a fila", async () => {
+    const { permissions } = setup({ mode: "ask" })
+    const first = permissions.check(input({ title: "Primeiro" }), "ses_1")
+    const second = permissions.check(input({ title: "Segundo" }), "ses_2")
+
+    expect(permissions.pendingRequests().map((request) => request.title)).toEqual([
+      "Primeiro",
+      "Segundo",
+    ])
+
+    permissions.respond(permissions.pendingRequests()[0].id, { allowed: false })
+    permissions.respond(permissions.pendingRequests()[0].id, { allowed: false })
+    await expect(first).resolves.toEqual({ allowed: false })
+    await expect(second).resolves.toEqual({ allowed: false })
+  })
+})
+
+describe("background/permissions: sessão removida", () => {
+  it("esquece o escopo site da sessão excluída", () => {
+    const { permissions } = setup({ mode: "ask" })
+    permissions.allowForSession("ses_1", "example.com")
+    expect(permissions.isAllowed("example.com", "ses_1")).toBe(true)
+
+    permissions.forget("ses_1")
+
+    expect(permissions.isAllowed("example.com", "ses_1")).toBe(false)
+  })
+})

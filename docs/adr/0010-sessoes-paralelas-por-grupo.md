@@ -34,6 +34,10 @@ foco existia para ligar o grupo em foco à conversa exibida.
    navegador, o que evita ciclos de ativação.
 6. O título do grupo passa a ser `OpenCode · <nome da sessão>`, e excluir uma
    sessão libera o grupo (fecha abas em branco e desagrupa as demais).
+7. O grupo continua **lazy por padrão**: nasce quando o agente usa o navegador
+   ou quando o usuário anexa uma aba. `autoGroupNewSessions` (padrão `false`)
+   permite criar o grupo junto com a conversa, usando a janela do painel para
+   não abrir a aba na janela errada.
 
 ## Consequências
 

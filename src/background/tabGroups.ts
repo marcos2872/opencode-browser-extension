@@ -123,6 +123,7 @@ export class TabGroups {
   async ensure(
     sessionID: string,
     displayName?: string,
+    windowId?: number,
   ): Promise<GroupRecord> {
     return this.serialize(async () => {
       const records = await this.load();
@@ -149,23 +150,31 @@ export class TabGroups {
         }
       }
 
-      const window = await chrome.windows
-        .getLastFocused()
-        .catch(() => undefined);
+      const window =
+        windowId === undefined
+          ? await chrome.windows.getLastFocused().catch(() => undefined)
+          : undefined;
       // A aba reserva nasce em segundo plano: criar o grupo não deve tirar o
       // foco da aba/janela em que o usuário está trabalhando.
       const tab = await chrome.tabs.create({
-        windowId: window?.id,
+        windowId: windowId ?? window?.id,
         url: "about:blank",
         active: false,
       });
       if (tab.id === undefined)
         throw new Error("Não foi possível criar a aba do grupo.");
-      const groupId = await this.createGroupLocked(
-        sessionID,
-        tab.id,
-        displayName,
-      );
+      let groupId: number;
+      try {
+        groupId = await this.createGroupLocked(
+          sessionID,
+          tab.id,
+          displayName,
+        );
+      } catch (error) {
+        // Grupo não consolidou: não deixa uma aba em branco órfã.
+        await chrome.tabs.remove(tab.id).catch(() => undefined);
+        throw error;
+      }
       return { sessionID, groupId, mainTabId: tab.id };
     });
   }

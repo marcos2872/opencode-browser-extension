@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../src/sidepanel/App"
@@ -254,7 +254,7 @@ describe("sidepanel/App", () => {
     await user.type(textarea, "faça algo útil")
     await user.keyboard("{Enter}")
 
-    expect(sent("prompt")).toEqual({ type: "prompt", text: "faça algo útil" })
+    expect(sent("prompt")).toEqual({ type: "prompt", text: "faça algo útil", sessionID: "ses_test" })
     expect(textarea).toHaveValue("")
   })
 
@@ -279,7 +279,12 @@ describe("sidepanel/App", () => {
     await user.type(textarea, "corrija o diff")
     await user.keyboard("{Enter}")
 
-    expect(sent("command")).toEqual({ type: "command", name: "review", text: "corrija o diff" })
+    expect(sent("command")).toEqual({
+      type: "command",
+      name: "review",
+      text: "corrija o diff",
+      sessionID: "ses_test",
+    })
   })
 
   it("interrompe pelo botão Parar quando busy", async () => {
@@ -298,6 +303,7 @@ describe("sidepanel/App", () => {
     expect(sent("session:new")).toEqual({
       type: "session:new",
       model: { id: "model-1", providerID: "provider-1" },
+      windowId: 1,
     })
   })
 
@@ -595,5 +601,132 @@ describe("sidepanel/App", () => {
     })
 
     await waitFor(() => expect(chrome.runtime.connect).toHaveBeenCalledTimes(2), { timeout: 2500 })
+  })
+})
+
+describe("sidepanel/App: criação de conversa", () => {
+  it("ignora o segundo clique em nova conversa", async () => {
+    await renderApp(makeSnapshot())
+    const button = screen.getByTitle("Nova conversa")
+
+    await act(async () => {
+      fireEvent.click(button)
+      fireEvent.click(button)
+    })
+
+    await waitFor(() => {
+      const calls = chrome.runtime.sendMessage.mock.calls.filter(
+        ([message]: any[]) => message?.type === "session:new",
+      )
+      expect(calls).toHaveLength(1)
+    })
+  })
+
+  it("mantém o rascunho separado por sessão", async () => {
+    const sessions = [makeSession(), makeSession({ id: "ses_other", title: "Outra" })]
+    const { port, user } = await renderApp(makeSnapshot({ sessions }))
+    const textarea = screen.getByPlaceholderText("Peça algo ao OpenCode...")
+
+    await user.type(textarea, "texto da A")
+    act(() => {
+      port.onMessage.emit({
+        type: "snapshot",
+        snapshot: makeSnapshot({ sessions, activeSessionID: "ses_other" }),
+      })
+    })
+    expect(screen.getByPlaceholderText("Peça algo ao OpenCode...")).toHaveValue("")
+
+    await user.type(screen.getByPlaceholderText("Peça algo ao OpenCode..."), "texto da B")
+    act(() => {
+      port.onMessage.emit({ type: "snapshot", snapshot: makeSnapshot({ sessions }) })
+    })
+    expect(screen.getByPlaceholderText("Peça algo ao OpenCode...")).toHaveValue("texto da A")
+  })
+
+  it("enfileira pedidos de permissão de sessões diferentes", async () => {
+    const sessions = [makeSession(), makeSession({ id: "ses_other", title: "Outra" })]
+    const { port } = await renderApp(makeSnapshot({ sessions }))
+
+    act(() => {
+      port.onMessage.emit({
+        type: "permission",
+        request: {
+          ...PERMISSION,
+          id: "req_outra",
+          sessionID: "ses_other",
+          title: "Permissão da outra conversa",
+        },
+      })
+      port.onMessage.emit({
+        type: "permission",
+        request: { ...PERMISSION, sessionID: "ses_test" },
+      })
+    })
+
+    // O pedido da sessão exibida tem prioridade, mesmo tendo chegado depois.
+    expect(screen.getByText("Navegar para example.com")).toBeInTheDocument()
+    expect(screen.queryByText("Permissão da outra conversa")).not.toBeInTheDocument()
+
+    act(() => {
+      port.onMessage.emit({ type: "permission:resolved", requestId: "req_1" })
+    })
+
+    expect(screen.getByText("Permissão da outra conversa")).toBeInTheDocument()
+    expect(screen.getByText("Sessão: Outra")).toBeInTheDocument()
+  })
+})
+
+describe("sidepanel/App: criação e permissões", () => {
+  it("restaura o botão e avisa quando a criação falha", async () => {
+    const { user } = await renderApp(makeSnapshot(), {
+      "session:new": { ok: false, error: "limite de sessões" },
+    })
+
+    await user.click(screen.getByTitle("Nova conversa"))
+
+    expect(await screen.findByText("limite de sessões")).toBeInTheDocument()
+    expect(screen.getByTitle("Nova conversa")).toBeEnabled()
+  })
+
+  it("aplica a sessão devolvida por session:select", async () => {
+    const sessions = [
+      makeSession(),
+      makeSession({ id: "ses_other", title: "Outra" }),
+    ]
+    const { user } = await renderApp(makeSnapshot({ sessions }), {
+      "session:select": {
+        ok: true,
+        snapshot: makeSnapshot({ sessions, activeSessionID: "ses_other" }),
+      },
+    })
+
+    await user.selectOptions(screen.getByTitle("Sessões do OpenCode"), "ses_other")
+
+    expect(screen.getByTitle("Outra")).toBeInTheDocument()
+  })
+
+  it("substitui a fila de permissões ao reconectar", async () => {
+    const { port } = await renderApp(makeSnapshot())
+
+    act(() => {
+      port.onMessage.emit({
+        type: "permission:sync",
+        requests: [
+          { ...PERMISSION, id: "req_1", sessionID: "ses_test" },
+          {
+            ...PERMISSION,
+            id: "req_2",
+            sessionID: "ses_test",
+            title: "Segundo pedido",
+          },
+        ],
+      })
+    })
+    expect(screen.getByText("Navegar para example.com")).toBeInTheDocument()
+
+    act(() => {
+      port.onMessage.emit({ type: "permission:sync", requests: [] })
+    })
+    expect(screen.queryByText("Navegar para example.com")).not.toBeInTheDocument()
   })
 })

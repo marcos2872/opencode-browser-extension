@@ -695,3 +695,20 @@ describe("background/tabGroups: sessões paralelas", () => {
     expect(chromeMock.__state.tabs.has(page.id)).toBe(true)
   })
 })
+
+describe("background/tabGroups: falha ao criar grupo", () => {
+  let groups: TabGroups
+
+  beforeEach(() => {
+    groups = new TabGroups()
+  })
+
+  it("remove a aba criada quando o grupo não consolida", async () => {
+    chromeMock.tabGroups.update.mockRejectedValueOnce(new Error("falhou"))
+
+    await expect(groups.ensure("ses_1")).rejects.toThrow("falhou")
+
+    expect(chromeMock.__state.tabs.size).toBe(0)
+    expect(storedRecords()).toEqual([])
+  })
+})

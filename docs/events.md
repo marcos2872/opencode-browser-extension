@@ -67,7 +67,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `unpair`              | —                       | Remove token e zera o estado          |
 | `models:refresh`      | —                       | Recarrega o catálogo                  |
 | `sessions:list`       | —                       | Recarrega as sessões                  |
-| `session:new`         | `model?`, `agent?`      | Cria sessão                           |
+| `session:new`         | `model?`, `agent?`, `windowId?` | Cria sessão; `windowId` define onde o grupo automático nasce |
 | `session:select`      | `id`                    | Seleciona e hidrata                   |
 | `session:delete`      | `id`                    | Remove a sessão                       |
 | `session:model`       | `model`, `sessionID?`   | Troca o modelo da sessão              |
@@ -92,6 +92,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `sessions:meta`       | `items`     | `busy`/`unread` de cada sessão viva |
 | `relay`               | `relay`     | Estado do plugin                    |
 | `permission`          | `request`   | Novo pedido de permissão            |
+| `permission:sync`     | `requests`  | Lista autoritativa ao (re)conectar   |
 | `permission:resolved` | `requestId` | Pedido respondido/expirado          |
 | `event`               | `event`     | Reservado (não usado hoje)          |
 

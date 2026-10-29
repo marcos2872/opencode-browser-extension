@@ -62,6 +62,7 @@ export default function App() {
   const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full" | "hidden">("grouped")
   const [browserAgentDefault, setBrowserAgentDefault] = useState(true)
   const [followTabGroups, setFollowTabGroups] = useState(true)
+  const [autoGroupNewSessions, setAutoGroupNewSessions] = useState(false)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -87,6 +88,7 @@ export default function App() {
         setToolDisplay(response.snapshot.config?.toolDisplay ?? "grouped")
         setBrowserAgentDefault(response.snapshot.config?.browserAgentDefault !== false)
         setFollowTabGroups(response.snapshot.config?.followTabGroups !== false)
+        setAutoGroupNewSessions(response.snapshot.config?.autoGroupNewSessions === true)
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -143,6 +145,7 @@ export default function App() {
         toolDisplay,
         browserAgentDefault,
         followTabGroups,
+        autoGroupNewSessions,
         directory: workspace.trim() || undefined,
       },
     })
@@ -337,6 +340,17 @@ export default function App() {
               <span>
                 Mostrar no painel a conversa do grupo de abas que está em foco (cada sessão
                 fica atrelada ao seu grupo)
+              </span>
+            </label>
+            <label className="row" style={{ gap: 8, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={autoGroupNewSessions}
+                onChange={(event) => setAutoGroupNewSessions(event.target.checked)}
+              />
+              <span>
+                Criar um grupo de abas ao iniciar uma nova conversa (abre uma aba em branco
+                em segundo plano; desligado, o grupo nasce quando o agente usa o navegador)
               </span>
             </label>
           </section>

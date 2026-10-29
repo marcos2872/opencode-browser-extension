@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { PORT_NAME, type UiEvent } from "../shared/protocol"
+import { PORT_NAME, type UiEvent, type UiResponse } from "../shared/protocol"
 import type { AppSnapshot, BrowserTabContext, FormAnswer, FormInfo, ModelRef, PermissionDecision, PermissionRequest } from "../shared/types"
 import { SettingsIcon, Logo } from "../components/icons"
 import { PermissionCard } from "../components/PermissionCard"
@@ -8,7 +8,8 @@ import { Composer } from "./Composer"
 import { ConnectionBanner } from "./ConnectionBanner"
 import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
-import { SessionBar, titleOf } from "./SessionBar"
+import { SessionBar } from "./SessionBar"
+import { sessionLabel } from "../shared/sessionLabel"
 import { sessionStats } from "./sessionStats"
 import { request } from "./api"
 
@@ -20,11 +21,13 @@ async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> 
 
 export default function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
-  const [permission, setPermission] = useState<PermissionRequest | null>(null)
+  const [permissions, setPermissions] = useState<PermissionRequest[]>([])
   const [formBusyID, setFormBusyID] = useState<string | null>(null)
   const [pairError, setPairError] = useState<string | null>(null)
   const [pairBusy, setPairBusy] = useState(false)
-  const [draft, setDraft] = useState("")
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [creating, setCreating] = useState(false)
+  const creatingRef = useRef(false)
   const [selectedModel, setSelectedModel] = useState<ModelRef | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -34,6 +37,15 @@ export default function App() {
     error: string | null
   } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // O rascunho é por conversa: trocar de sessão não pode apagar o que foi
+  // digitado na outra.
+  const draftKey = snapshot?.activeSessionID ?? "none"
+  const draft = drafts[draftKey] ?? ""
+
+  function setDraft(text: string) {
+    setDrafts((current) => ({ ...current, [draftKey]: text }))
+  }
 
   function showToast(message: string) {
     setToast(message)
@@ -53,9 +65,18 @@ export default function App() {
       if (message.type === "relay") {
         setSnapshot((current) => (current ? { ...current, relay: message.relay } : current))
       }
-      if (message.type === "permission") setPermission(message.request)
+      if (message.type === "permission") {
+        setPermissions((current) =>
+          current.some((item) => item.id === message.request.id)
+            ? current
+            : [...current, message.request],
+        )
+      }
+      if (message.type === "permission:sync") setPermissions(message.requests)
       if (message.type === "permission:resolved") {
-        setPermission((current) => (current?.id === message.requestId ? null : current))
+        setPermissions((current) =>
+          current.filter((item) => item.id !== message.requestId),
+        )
       }
     }
 
@@ -83,6 +104,23 @@ export default function App() {
   }, [])
 
   const activeSession = snapshot?.sessions.find((session) => session.id === snapshot.activeSessionID)
+  // Sincroniza a sessão exibida com a resposta do service worker: o broadcast
+  // pode não ter chegado quando o usuário já começa a digitar.
+  function applySelectedSession(response: UiResponse) {
+    if (!response.ok || !response.snapshot) return
+    const next = response.snapshot
+    setSnapshot((current) => {
+      if (!current) return next
+      if (current.activeSessionID === next.activeSessionID) return current
+      return next
+    })
+  }
+  // Um pedido de permissão de outra conversa não pode se perder: a fila mostra
+  // primeiro o da sessão exibida e mantém os demais até serem respondidos.
+  const activePermission =
+    permissions.find((item) => item.sessionID === snapshot?.activeSessionID) ??
+    permissions[0] ??
+    null
   const hasCurrentContext = contextResult?.sessionID === snapshot?.activeSessionID
   const contextTabs = hasCurrentContext ? contextResult?.tabs ?? [] : []
   const contextError = hasCurrentContext ? contextResult?.error ?? null : null
@@ -123,7 +161,7 @@ export default function App() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" })
-  }, [snapshot?.messages, snapshot?.busy, permission])
+  }, [snapshot?.messages, snapshot?.busy, activePermission])
 
   async function pair(link: string) {
     setPairBusy(true)
@@ -152,13 +190,45 @@ export default function App() {
   }
 
   async function newSession() {
-    // Sem `agent`: o servidor escolhe o padrão (hoje, o agente do navegador).
-    const response = await request({
-      type: "session:new",
-      model: selectedModel ?? undefined,
-    })
+    if (creatingRef.current) return
+    creatingRef.current = true
+    setCreating(true)
+    try {
+      const window = await chrome.windows.getCurrent().catch(() => undefined)
+      // Sem `agent`: o servidor escolhe o padrão (hoje, o agente do navegador).
+      const response = await request({
+        type: "session:new",
+        model: selectedModel ?? undefined,
+        windowId: window?.id,
+      })
+      if (!response.ok) showToast(response.error)
+      else {
+        applySelectedSession(response)
+        if (response.groupCreated) {
+          showToast("Nova conversa criada · grupo de abas aberto")
+        }
+      }
+      // Se o usuário digitou antes de existir sessão, o texto acompanha a nova.
+      const createdID = response.ok ? response.snapshot?.activeSessionID : null
+      if (createdID) {
+        setDrafts((current) => {
+          const pending = current.none
+          if (!pending) return current
+          const next = { ...current, [createdID]: pending }
+          delete next.none
+          return next
+        })
+      }
+    } finally {
+      creatingRef.current = false
+      setCreating(false)
+    }
+  }
+
+  async function selectSession(id: string) {
+    const response = await request({ type: "session:select", id })
     if (!response.ok) showToast(response.error)
-    else setDraft("")
+    else applySelectedSession(response)
   }
 
   async function deleteSession() {
@@ -204,9 +274,10 @@ export default function App() {
     const match = /^\/([^\s]+)\s*([\s\S]*)$/.exec(text.trim())
     const command = match ? snapshot?.commands.find((item) => item.name === match[1]) : undefined
     setDraft("")
+    const sessionID = snapshot?.activeSessionID ?? undefined
     const response = command
-      ? await request({ type: "command", name: command.name, text: match?.[2] ?? "" })
-      : await request({ type: "prompt", text })
+      ? await request({ type: "command", name: command.name, text: match?.[2] ?? "", sessionID })
+      : await request({ type: "prompt", text, sessionID })
     if (!response.ok) {
       setDraft(text)
       // Falha de conexão já aparece no banner; evita toast duplicado.
@@ -215,9 +286,9 @@ export default function App() {
   }
 
   async function decide(decision: PermissionDecision) {
-    if (!permission) return
-    const id = permission.id
-    setPermission(null)
+    if (!activePermission) return
+    const id = activePermission.id
+    setPermissions((current) => current.filter((item) => item.id !== id))
     const response = await request({ type: "permission:respond", requestId: id, decision })
     if (!response.ok) showToast(response.error)
   }
@@ -255,7 +326,11 @@ export default function App() {
             <span /> carregando
           </div>
         </div>
-        {toast ? <div className="toast">{toast}</div> : null}
+        {toast ? (
+          <div className="toast" role="status" aria-live="polite">
+            {toast}
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -310,8 +385,8 @@ export default function App() {
           <span className="brand-text">OpenCode</span>
         </div>
         {activeSession ? (
-          <span className="session-title" title={titleOf(activeSession)}>
-            {titleOf(activeSession)}
+          <span className="session-title" title={sessionLabel(activeSession)}>
+            {sessionLabel(activeSession)}
           </span>
         ) : null}
         <span
@@ -359,12 +434,13 @@ export default function App() {
             sessions={snapshot.sessions}
             activeID={snapshot.activeSessionID}
             busy={snapshot.busy}
+            creating={creating}
             meta={snapshot.sessionMeta ?? []}
             contextTabs={contextTabs}
             contextError={contextError}
             agents={snapshot.agents}
             agent={selectedAgent}
-            onSelect={(id) => void request({ type: "session:select", id })}
+            onSelect={(id) => void selectSession(id)}
             onNew={() => void newSession()}
             onDelete={() => void deleteSession()}
             onAttach={() => void attachCurrentTab()}
@@ -403,15 +479,15 @@ export default function App() {
         </>
       )}
 
-      {permission ? (
+      {activePermission ? (
         <div className="overlay">
           <PermissionCard
-            request={permission}
+            request={activePermission}
             sessionLabel={
-              permission.sessionID && permission.sessionID !== snapshot.activeSessionID
-                ? titleOf(
-                    snapshot.sessions.find((session) => session.id === permission.sessionID) ?? {
-                      id: permission.sessionID,
+              activePermission.sessionID && activePermission.sessionID !== snapshot.activeSessionID
+                ? sessionLabel(
+                    snapshot.sessions.find((session) => session.id === activePermission.sessionID) ?? {
+                      id: activePermission.sessionID,
                     },
                   )
                 : undefined
@@ -421,7 +497,11 @@ export default function App() {
         </div>
       ) : null}
 
-      {toast ? <div className="toast">{toast}</div> : null}
+      {toast ? (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      ) : null}
     </div>
   )
 }
