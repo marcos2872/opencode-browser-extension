@@ -8,6 +8,7 @@ import { messageUsage } from "./opencode/usage";
 import { Permissions } from "./permissions";
 import { Recording } from "./recording";
 import { RelayClient } from "./relay";
+import { SessionStates, type SessionState } from "./sessionState";
 import { TabGroups } from "./tabGroups";
 import { computerTools } from "./tools/computer";
 import { gifTools } from "./tools/gif";
@@ -42,7 +43,6 @@ import type {
   OpencodeConfig,
   RelayState,
   SessionInfo,
-  TokenUsage,
   ToolCallView,
 } from "../shared/types";
 
@@ -60,7 +60,10 @@ const registry = new ToolRegistry([
   gifTools(recording),
 ]);
 const ports = new Set<chrome.runtime.Port>();
-const toolAborts = new Map<string, AbortController>();
+const toolAborts = new Map<
+  string,
+  { sessionID: string; controller: AbortController }
+>();
 const toolNames = new Map<string, string>();
 const toolImages = new Map<string, ImagePayload[]>();
 
@@ -69,9 +72,7 @@ let client: OpencodeClient | null = null;
 let models: ModelInfo[] = [];
 let sessions: SessionInfo[] = [];
 let activeSessionID: string | null = null;
-let messages: ChatMessage[] = [];
-let forms: FormInfo[] = [];
-let busy = false;
+const sessionStates = new SessionStates(4, (id) => id === activeSessionID);
 let connection: ConnectionState = {
   phase: "unconfigured",
   failure: null,
@@ -84,7 +85,6 @@ let defaultModel: ModelRef | null = null;
 let agents: AgentInfo[] = [];
 let commands: CommandInfo[] = [];
 let relayState: RelayState = { connected: false, url: RELAY_URL };
-let statusMessage: string | null = null;
 let workspaceHint: string | null = null;
 /**
  * O relay só pode conectar depois que a configuração está hidratada. No boot
@@ -98,7 +98,9 @@ const configHydrated = new Promise<void>((resolve) => {
 });
 let sseAbort: AbortController | null = null;
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
-let hydrateToken = 0;
+let metaTimer: ReturnType<typeof setTimeout> | null = null;
+let followTimer: ReturnType<typeof setTimeout> | null = null;
+let followTabID: number | null = null;
 let probeInFlight = false;
 let healthTick = 0;
 let syncInFlight = false;
@@ -106,7 +108,6 @@ let syncPending = false;
 let lastSseEventAt = 0;
 let connectStartedAt = 0;
 let refreshSessionTimer: ReturnType<typeof setTimeout> | null = null;
-let contextUsage: TokenUsage | undefined;
 
 function playSound(): void {
   if (config?.soundEnabled === false) return;
@@ -129,7 +130,7 @@ const relay = new RelayClient({
     void executeRelayTool(request);
   },
   onCancel: (id) => {
-    toolAborts.get(id)?.abort();
+    toolAborts.get(id)?.controller.abort();
   },
   onReady: (info) => {
     void applyWorkspace(info.workspace);
@@ -140,22 +141,30 @@ const relay = new RelayClient({
   },
 });
 
+function stateOf(sessionID: string): SessionState {
+  return sessionStates.get(sessionID);
+}
+
 function snapshot(): AppSnapshot {
+  const state = activeSessionID
+    ? sessionStates.peek(activeSessionID)
+    : undefined;
   return {
     config,
     models,
     sessions,
     activeSessionID,
-    messages,
-    forms,
+    messages: state?.messages ?? [],
+    forms: state?.forms ?? [],
+    sessionMeta: sessionStates.meta(),
     relay: relayState,
-    busy,
+    busy: state?.busy ?? false,
     connection,
-    contextUsage,
+    contextUsage: state?.contextUsage,
     defaultModel,
     agents,
     commands,
-    statusMessage,
+    statusMessage: state?.statusMessage ?? null,
   };
 }
 
@@ -167,6 +176,34 @@ function broadcast(message: UiEvent): void {
       ports.delete(port);
     }
   }
+}
+
+function broadcastMeta(): void {
+  broadcast({ type: "sessions:meta", items: sessionStates.meta() });
+}
+
+function scheduleMeta(): void {
+  if (metaTimer) return;
+  metaTimer = setTimeout(() => {
+    metaTimer = null;
+    broadcastMeta();
+  }, 100);
+}
+
+/**
+ * Avisa a UI só do que mudou: a sessão exibida recebe o snapshot completo; uma
+ * conversa em segundo plano atualiza apenas ocupado/não lido.
+ */
+function notifySession(sessionID: string | null): void {
+  if (!sessionID || sessionID === activeSessionID) scheduleBroadcast();
+  else scheduleMeta();
+}
+
+function markUnread(sessionID: string): void {
+  const state = sessionStates.peek(sessionID);
+  if (!state || state.unread) return;
+  state.unread = true;
+  void updateBadge();
 }
 
 function scheduleBroadcast(): void {
@@ -242,29 +279,34 @@ function nextRetryDelay(
 }
 
 function resetStreaming(): void {
-  busy = false;
-  statusMessage = null;
-  for (const message of messages) {
-    if (message.kind === "assistant") message.streaming = false;
+  for (const sessionID of sessionStates.ids()) {
+    const state = sessionStates.peek(sessionID);
+    if (!state) continue;
+    state.busy = false;
+    state.statusMessage = null;
+    for (const message of state.messages) {
+      if (message.kind === "assistant") message.streaming = false;
+    }
   }
 }
 
-function markRunInterrupted(detail: string): void {
-  busy = false;
-  statusMessage = null;
-  for (const item of messages) {
+function markRunInterrupted(state: SessionState, sessionID: string): void {
+  state.busy = false;
+  state.statusMessage = null;
+  for (const item of state.messages) {
     if (item.kind === "assistant") item.streaming = false;
   }
-  let message = [...messages]
+  let message = [...state.messages]
     .reverse()
     .find((item) => item.kind === "assistant");
   if (!message || message.kind !== "assistant") {
-    message = ensureAssistant(`interrupted_${crypto.randomUUID()}`);
+    message = ensureAssistant(state, `interrupted_${crypto.randomUUID()}`);
   }
   if (message.kind !== "assistant") return;
-  message.error = detail;
+  message.error =
+    "A conexão com o OpenCode caiu durante a execução. A resposta pode estar incompleta.";
   message.streaming = false;
-  broadcastNow();
+  notifySession(sessionID);
 }
 
 function freshConnection(phase: ConnectionPhase): ConnectionState {
@@ -304,10 +346,10 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await deleteSession(request.id);
       return { ok: true, snapshot: snapshot() };
     case "session:model":
-      await switchModel(request.model);
+      await switchModel(request.model, request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "session:agent":
-      await switchAgent(request.agent);
+      await switchAgent(request.agent, request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "tabs:attach-current": {
       const [tab] = await chrome.tabs.query({
@@ -315,7 +357,8 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
         lastFocusedWindow: true,
       });
       if (!tab?.id) throw new Error("Nenhuma aba ativa encontrada.");
-      const sessionID = activeSessionID ?? "default";
+      const sessionID =
+        request.sessionID ?? activeSessionID ?? "default";
       // Falha rápido antes de pedir aprovação (ver ADR 0009: anexar aba de
       // outra janela é recusado).
       await tabs.assertAttachable(sessionID, tab.id);
@@ -339,13 +382,13 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await tabs.detachTab(request.sessionID, request.tabID);
       return { ok: true, tabs: await tabs.list(request.sessionID) };
     case "prompt":
-      await sendPrompt(request.text);
+      await sendPrompt(request.text, request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "command":
-      await runCommand(request.name, request.text);
+      await runCommand(request.name, request.text, request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "interrupt":
-      await interrupt();
+      await interrupt(request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "form:respond":
       await respondForm(request.sessionID, request.formID, request.answer);
@@ -497,16 +540,12 @@ async function unpair(): Promise<void> {
   models = [];
   sessions = [];
   activeSessionID = null;
-  messages = [];
-  forms = [];
-  busy = false;
+  sessionStates.clear();
   connection = freshConnection("unconfigured");
   defaultModel = null;
   agents = [];
   commands = [];
-  statusMessage = null;
   syncPending = false;
-  contextUsage = undefined;
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   await updateBadge();
   broadcastNow();
@@ -618,25 +657,21 @@ function refreshSessionUsage(): void {
     refreshSessionTimer = null;
     void (async () => {
       await refreshSessions().catch(() => undefined);
-      await refreshActiveUsage();
+      if (activeSessionID) await refreshUsage(activeSessionID);
     })();
   }, 400);
 }
 
-/** Contexto da última requisição da sessão ativa (não é o total acumulado). */
-async function refreshActiveUsage(): Promise<void> {
-  if (!client || !activeSessionID) {
-    contextUsage = undefined;
-    broadcastNow();
-    return;
-  }
-  const sessionID = activeSessionID;
+/** Contexto da última requisição de uma sessão (não é o total acumulado). */
+async function refreshUsage(sessionID: string): Promise<void> {
+  if (!client) return;
   const usage = await client
     .lastAssistantUsage(sessionID)
     .catch(() => undefined);
-  if (activeSessionID !== sessionID) return;
-  contextUsage = usage;
-  broadcastNow();
+  const state = sessionStates.peek(sessionID);
+  if (!state) return;
+  state.contextUsage = usage;
+  notifySession(sessionID);
 }
 
 async function refreshSessions(): Promise<void> {
@@ -653,15 +688,17 @@ async function refreshSessions(): Promise<void> {
         session.location.directory === directory,
     )
     .sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0));
+  sessionStates.retain(sessions.map((session) => session.id));
+  let lostActive = false;
   if (
     activeSessionID &&
     !sessions.some((session) => session.id === activeSessionID)
   ) {
     activeSessionID = null;
-    messages = [];
-    forms = [];
+    lostActive = true;
   }
   broadcastNow();
+  if (lostActive && sessions[0]) await selectSession(sessions[0].id);
 }
 
 function pickModel(explicit?: ModelRef): ModelRef | undefined {
@@ -694,38 +731,51 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   if (!session.agent && chosenAgent) session.agent = chosenAgent;
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)];
   activeSessionID = session.id;
-  messages = [];
-  busy = false;
-  contextUsage = undefined;
+  const state = stateOf(session.id);
+  state.messages = [];
+  state.forms = [];
+  state.busy = false;
+  state.statusMessage = null;
+  state.contextUsage = undefined;
+  state.unread = false;
+  state.hydrated = true;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: session.id });
   broadcastNow();
 }
 
+/**
+ * Troca a conversa exibida sem descartar o estado das demais: execuções em
+ * segundo plano continuam chegando pelo SSE e ficam no cache da sessão.
+ */
 async function selectSession(id: string): Promise<void> {
+  if (!sessions.some((session) => session.id === id)) return;
   activeSessionID = id;
-  messages = [];
-  forms = [];
-  busy = false;
+  const state = sessionStates.get(id);
+  state.unread = false;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: id });
+  void updateBadge();
   broadcastNow();
-  void hydrate(id);
+  if (!state.hydrated) void hydrate(id);
   void loadForms(id);
-  void refreshActiveUsage();
+  void refreshUsage(id);
+  void tabs.setLabel(id, sessions.find((item) => item.id === id)?.title);
 }
 
 async function loadForms(id: string): Promise<void> {
   if (!client) return;
-  const known = new Set(forms.map((form) => form.id));
+  const state = sessionStates.peek(id);
+  if (!state) return;
+  const known = new Set(state.forms.map((form) => form.id));
   try {
     const pending = await client.listForms(id);
-    if (activeSessionID !== id) return;
+    if (sessionStates.peek(id) !== state) return;
     // Preserva forms criados por SSE enquanto a listagem estava em voo.
-    const arrived = forms.filter((form) => !known.has(form.id));
+    const arrived = state.forms.filter((form) => !known.has(form.id));
     const missing = arrived.filter(
       (form) => !pending.some((item) => item.id === form.id),
     );
-    forms = [...pending, ...missing];
-    broadcastNow();
+    state.forms = [...pending, ...missing];
+    notifySession(id);
   } catch {
     // A sessão pode ter sido removida; mantém os forms que já estão na tela.
   }
@@ -738,8 +788,8 @@ async function respondForm(
 ): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   await client.replyForm(sessionID, formID, answer);
-  forms = forms.filter((form) => form.id !== formID);
-  broadcastNow();
+  removeForm(sessionID, formID);
+  notifySession(sessionID);
 }
 
 async function cancelForm(
@@ -749,26 +799,35 @@ async function cancelForm(
 ): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   await client.cancelForm(sessionID, formID, message);
-  forms = forms.filter((form) => form.id !== formID);
-  broadcastNow();
+  removeForm(sessionID, formID);
+  notifySession(sessionID);
+}
+
+function removeForm(sessionID: string, formID: string): void {
+  const state = sessionStates.peek(sessionID);
+  if (!state) return;
+  state.forms = state.forms.filter((form) => form.id !== formID);
 }
 
 async function hydrate(id: string): Promise<void> {
   if (!client) return;
-  const token = ++hydrateToken;
+  const state = sessionStates.peek(id);
+  if (!state) return;
+  const token = ++state.hydrateToken;
   const startedAt = Date.now();
   try {
     const raw = await client.context(id);
-    if (token !== hydrateToken || activeSessionID !== id) return;
-    if (busy) return;
+    if (token !== state.hydrateToken || sessionStates.peek(id) !== state) return;
+    if (state.busy) return;
     // Um evento ao vivo chegou durante a leitura: ele é mais novo que o
     // snapshot e sobrescrever aqui apagaria texto/erro recém-recebidos.
-    if (lastSseEventAt > startedAt) return;
-    messages = mapContext(raw);
-    busy = messages.some(
+    if (state.lastEventAt > startedAt) return;
+    state.messages = mapContext(raw);
+    state.busy = state.messages.some(
       (message) => message.kind === "assistant" && message.streaming,
     );
-    broadcastNow();
+    state.hydrated = true;
+    notifySession(id);
   } catch {
     // The session may have been deleted; keep the current view.
   }
@@ -850,22 +909,26 @@ async function deleteSession(id: string): Promise<void> {
   if (!client) return;
   await client.deleteSession(id);
   sessions = sessions.filter((session) => session.id !== id);
+  sessionStates.delete(id);
+  void tabs.release(id);
   if (activeSessionID === id) {
     activeSessionID = sessions[0]?.id ?? null;
-    messages = [];
-    forms = [];
     if (activeSessionID) await selectSession(activeSessionID);
-    else contextUsage = undefined;
   }
+  void updateBadge();
   broadcastNow();
 }
 
-async function switchModel(model: ModelRef): Promise<void> {
-  if (!client || !activeSessionID) throw new Error("Nenhuma sessão ativa.");
-  await client.switchModel(activeSessionID, model);
-  const session = sessions.find((item) => item.id === activeSessionID);
+async function switchModel(
+  model: ModelRef,
+  sessionID?: string,
+): Promise<void> {
+  const target = sessionID ?? activeSessionID;
+  if (!client || !target) throw new Error("Nenhuma sessão ativa.");
+  await client.switchModel(target, model);
+  const session = sessions.find((item) => item.id === target);
   if (session) session.model = model;
-  broadcastNow();
+  notifySession(target);
 }
 
 function isConnectionFailure(failure: ConnectionFailure): boolean {
@@ -881,20 +944,27 @@ function isConnectionFailure(failure: ConnectionFailure): boolean {
  * rascunho e propaga o erro (o banner persistente explica o que fazer). Nos
  * demais erros, mantém a bolha inline com o detalhe do provedor.
  */
-function handleSendFailure(error: unknown, optimisticID: string): void {
-  busy = false;
+function handleSendFailure(
+  state: SessionState,
+  sessionID: string,
+  optimisticID: string,
+  error: unknown,
+): void {
+  state.busy = false;
   const failure = classifyFailure(error);
   if (isConnectionFailure(failure)) {
-    messages = messages.filter((message) => message.id !== optimisticID);
+    state.messages = state.messages.filter(
+      (message) => message.id !== optimisticID,
+    );
     setConnection({
       phase: "offline",
       failure,
       detail: errorMessage(error),
     });
-    broadcastNow();
+    notifySession(sessionID);
     throw error;
   }
-  messages.push({
+  state.messages.push({
     kind: "assistant",
     id: `local_error_${crypto.randomUUID()}`,
     text: "",
@@ -904,81 +974,119 @@ function handleSendFailure(error: unknown, optimisticID: string): void {
     streaming: false,
     error: errorMessage(error),
   });
-  broadcastNow();
+  notifySession(sessionID);
 }
 
-async function runCommand(name: string, text: string): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+/** Sessão alvo de um pedido da UI, criando a primeira quando não há nenhuma. */
+async function targetSession(sessionID?: string): Promise<string> {
+  if (sessionID) {
+    if (!sessions.some((session) => session.id === sessionID)) {
+      throw new Error("Sessão não encontrada.");
+    }
+    return sessionID;
+  }
   if (!activeSessionID) await createSession();
   if (!activeSessionID) throw new Error("Não foi possível criar a sessão.");
-  const sessionID = activeSessionID;
+  return activeSessionID;
+}
+
+async function runCommand(
+  name: string,
+  text: string,
+  sessionID?: string,
+): Promise<void> {
+  if (!client) throw new Error("OpenCode não configurado.");
+  const target = await targetSession(sessionID);
+  const state = stateOf(target);
   const optimisticID = `local_${crypto.randomUUID()}`;
-  messages.push({
+  state.messages.push({
     kind: "user",
     id: optimisticID,
     text: `/${name}${text ? ` ${text}` : ""}`,
     time: Date.now(),
   });
-  busy = true;
-  statusMessage = null;
-  broadcastNow();
+  state.busy = true;
+  state.statusMessage = null;
+  notifySession(target);
   try {
-    await client.runCommand(sessionID, name, text);
+    await client.runCommand(target, name, text);
   } catch (error) {
-    handleSendFailure(error, optimisticID);
+    handleSendFailure(state, target, optimisticID, error);
   }
 }
 
-async function switchAgent(agent: string): Promise<void> {
+async function switchAgent(agent: string, sessionID?: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
-  if (activeSessionID) {
-    await client.switchAgent(activeSessionID, agent);
-    const session = sessions.find((item) => item.id === activeSessionID);
+  const target = sessionID ?? activeSessionID;
+  if (target) {
+    await client.switchAgent(target, agent);
+    const session = sessions.find((item) => item.id === target);
     if (session) session.agent = agent;
-  } else {
-    config = { ...config!, defaultAgent: agent };
-    await setConfig(config);
+    notifySession(target);
+    return;
   }
+  config = { ...config!, defaultAgent: agent };
+  await setConfig(config);
   broadcastNow();
 }
 
-async function sendPrompt(text: string): Promise<void> {
+async function sendPrompt(text: string, sessionID?: string): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   const trimmed = text.trim();
   if (!trimmed) return;
-  if (!activeSessionID) {
-    await createSession();
-  }
-  if (!activeSessionID) throw new Error("Não foi possível criar a sessão.");
-  const sessionID = activeSessionID;
+  const target = await targetSession(sessionID);
+  const state = stateOf(target);
   const optimisticID = `local_${crypto.randomUUID()}`;
-  messages.push({
+  state.messages.push({
     kind: "user",
     id: optimisticID,
     text: trimmed,
     time: Date.now(),
   });
-  busy = true;
-  statusMessage = null;
-  broadcastNow();
+  state.busy = true;
+  state.statusMessage = null;
+  notifySession(target);
   try {
-    await client.prompt(sessionID, trimmed);
+    await client.prompt(target, trimmed);
   } catch (error) {
-    handleSendFailure(error, optimisticID);
+    handleSendFailure(state, target, optimisticID, error);
   }
 }
 
-async function interrupt(): Promise<void> {
-  for (const controller of toolAborts.values()) controller.abort();
-  toolAborts.clear();
-  if (client && activeSessionID) {
-    await client.interrupt(activeSessionID).catch(() => undefined);
+/**
+ * Interrompe uma sessão específica. Sem `sessionID`, age na sessão exibida;
+ * `null` interrompe todas as que estão executando (usado quando a aba de
+ * origem não pertence a nenhum grupo).
+ */
+async function interrupt(sessionID?: string | null): Promise<void> {
+  const stopAll = sessionID === null;
+  const targets = stopAll
+    ? sessionStates
+        .ids()
+        .filter((id) => sessionStates.peek(id)?.busy)
+    : [sessionID ?? activeSessionID].filter((id): id is string => !!id);
+  for (const [id, entry] of [...toolAborts.entries()]) {
+    if (!stopAll && !targets.includes(entry.sessionID)) continue;
+    entry.controller.abort();
+    toolAborts.delete(id);
   }
-  busy = false;
-  for (const message of messages) {
-    if (message.kind === "assistant") message.streaming = false;
+  for (const target of targets) {
+    if (client) {
+      await client.interrupt(target).catch(() => undefined);
+    }
+    const state = sessionStates.peek(target);
+    if (!state) continue;
+    state.busy = false;
+    state.statusMessage = null;
+    for (const message of state.messages) {
+      if (message.kind === "assistant") message.streaming = false;
+    }
+    notifySession(target);
   }
-  broadcastNow();
+  if (stopAll) {
+    resetStreaming();
+    broadcastNow();
+  }
 }
 
 function startSse(resetBackoff = true): void {
@@ -1114,6 +1222,15 @@ async function reconnectBackend(): Promise<void> {
   broadcastNow();
 }
 
+function describeSession(sessionID: string | null): string {
+  return sessions.find((item) => item.id === sessionID)?.title ?? "Tarefa";
+}
+
+/** Notifica quando o painel está fechado ou quando a sessão não é a exibida. */
+function shouldNotify(sessionID: string | null): boolean {
+  return ports.size === 0 || sessionID !== activeSessionID;
+}
+
 function onOpencodeEvent(event: {
   type: string;
   data?: Record<string, unknown>;
@@ -1129,6 +1246,7 @@ function onOpencodeEvent(event: {
       : typeof info?.sessionID === "string"
         ? info.sessionID
         : undefined;
+  const state = sessionID ? stateOf(sessionID) : null;
   console.log(
     "[sse] evento",
     event.type,
@@ -1139,26 +1257,29 @@ function onOpencodeEvent(event: {
 
   if (event.type === "form.created") {
     const form = data.form as FormInfo | undefined;
-    if (form?.id && form.sessionID === activeSessionID) {
-      if (!forms.some((item) => item.id === form.id)) {
-        forms = [...forms, form];
-        playSound();
-        if (ports.size === 0 && config?.notifyEnabled !== false) {
-          void chrome.notifications
-            .create(`oc-form-${form.id}`, {
-              type: "basic",
-              iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
-              title: "OpenCode Browser",
-              message: (form.title
-                ? `O agente precisa de uma resposta: ${form.title}`
-                : "O agente precisa de uma resposta."
-              ).slice(0, 180),
-            })
-            .catch(() => undefined);
-        }
-        scheduleBroadcast();
-      }
+    // O evento pode não repetir a sessão no topo; o form é a fonte confiável.
+    const formSessionID =
+      typeof form?.sessionID === "string" ? form.sessionID : sessionID;
+    if (!form?.id || !formSessionID) return;
+    const formState = stateOf(formSessionID);
+    if (formState.forms.some((item) => item.id === form.id)) return;
+    formState.forms = [...formState.forms, form];
+    if (formSessionID !== activeSessionID) markUnread(formSessionID);
+    playSound();
+    if (shouldNotify(formSessionID) && config?.notifyEnabled !== false) {
+      void chrome.notifications
+        .create(`oc-form-${form.id}`, {
+          type: "basic",
+          iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+          title: "OpenCode Browser",
+          message: (form.title
+            ? `O agente precisa de uma resposta: ${form.title}`
+            : "O agente precisa de uma resposta."
+          ).slice(0, 180),
+        })
+        .catch(() => undefined);
     }
+    notifySession(formSessionID);
     return;
   }
 
@@ -1170,9 +1291,12 @@ function onOpencodeEvent(event: {
         : typeof replied?.id === "string"
           ? replied.id
           : undefined;
-    if (formID && forms.some((item) => item.id === formID)) {
-      forms = forms.filter((item) => item.id !== formID);
-      scheduleBroadcast();
+    if (!formID) return;
+    for (const id of sessionStates.ids()) {
+      const candidate = sessionStates.peek(id);
+      if (!candidate?.forms.some((form) => form.id === formID)) continue;
+      candidate.forms = candidate.forms.filter((form) => form.id !== formID);
+      notifySession(id);
     }
     return;
   }
@@ -1199,11 +1323,13 @@ function onOpencodeEvent(event: {
     if (session && typeof data.title === "string") {
       session.title = data.title;
       session.time = { ...session.time, updated: Date.now() };
+      void tabs.setLabel(sessionID, data.title);
       scheduleBroadcast();
     }
   }
 
-  if (!sessionID || sessionID !== activeSessionID) return;
+  if (!state || !sessionID) return;
+  state.lastEventAt = Date.now();
 
   const assistantID =
     typeof data.assistantMessageID === "string"
@@ -1222,8 +1348,8 @@ function onOpencodeEvent(event: {
       if (info?.role !== "assistant" || !assistantID) break;
       const usage = messageUsage(info);
       if (usage) {
-        ensureAssistant(assistantID).usage = usage;
-        scheduleBroadcast();
+        ensureAssistant(state, assistantID).usage = usage;
+        notifySession(sessionID);
       }
       break;
     }
@@ -1234,40 +1360,40 @@ function onOpencodeEvent(event: {
           : data;
       const usage = messageUsage(source);
       const target = assistantID
-        ? ensureAssistant(assistantID)
-        : [...messages]
+        ? ensureAssistant(state, assistantID)
+        : [...state.messages]
             .reverse()
             .find(
               (message) => message.kind === "assistant" && message.streaming,
             );
       if (usage && target?.kind === "assistant") {
         target.usage = usage;
-        scheduleBroadcast();
+        notifySession(sessionID);
       }
       break;
     }
     case "session.step.started":
     case "session.execution.started":
-      busy = true;
-      statusMessage = null;
-      scheduleBroadcast();
+      state.busy = true;
+      state.statusMessage = null;
+      notifySession(sessionID);
       break;
     case "session.text.started":
-      if (assistantID) ensureAssistant(assistantID).streaming = true;
-      scheduleBroadcast();
+      if (assistantID) ensureAssistant(state, assistantID).streaming = true;
+      notifySession(sessionID);
       break;
     case "session.text.delta": {
       if (!assistantID || typeof data.delta !== "string") break;
-      const message = ensureAssistant(assistantID);
+      const message = ensureAssistant(state, assistantID);
       message.text += data.delta;
       message.streaming = true;
-      statusMessage = null;
-      scheduleBroadcast();
+      state.statusMessage = null;
+      notifySession(sessionID);
       break;
     }
     case "session.text.ended": {
       if (!assistantID) break;
-      const message = ensureAssistant(assistantID);
+      const message = ensureAssistant(state, assistantID);
       if (typeof data.text === "string") {
         message.text =
           message.text && !data.text.startsWith(message.text)
@@ -1276,21 +1402,21 @@ function onOpencodeEvent(event: {
       }
       // O texto deste passo acabou; o run pode continuar em outro passo.
       message.streaming = false;
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     }
     case "session.reasoning.delta": {
       if (!assistantID || typeof data.delta !== "string") break;
-      const message = ensureAssistant(assistantID);
+      const message = ensureAssistant(state, assistantID);
       message.reasoning += data.delta;
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     }
     case "session.reasoning.ended": {
       if (!assistantID) break;
-      const message = ensureAssistant(assistantID);
+      const message = ensureAssistant(state, assistantID);
       if (typeof data.text === "string") message.reasoning = data.text;
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     }
     case "session.tool.input.started": {
@@ -1301,7 +1427,7 @@ function onOpencodeEvent(event: {
     }
     case "session.tool.called": {
       if (!assistantID || typeof data.id !== "string") break;
-      const message = ensureAssistant(assistantID);
+      const message = ensureAssistant(state, assistantID);
       const id = data.id;
       const existing = message.tools.find((tool) => tool.id === id);
       if (existing) {
@@ -1316,66 +1442,65 @@ function onOpencodeEvent(event: {
           startedAt: Date.now(),
         });
       }
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     }
     case "session.tool.progress": {
       if (typeof data.id !== "string") break;
-      const tool = findTool(data.id);
+      const tool = findTool(state, data.id);
       if (tool) {
         tool.metadata = data.metadata as Record<string, unknown>;
-        scheduleBroadcast();
+        notifySession(sessionID);
       }
       break;
     }
     case "session.tool.success": {
       if (typeof data.id !== "string") break;
-      const tool = ensureTool(data.id, assistantID);
+      const tool = ensureTool(state, data.id, assistantID);
       if (tool) {
         tool.status = "ok";
         tool.output = contentText(data.content);
         tool.metadata = data.metadata as Record<string, unknown>;
         tool.images = toolImages.get(data.id) ?? tool.images;
         tool.finishedAt = Date.now();
-        scheduleBroadcast();
+        notifySession(sessionID);
       }
       break;
     }
     case "session.tool.failed": {
       if (typeof data.id !== "string") break;
-      const tool = ensureTool(data.id, assistantID);
+      const tool = ensureTool(state, data.id, assistantID);
       if (tool) {
         tool.status = "error";
         tool.output =
           formatOpencodeError(data.error) || contentText(data.content);
         tool.finishedAt = Date.now();
-        scheduleBroadcast();
+        notifySession(sessionID);
       }
       break;
     }
     case "session.retry.scheduled": {
-      busy = true;
+      state.busy = true;
       const attempt =
         typeof data.attempt === "number" ? data.attempt : undefined;
       const reason =
         typeof data.message === "string" ? data.message : "erro temporário";
-      statusMessage = `Tentando novamente${attempt ? ` (tentativa ${attempt})` : ""}: ${reason}`;
-      scheduleBroadcast();
+      state.statusMessage = `Tentando novamente${attempt ? ` (tentativa ${attempt})` : ""}: ${reason}`;
+      notifySession(sessionID);
       break;
     }
     case "session.execution.succeeded":
-      busy = false;
-      statusMessage = null;
-      for (const message of messages) {
+      state.busy = false;
+      state.statusMessage = null;
+      for (const message of state.messages) {
         if (message.kind === "assistant") message.streaming = false;
       }
       refreshSessionUsage();
-      if (ports.size === 0) {
+      if (sessionID !== activeSessionID) markUnread(sessionID);
+      if (shouldNotify(sessionID)) {
         playSound();
         if (config?.notifyEnabled !== false) {
-          const title =
-            sessions.find((item) => item.id === activeSessionID)?.title ??
-            "Tarefa";
+          const title = describeSession(sessionID);
           void chrome.notifications
             .create(`oc-${Date.now()}`, {
               type: "basic",
@@ -1386,51 +1511,55 @@ function onOpencodeEvent(event: {
             .catch(() => undefined);
         }
       }
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     case "session.execution.failed":
-      markSessionError(data.error ?? data.message);
+      markSessionError(state, sessionID, data.error ?? data.message);
       break;
     case "session.step.ended":
-      if (data.finish !== "tool-calls") busy = false;
+      if (data.finish !== "tool-calls") state.busy = false;
       // O passo terminou; nenhuma mensagem dele continua "streaming", mesmo
       // quando o run segue para as ferramentas ou para o próximo passo.
-      for (const message of messages) {
+      for (const message of state.messages) {
         if (message.kind === "assistant") message.streaming = false;
       }
-      scheduleBroadcast();
+      notifySession(sessionID);
       break;
     case "session.status": {
       const status = data.status as { type?: string } | undefined;
       if (status?.type === "idle") {
-        busy = false;
-        for (const message of messages) {
+        state.busy = false;
+        for (const message of state.messages) {
           if (message.kind === "assistant") message.streaming = false;
         }
         refreshSessionUsage();
-        scheduleBroadcast();
+        notifySession(sessionID);
       }
       break;
     }
     case "session.error": {
-      markSessionError(data.error);
+      markSessionError(state, sessionID, data.error);
       break;
     }
   }
 }
 
-function markSessionError(error: unknown): void {
-  busy = false;
-  statusMessage = null;
+function markSessionError(
+  state: SessionState,
+  sessionID: string,
+  error: unknown,
+): void {
+  state.busy = false;
+  state.statusMessage = null;
   refreshSessionUsage();
-  for (const item of messages) {
+  for (const item of state.messages) {
     if (item.kind === "assistant") item.streaming = false;
   }
-  let message = [...messages]
+  let message = [...state.messages]
     .reverse()
     .find((item) => item.kind === "assistant");
   if (!message || message.kind !== "assistant") {
-    message = ensureAssistant(`error_${crypto.randomUUID()}`);
+    message = ensureAssistant(state, `error_${crypto.randomUUID()}`);
   }
   if (message.kind !== "assistant") return;
   const detail = formatOpencodeError(error);
@@ -1439,13 +1568,15 @@ function markSessionError(error: unknown): void {
     message.error = "A execução falhou no OpenCode sem detalhes adicionais.";
   }
   message.streaming = false;
-  scheduleBroadcast();
+  if (sessionID !== activeSessionID) markUnread(sessionID);
+  notifySession(sessionID);
 }
 
 function ensureAssistant(
+  state: SessionState,
   id: string,
 ): Extract<ChatMessage, { kind: "assistant" }> {
-  const existing = messages.find(
+  const existing = state.messages.find(
     (message): message is Extract<ChatMessage, { kind: "assistant" }> =>
       message.kind === "assistant" && message.id === id,
   );
@@ -1461,15 +1592,15 @@ function ensureAssistant(
   };
   // Só uma mensagem pode estar em produção por vez; passos anteriores já
   // terminaram mesmo que o run continue.
-  for (const message of messages) {
+  for (const message of state.messages) {
     if (message.kind === "assistant") message.streaming = false;
   }
-  messages.push(created);
+  state.messages.push(created);
   return created;
 }
 
-function findTool(id: string): ToolCallView | undefined {
-  for (const message of messages) {
+function findTool(state: SessionState, id: string): ToolCallView | undefined {
+  for (const message of state.messages) {
     if (message.kind !== "assistant") continue;
     const tool = message.tools.find((item) => item.id === id);
     if (tool) return tool;
@@ -1478,14 +1609,15 @@ function findTool(id: string): ToolCallView | undefined {
 }
 
 function ensureTool(
+  state: SessionState,
   id: string,
   assistantID?: string,
 ): ToolCallView | undefined {
-  const existing = findTool(id);
+  const existing = findTool(state, id);
   if (existing) return existing;
   const message = assistantID
-    ? ensureAssistant(assistantID)
-    : [...messages].reverse().find((item) => item.kind === "assistant");
+    ? ensureAssistant(state, assistantID)
+    : [...state.messages].reverse().find((item) => item.kind === "assistant");
   if (!message || message.kind !== "assistant") return undefined;
   const tool: ToolCallView = {
     id,
@@ -1517,7 +1649,7 @@ async function executeRelayTool(
 ): Promise<void> {
   const sessionID = request.sessionID || activeSessionID || "relay";
   const controller = new AbortController();
-  toolAborts.set(request.id, controller);
+  toolAborts.set(request.id, { sessionID, controller });
   const context: ToolContext = {
     sessionID,
     signal: controller.signal,
@@ -1547,7 +1679,7 @@ async function executeRelayTool(
     },
     rank: async (query, candidates) => {
       if (!client || (config?.findMode ?? "heuristic") !== "model") return null;
-      const session = sessions.find((item) => item.id === activeSessionID);
+      const session = sessions.find((item) => item.id === sessionID);
       const model =
         session?.model ?? config?.defaultModel ?? defaultModel ?? undefined;
       const list = candidates
@@ -1600,7 +1732,8 @@ async function executeRelayTool(
         const oldest = toolImages.keys().next().value;
         if (oldest) toolImages.delete(oldest);
       }
-      const tool = findTool(request.id);
+      const state = sessionStates.peek(sessionID);
+      const tool = state ? findTool(state, request.id) : undefined;
       if (tool) tool.images = result.images;
     }
     relay.send({
@@ -1615,7 +1748,7 @@ async function executeRelayTool(
       const target = await tabs.resolveTab(sessionID).catch(() => null);
       if (target) await recording.capture(target.tabId, request.tool);
     }
-    scheduleBroadcast();
+    notifySession(sessionID);
   } catch (error) {
     const message = errorMessage(error);
     relay.send({
@@ -1624,11 +1757,12 @@ async function executeRelayTool(
       ok: false,
       error: message,
     });
-    const tool = findTool(request.id);
+    const state = sessionStates.peek(sessionID);
+    const tool = state ? findTool(state, request.id) : undefined;
     if (tool) {
       tool.status = "error";
       tool.output = message;
-      scheduleBroadcast();
+      notifySession(sessionID);
     }
   } finally {
     toolAborts.delete(request.id);
@@ -1636,21 +1770,21 @@ async function executeRelayTool(
 }
 
 function handleStop(sender: chrome.runtime.MessageSender): void {
-  for (const controller of toolAborts.values()) controller.abort();
-  toolAborts.clear();
-  if (client && activeSessionID) {
-    void client.interrupt(activeSessionID).catch(() => undefined);
-  }
-  busy = false;
-  for (const message of messages) {
-    if (message.kind === "assistant") message.streaming = false;
-  }
   if (sender.tab?.id !== undefined) {
     void chrome.tabs
       .sendMessage(sender.tab.id, { type: "indicator:hide" })
       .catch(() => undefined);
   }
-  broadcastNow();
+  void (async () => {
+    const tabID = sender.tab?.id;
+    // A sessão vem do grupo da aba que pediu o stop; sem grupo, para tudo.
+    const sessionID =
+      tabID !== undefined
+        ? await tabs.sessionOfTab(tabID).catch(() => null)
+        : null;
+    await interrupt(sessionID);
+    broadcastNow();
+  })();
 }
 
 async function updateBadge(): Promise<void> {
@@ -1661,12 +1795,46 @@ async function updateBadge(): Promise<void> {
         title: "OpenCode Browser: configure o pareamento",
       });
     } else {
-      await chrome.action.setBadgeText({ text: "" });
-      await chrome.action.setTitle({ title: "OpenCode Browser" });
+      const unread = sessionStates
+        .meta()
+        .filter((item) => item.unread).length;
+      await chrome.action.setBadgeText({
+        text: unread ? String(Math.min(unread, 9)) : "",
+      });
+      await chrome.action.setTitle({
+        title: unread
+          ? `OpenCode Browser: ${unread} conversa${unread > 1 ? "s" : ""} com novidade`
+          : "OpenCode Browser",
+      });
     }
   } catch {
     // ignore
   }
+}
+
+/**
+ * Segue o grupo de abas em foco: a conversa exibida passa a ser a da sessão
+ * dona do grupo. Só reage a abas já agrupadas registradas na extensão.
+ */
+function scheduleFollow(tabID: number | undefined): void {
+  if (tabID === undefined || config?.followTabGroups === false) return;
+  followTabID = tabID;
+  if (followTimer) clearTimeout(followTimer);
+  followTimer = setTimeout(() => {
+    followTimer = null;
+    const target = followTabID;
+    followTabID = null;
+    if (target !== null) void followTab(target);
+  }, 150);
+}
+
+async function followTab(tabID: number): Promise<void> {
+  const tab = await chrome.tabs.get(tabID).catch(() => undefined);
+  if (!tab?.active) return;
+  const sessionID = await tabs.sessionOfTab(tabID).catch(() => null);
+  if (!sessionID || sessionID === activeSessionID) return;
+  if (!sessions.some((session) => session.id === sessionID)) return;
+  await selectSession(sessionID);
 }
 
 async function ensureOffscreen(): Promise<void> {
@@ -1762,15 +1930,16 @@ async function runHealthcheck(): Promise<void> {
     startSse(false);
     return;
   }
-  if (busy) {
+  if (sessionStates.anyBusy()) {
     if (
       connection.phase === "offline" &&
       connection.offlineSince &&
       Date.now() - connection.offlineSince > 5_000
     ) {
-      markRunInterrupted(
-        "A conexão com o OpenCode caiu durante a execução. A resposta pode estar incompleta.",
-      );
+      for (const sessionID of sessionStates.ids()) {
+        const state = sessionStates.peek(sessionID);
+        if (state?.busy) markRunInterrupted(state, sessionID);
+      }
       return;
     }
     if (
@@ -1778,9 +1947,10 @@ async function runHealthcheck(): Promise<void> {
       lastSseEventAt &&
       Date.now() - lastSseEventAt > 120_000
     ) {
-      markRunInterrupted(
-        "O OpenCode parou de responder durante a execução. A resposta pode estar incompleta.",
-      );
+      for (const sessionID of sessionStates.ids()) {
+        const state = sessionStates.peek(sessionID);
+        if (state?.busy) markRunInterrupted(state, sessionID);
+      }
       startSse(false);
     }
     return;
@@ -1813,6 +1983,18 @@ chrome.commands.onCommand.addListener((command) => {
   });
 });
 
+chrome.tabs.onActivated.addListener((info) => {
+  scheduleFollow(info.tabId);
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  void chrome.tabs
+    .query({ active: true, windowId })
+    .then(([tab]) => scheduleFollow(tab?.id))
+    .catch(() => undefined);
+});
+
 chrome.runtime.onStartup.addListener(() => {
   void ensureOffscreen();
   connectRelay();
@@ -1835,7 +2017,7 @@ async function init(): Promise<void> {
   try {
     await permissions.init();
     // A limpeza mexe em abas: nunca durante uma execução do agente.
-    if (!busy && toolAborts.size === 0) {
+    if (!sessionStates.anyBusy() && toolAborts.size === 0) {
       await tabs.cleanup().catch(() => undefined);
     }
     config = await getConfig();

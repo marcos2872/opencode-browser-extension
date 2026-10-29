@@ -14,10 +14,12 @@ const TOOL_LABEL: Record<string, string> = {
 
 interface Props {
   request: PermissionRequest
+  /** Nome da sessão de origem quando o pedido não é da conversa exibida. */
+  sessionLabel?: string
   onDecision: (decision: PermissionDecision) => void
 }
 
-export function PermissionCard({ request, onDecision }: Props) {
+export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -47,11 +49,13 @@ export function PermissionCard({ request, onDecision }: Props) {
       <div>
         <h3>{request.title}</h3>
         <p className="sub">
-          {isPlan
-            ? "O agente quer visitar estes domínios antes de continuar."
-            : isDomain
-              ? "O agente quer mudar de domínio. Isso muda o que ele pode acessar."
-              : `${tool} · pedido de permissão`}
+          {sessionLabel
+            ? `Sessão: ${sessionLabel}`
+            : isPlan
+              ? "O agente quer visitar estes domínios antes de continuar."
+              : isDomain
+                ? "O agente quer mudar de domínio. Isso muda o que ele pode acessar."
+                : `${tool} · pedido de permissão`}
         </p>
       </div>
 

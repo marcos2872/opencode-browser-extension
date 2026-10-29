@@ -2,7 +2,10 @@
 
 ## Eventos SSE do OpenCode
 
-Assinados em `GET /api/event` e traduzidos para o estado do chat.
+Assinados em `GET /api/event` e traduzidos para o estado do chat. O stream é
+único e traz todas as sessões; cada evento é gravado no estado da sessão que o
+originou. Só a sessão exibida gera um `snapshot` completo — as demais atualizam
+`busy`/`unread` por `sessions:meta`.
 
 | Evento                        | Dados usados                                                         | Efeito na extensão                                          |
 | ----------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -67,14 +70,14 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `session:new`         | `model?`, `agent?`      | Cria sessão                           |
 | `session:select`      | `id`                    | Seleciona e hidrata                   |
 | `session:delete`      | `id`                    | Remove a sessão                       |
-| `session:model`       | `model`                 | Troca o modelo da sessão              |
-| `session:agent`       | `agent`                 | Troca o agente da sessão              |
-| `tabs:attach-current` | —                       | Anexa a aba ativa ao grupo (recusa aba de outra janela) |
+| `session:model`       | `model`, `sessionID?`   | Troca o modelo da sessão              |
+| `session:agent`       | `agent`, `sessionID?`   | Troca o agente da sessão              |
+| `tabs:attach-current` | `sessionID?`            | Anexa a aba ativa ao grupo (recusa aba de outra janela) |
 | `tabs:list`           | `sessionID`             | Lista abas no contexto da sessão      |
 | `tabs:detach`         | `sessionID`, `tabID`    | Remove a aba do contexto sem fechá-la |
-| `prompt`              | `text`                  | Envia mensagem                        |
-| `command`             | `name`, `text`          | Executa comando `/`                   |
-| `interrupt`           | —                       | Interrompe a execução                 |
+| `prompt`              | `text`, `sessionID?`    | Envia mensagem                        |
+| `command`             | `name`, `text`, `sessionID?` | Executa comando `/`              |
+| `interrupt`           | `sessionID?`            | Interrompe a execução da sessão       |
 | `settings:update`     | `patch`                 | Atualiza a configuração               |
 | `open:options`        | —                       | Abre as configurações                 |
 | `open:sidepanel`      | —                       | Reservado                             |
@@ -86,6 +89,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | Mensagem              | Campos      | Descrição                           |
 | --------------------- | ----------- | ----------------------------------- |
 | `snapshot`            | `snapshot`  | Estado completo (throttle de 60 ms) |
+| `sessions:meta`       | `items`     | `busy`/`unread` de cada sessão viva |
 | `relay`               | `relay`     | Estado do plugin                    |
 | `permission`          | `request`   | Novo pedido de permissão            |
 | `permission:resolved` | `requestId` | Pedido respondido/expirado          |
@@ -96,7 +100,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | Mensagem             | Destino        | Descrição                                            |
 | -------------------- | -------------- | ---------------------------------------------------- |
 | `SW_KEEPALIVE`       | service worker | Offscreen mantém o worker acordado                   |
-| `browser:stop`       | service worker | Botão Parar na página                                |
+| `browser:stop`       | service worker | Botão Parar na página (sessão resolvida pelo grupo da aba) |
 | `permission:respond` | service worker | Resposta do modal do painel                          |
 | `PLAY_NOTIFICATION`  | offscreen      | Toca o aviso sonoro                                  |
 | `ENCODE_GIF`         | offscreen      | Codifica quadros; responde `{ data }` ou `{ error }` |

@@ -70,7 +70,7 @@ describe("background/tabGroups", () => {
 
       expect(chromeMock.__state.groups.get(first.groupId)?.color).toBe("blue")
       expect(chromeMock.__state.groups.get(second.groupId)).toMatchObject({
-        title: "Meu Grupo",
+        title: "OpenCode · Meu Grupo",
         color: "cyan",
       })
     })
@@ -624,5 +624,74 @@ describe("background/tabGroups", () => {
 
       expect(storedRecords()).toEqual([record])
     })
+  })
+})
+
+describe("background/tabGroups: sessões paralelas", () => {
+  let groups: TabGroups
+
+  beforeEach(() => {
+    groups = new TabGroups()
+  })
+
+  it("resolve a sessão pelo grupo e pela aba", async () => {
+    const record = await groups.ensure("ses_1")
+    const page = chromeMock.__state.addTab({
+      groupId: record.groupId,
+      url: "https://a.example/",
+    })
+
+    expect(await groups.sessionOfGroup(record.groupId)).toBe("ses_1")
+    expect(await groups.sessionOfTab(page.id)).toBe("ses_1")
+  })
+
+  it("devolve null para aba solta e grupo desconhecido", async () => {
+    const loose = chromeMock.__state.addTab({ url: "https://solto.example/" })
+
+    expect(await groups.sessionOfTab(loose.id)).toBeNull()
+    expect(await groups.sessionOfTab(12345)).toBeNull()
+    expect(await groups.sessionOfGroup(999)).toBeNull()
+  })
+
+  it("setLabel usa o nome da sessão no título do grupo", async () => {
+    const record = await groups.ensure("ses_1")
+
+    await groups.setLabel("ses_1", "  Revisão   do PR ")
+    expect(chromeMock.__state.groups.get(record.groupId)?.title).toBe(
+      "OpenCode · Revisão do PR",
+    )
+
+    await groups.setLabel("ses_1", undefined)
+    expect(chromeMock.__state.groups.get(record.groupId)?.title).toBe("OpenCode")
+  })
+
+  it("release fecha abas em branco e desagrupa páginas", async () => {
+    const record = await groups.ensure("ses_1")
+    const page = chromeMock.__state.addTab({
+      groupId: record.groupId,
+      url: "https://a.example/",
+    })
+
+    await groups.release("ses_1")
+
+    expect(chromeMock.__state.tabs.has(record.mainTabId)).toBe(false)
+    expect(chromeMock.__state.tabs.get(page.id)?.groupId).toBe(-1)
+    expect(storedRecords()).toEqual([])
+  })
+
+  it("cleanup reconhece grupos com nome de sessão e preserva os demais", async () => {
+    const managed = chromeMock.__state.addGroup({ title: "OpenCode · Conversa" })
+    const foreign = chromeMock.__state.addGroup({ title: "Trabalho" })
+    const blank = chromeMock.__state.addTab({
+      groupId: managed.id,
+      url: "about:blank",
+      active: false,
+    })
+    const page = chromeMock.__state.addTab({ groupId: foreign.id, url: "https://x.example/" })
+
+    await groups.cleanup()
+
+    expect(chromeMock.__state.tabs.has(blank.id)).toBe(false)
+    expect(chromeMock.__state.tabs.has(page.id)).toBe(true)
   })
 })

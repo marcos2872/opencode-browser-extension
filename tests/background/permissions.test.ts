@@ -669,3 +669,16 @@ describe("background/permissions", () => {
     })
   })
 })
+
+describe("background/permissions: sessão de origem", () => {
+  it("inclui a sessão no pedido exibido ao usuário", async () => {
+    const { permissions, notify } = setup({ mode: "ask" })
+    const decision = permissions.check(input(), "ses_9")
+
+    const request = requestFrom(notify)
+    expect(request.sessionID).toBe("ses_9")
+
+    permissions.respond(request.id, { allowed: false })
+    await expect(decision).resolves.toEqual({ allowed: false })
+  })
+})

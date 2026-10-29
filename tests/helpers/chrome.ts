@@ -156,6 +156,7 @@ export interface ChromeMock {
     onRemoved: FakeEvent
     onCreated: FakeEvent
     onActivated: FakeEvent
+    onMoved: FakeEvent
   }
   tabGroups: {
     get: ReturnType<typeof vi.fn>
@@ -211,6 +212,8 @@ export interface ChromeMock {
     remove: ReturnType<typeof vi.fn>
     onRemoved: FakeEvent
     onCreated: FakeEvent
+    onFocusChanged: FakeEvent
+    WINDOW_ID_NONE: number
   }
   commands: {
     onCommand: FakeEvent
@@ -413,6 +416,7 @@ export function createChromeMock(): ChromeMock {
     onRemoved: new FakeEvent(),
     onCreated: new FakeEvent(),
     onActivated: new FakeEvent(),
+    onMoved: new FakeEvent(),
   }
 
   const tabGroupsApi = {
@@ -531,6 +535,8 @@ export function createChromeMock(): ChromeMock {
       remove: vi.fn(async () => undefined),
       onRemoved: new FakeEvent(),
       onCreated: new FakeEvent(),
+      onFocusChanged: new FakeEvent(),
+      WINDOW_ID_NONE: -1,
     },
     commands: { onCommand: new FakeEvent() },
     action: {

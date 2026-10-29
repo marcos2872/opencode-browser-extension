@@ -136,6 +136,7 @@ export class Permissions {
     const request: PermissionRequest = {
       id: crypto.randomUUID(),
       kind: input.kind,
+      sessionID,
       tool: input.tool,
       title: input.title,
       detail: input.detail,

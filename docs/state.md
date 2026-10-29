@@ -8,22 +8,25 @@
 | `client` | OpencodeClient \| null | null | pareamento, troca de servidor | Cliente da API |
 | `models` | ModelInfo[] | [] | `refreshModels` | Catálogo de modelos |
 | `sessions` | SessionInfo[] | [] | `refreshSessions`, eventos SSE | Sessões conhecidas |
-| `activeSessionID` | string \| null | null | `session:new/select/delete` | Sessão aberta |
-| `messages` | ChatMessage[] | [] | SSE, envio, hidratação | Conversa atual |
-| `busy` | boolean | false | eventos SSE, envio, parada | Agente trabalhando |
+| `activeSessionID` | string \| null | null | `session:new/select/delete`, foco de grupo | Sessão exibida no painel |
+| `sessionStates` | `SessionStates` | ∅ | SSE, envio, hidratação, seleção | Cache por sessão (`messages`, `forms`, `busy`, `statusMessage`, `contextUsage`, `unread`); limite de 4, preservando a exibida e as ocupadas |
 | `backend` | unknown \| online \| offline | unknown | SSE e chamadas | Estado da API |
 | `defaultModel` | ModelRef \| null | null | `refreshModels` | Modelo padrão do servidor |
 | `agents` | AgentInfo[] | [] | `refreshAgents` | Agentes primários |
 | `commands` | CommandInfo[] | [] | `refreshCommands` | Comandos `/` |
-| `statusMessage` | string \| null | null | SSE (`session.retry.scheduled`) | Aviso no painel |
-| `contextUsage` | TokenUsage \| undefined | undefined | `refreshActiveUsage` | Usage da última mensagem do assistente (contexto do rodapé) |
 | `relayState` | RelayState | desconectado | RelayClient | Estado do plugin |
 | `ports` | Set<Port> | ∅ | páginas conectadas | Quem recebe broadcasts |
-| `toolAborts` | Map<string, AbortController> | ∅ | execução/parada | Cancelamento por chamada |
+| `toolAborts` | `Map<string, { sessionID, controller }>` | ∅ | execução/parada | Cancelamento por chamada, com a sessão dona |
 | `toolNames` | Map<string, string> | ∅ | SSE (`tool.input.started`) | Nome por id de chamada |
 | `toolImages` | Map<string, ImagePayload[]> | ∅ | execução de tools | Imagens por chamada |
 | `sseAbort` | AbortController \| null | null | `startSse` | Cancelamento do stream |
-| `hydrateToken` | number | 0 | `selectSession` | Evita hidratação fora de ordem |
+| `followTimer` / `followTabID` | timer / number \| null | null | `tabs.onActivated`, `windows.onFocusChanged` | Debounce do follow do grupo em foco |
+
+O estado de cada sessão vive em `sessionStates` (`src/background/sessionState.ts`):
+`snapshot()` monta a conversa exibida a partir dela e `sessions:meta` publica só
+`busy`/`unread` das demais. O cache é de leitura: o OpenCode continua sendo a
+fonte de verdade do histórico e o service worker reidrata ao acordar.
+
 
 ## Armazenamento da extensão
 
@@ -40,7 +43,7 @@
 
 | Chave | Tipo | Quem grava | Descrição |
 |---|---|---|---|
-| `tabGroups` | `{ sessionID, groupId, mainTabId }[]` | TabGroups | Mapa sessão → grupo do Chrome |
+| `tabGroups` | `{ sessionID, groupId, mainTabId }[]` | TabGroups | Vínculo sessão → grupo (no máximo um grupo por sessão) |
 | `permission.request.<id>` | PermissionRequest | Permissions | Pedido aberto (mostrado no modal do painel) |
 
 ### Em memória do content script

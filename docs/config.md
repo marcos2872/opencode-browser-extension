@@ -20,6 +20,7 @@ ou na página de opções.
 | `toolDisplay` | Como as tools aparecem no chat (`grouped`, `rows`, `full`, `hidden`) | string | `grouped` | Não | `sidepanel/Chat` |
 | `browserAgentDefault` | Usa o agente `opencode-browser` nas novas sessões | boolean | `true` | Não | `service-worker` |
 | `bringTabsToFront` | Permite que ações do agente ativem abas/janelas (roubando o foco) | boolean | `false` | Não | `background/focus.ts` |
+| `followTabGroups` | Mostra no painel a sessão do grupo de abas em foco | boolean | `true` | Não | `service-worker` |
 
 ### Modos de permissão
 

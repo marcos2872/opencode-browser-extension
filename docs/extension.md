@@ -83,7 +83,12 @@ para dizer o que fazer.
 
 Os eventos são traduzidos para o estado do chat (mensagens, raciocínio,
 ferramentas, retries e erros) e publicados nas páginas por um `Port` de longa
-duração. A lista completa está em [events.md](events.md).
+duração. Cada sessão tem seu próprio estado (`src/background/sessionState.ts`):
+eventos de sessões que não estão no painel continuam sendo aplicados e só
+publicam `busy`/`unread` (`sessions:meta`). Quando o usuário troca de grupo de
+abas, `tabs.onActivated` resolve a sessão dona e o painel passa a exibir aquela
+conversa sem apagar o estado das outras. A lista completa está em
+[events.md](events.md).
 
 ### Execução de ferramentas
 
