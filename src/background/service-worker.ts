@@ -116,7 +116,7 @@ function playSound(): void {
 }
 
 const permissions = new Permissions(
-  () => config?.permissionMode ?? "ask",
+  () => config?.permissionMode ?? "allow",
   () => config?.permissionTimeoutMs ?? 60_000,
   () => ports.size > 0,
   (request) => broadcast({ type: "permission", request }),
@@ -451,7 +451,7 @@ async function pair(link: string): Promise<void> {
     token,
     directory: previous?.directory ?? workspaceHint ?? undefined,
     defaultModel: previous?.defaultModel,
-    permissionMode: previous?.permissionMode ?? "ask",
+    permissionMode: previous?.permissionMode ?? "allow",
   };
   await setConfig(config);
   client = new OpencodeClient(config.baseUrl, config.token, config.directory);

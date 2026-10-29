@@ -527,14 +527,6 @@ a {
   min-width: 0;
 }
 
-.msg-meta {
-  font-size: 10.5px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 650;
-}
-
 .usage-meta {
   color: var(--muted);
   font-size: 11px;

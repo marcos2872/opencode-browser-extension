@@ -12,7 +12,7 @@ ou na página de opções.
 | `directory` | Pasta das conversas da extensão (location das sessões) | string | anunciada pelo plugin (`~/.opencode-browser-extensions`) | Não | `?directory=` e `session.create` |
 | `defaultModel` | Modelo padrão | ModelRef | modelo padrão do servidor | Não | Criação de sessão |
 | `defaultAgent` | Agente padrão | string | `build` | Não | Criação de sessão |
-| `permissionMode` | Modo de permissão | `ask` \| `allow` \| `deny` | `ask` | Sim | Permissions |
+| `permissionMode` | Modo de permissão | `ask` \| `allow` \| `deny` | `allow` | Sim | Permissions |
 | `permissionTimeoutMs` | Timeout do prompt | number | `60000` | Não | Permissions |
 | `findMode` | Ranking do `find` | `heuristic` \| `model` | `heuristic` | Não | `tools/page.ts` |
 | `soundEnabled` | Aviso sonoro | boolean | `true` | Não | Offscreen |
@@ -24,8 +24,8 @@ ou na página de opções.
 
 | Modo | Comportamento |
 |---|---|
-| `ask` | Pede na primeira ação de cada domínio (recomendado) |
-| `allow` | Executa sem perguntar, respeitando a lista de bloqueio |
+| `ask` | Pede na primeira ação de cada domínio |
+| `allow` | Executa sem perguntar, respeitando a lista de bloqueio (recomendado) |
 | `deny` | Bloqueia ações; apenas ferramentas de leitura executam |
 
 ## Pasta das conversas

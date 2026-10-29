@@ -59,7 +59,7 @@ describe("sidepanel/Chat", () => {
       />,
     )
 
-    expect(screen.getByText("OpenCode")).toBeInTheDocument()
+    expect(screen.queryByText("OpenCode")).not.toBeInTheDocument()
     expect(container.querySelector("strong")).toHaveTextContent("forte")
 
     const details = screen.getByText("Raciocínio").closest("details")
@@ -74,6 +74,39 @@ describe("sidepanel/Chat", () => {
   it("não renderiza raciocínio quando vazio", () => {
     render(<Chat messages={[makeMessage({ reasoning: "" })]} busy={false} onSuggestion={vi.fn()} />)
     expect(screen.queryByText("Raciocínio")).not.toBeInTheDocument()
+  })
+
+  it("não renderiza um passo do assistente sem conteúdo", () => {
+    const { container } = render(
+      <Chat
+        messages={[makeMessage({ text: "", reasoning: "", tools: [] })]}
+        busy={false}
+        onSuggestion={vi.fn()}
+      />,
+    )
+    expect(container.querySelectorAll(".msg-assistant")).toHaveLength(0)
+  })
+
+  it("não deixa bolha vazia para passo só com tool concluída no modo agrupado", () => {
+    const { container } = render(
+      <Chat
+        messages={[
+          makeMessage({
+            id: "a1",
+            text: "",
+            tools: [{ id: "t1", name: "navigate", status: "ok", input: { url: "https://example.com" }, output: "ok" }],
+          }),
+          makeMessage({ id: "a2", text: "final" }),
+        ]}
+        busy={false}
+        onSuggestion={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelectorAll(".msg-assistant")).toHaveLength(1)
+    expect(screen.getByText("final")).toBeInTheDocument()
+    expect(screen.getByText("Navegar")).toBeInTheDocument()
+    expect(screen.queryByText("OpenCode")).not.toBeInTheDocument()
   })
 
   it("mostra erro do assistente", () => {
@@ -206,7 +239,7 @@ describe("sidepanel/Chat", () => {
       <Chat messages={messages} busy={false} onSuggestion={vi.fn()} toolDisplay="hidden" />,
     )
 
-    expect(screen.getAllByText("OpenCode")).toHaveLength(1)
+    expect(screen.queryByText("OpenCode")).not.toBeInTheDocument()
     expect(screen.getByText("primeiro")).toBeInTheDocument()
     expect(screen.getByText("final")).toBeInTheDocument()
     expect(screen.queryByText("Navegar")).not.toBeInTheDocument()
