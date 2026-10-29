@@ -102,14 +102,26 @@ describe("background/tools/tabs", () => {
   })
 
   describe("tabs_create", () => {
-    it("cria aba em about:blank ativa por padrão", async () => {
+    it("cria aba em about:blank em segundo plano por padrão", async () => {
       const { ctx, tabs } = makeToolContext()
+      chrome.__state.addTab({ id: 2, url: "about:blank", active: false })
 
       const result = await tabsTools.tabs_create({}, ctx)
 
-      expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", true)
+      expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", false)
       expect(result.metadata).toEqual({ tabId: 2 })
       expect(result.content).toContain("Aba criada. Tab ID: 2")
+      expect(result.content).toContain("A aba ficou em segundo plano.")
+    })
+
+    it("repassa active:true e não avisa sobre segundo plano quando a aba ficou ativa", async () => {
+      const { ctx, tabs } = makeToolContext()
+      chrome.__state.addTab({ id: 2, url: "about:blank", active: true })
+
+      const result = await tabsTools.tabs_create({ active: true }, ctx)
+
+      expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", true)
+      expect(result.content).not.toContain("A aba ficou em segundo plano.")
     })
 
     it("respeita url e active=false", async () => {
@@ -123,7 +135,7 @@ describe("background/tools/tabs", () => {
     it("ignora url vazia", async () => {
       const { ctx, tabs } = makeToolContext()
       await tabsTools.tabs_create({ url: "" }, ctx)
-      expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", true)
+      expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", false)
     })
   })
 
@@ -195,7 +207,10 @@ describe("background/tools/tabs", () => {
         detail: "Docs",
         url: "https://docs.example.com/",
       })
-      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", target.id, { makeMain: true })
+      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", target.id, {
+        makeMain: true,
+        activate: true,
+      })
       expect(result.metadata).toEqual({ tabId: target.id })
       expect(result.content).toContain("Aba anexada ao grupo desta sessão.")
     })
@@ -208,7 +223,10 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.tabs_attach({}, ctx)
 
       expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, lastFocusedWindow: true })
-      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", active.id, { makeMain: true })
+      expect(tabs.addTab).toHaveBeenCalledWith("ses_test", active.id, {
+        makeMain: true,
+        activate: true,
+      })
       expect(result.metadata).toEqual({ tabId: active.id })
     })
 

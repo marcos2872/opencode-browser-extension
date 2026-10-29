@@ -11,7 +11,6 @@ export default defineConfig({
       input: {
         sidepanel: "sidepanel.html",
         options: "options.html",
-        permission: "permission.html",
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

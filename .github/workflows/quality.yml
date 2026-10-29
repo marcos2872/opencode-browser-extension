@@ -46,7 +46,6 @@ jobs:
           test -f dist/assets/offscreen.js
           test -f dist/sidepanel.html
           test -f dist/options.html
-          test -f dist/permission.html
 
       - name: Resumo
         if: always()

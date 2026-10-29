@@ -18,7 +18,7 @@ OpenCode.
 | [security.md](security.md) | Autenticação, permissões, isolamento e riscos |
 | [errors.md](errors.md) | Mensagens de erro, causas e resoluções |
 | [development.md](development.md) | Build, scripts, reload e checklist de testes manuais |
-| [adr/](adr/) | Decisões de arquitetura (ADRs 0001–0008) |
+| [adr/](adr/) | Decisões de arquitetura (ADRs 0001–0009) |
 
 ## Leitura sugerida
 

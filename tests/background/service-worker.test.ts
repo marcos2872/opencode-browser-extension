@@ -286,6 +286,7 @@ describe("service-worker: inicialização", () => {
     expect(port.sent.some((message: any) => message?.type === "snapshot")).toBe(
       true,
     );
+    expect(port.sent).toHaveLength(1);
     port.disconnect();
     expect(port.disconnected).toBe(true);
   });
@@ -797,6 +798,46 @@ describe("service-worker: sessões e conversa", () => {
       false,
     );
     await expect(chrome.tabs.get(77)).resolves.toMatchObject({ id: 77 });
+  });
+
+  it("entrega o pedido de permissão pendente ao painel ao conectar", async () => {
+    await loadWorker();
+    await pairWorker();
+    chrome.__state.addTab({
+      id: 78,
+      url: "https://exemplo.com/",
+      active: true,
+    });
+
+    const attach = callWorker({ type: "tabs:attach-current" });
+    await flush(2);
+
+    expect(chrome.notifications.create).toHaveBeenCalledTimes(1);
+    const [notificationId] = chrome.notifications.create.mock.calls[0] as [
+      string,
+    ];
+    expect(notificationId).toMatch(/^oc-permission-/);
+    const requestId = notificationId.slice("oc-permission-".length);
+
+    const port = chrome.runtime.connect({ name: "opencode-browser-ui" });
+    const sent = port.sent as any[];
+    expect(sent[0]).toMatchObject({ type: "snapshot" });
+    expect(sent[1]).toMatchObject({
+      type: "permission",
+      request: {
+        id: requestId,
+        tool: "tabs_attach",
+        host: "exemplo.com",
+      },
+    });
+
+    await chrome.runtime.sendMessage({
+      type: "permission:respond",
+      requestId,
+      decision: { allowed: false },
+    });
+    await expect(attach).resolves.toMatchObject({ ok: true });
+    port.disconnect();
   });
 
   it("responde a comandos desconhecidos com erro", async () => {

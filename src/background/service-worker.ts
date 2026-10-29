@@ -316,6 +316,9 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       });
       if (!tab?.id) throw new Error("Nenhuma aba ativa encontrada.");
       const sessionID = activeSessionID ?? "default";
+      // Falha rápido antes de pedir aprovação (ver ADR 0009: anexar aba de
+      // outra janela é recusado).
+      await tabs.assertAttachable(sessionID, tab.id);
       const allowed = await permissions.check(
         {
           kind: "action",
@@ -327,7 +330,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
         sessionID,
       );
       if (!allowed) return { ok: true, snapshot: snapshot() };
-      await tabs.addTab(sessionID, tab.id, { makeMain: true });
+      await tabs.addTab(sessionID, tab.id, { makeMain: true, activate: true });
       return { ok: true, snapshot: snapshot() };
     }
     case "tabs:list":
@@ -1696,6 +1699,13 @@ chrome.runtime.onConnect.addListener((port) => {
       type: "snapshot",
       snapshot: snapshot(),
     } satisfies UiEvent);
+    // Painel aberto pela notificação de permissão: mostra o pedido pendente.
+    const pending = permissions.current();
+    if (pending)
+      port.postMessage({
+        type: "permission",
+        request: pending,
+      } satisfies UiEvent);
   } catch {
     ports.delete(port);
   }
@@ -1824,7 +1834,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 async function init(): Promise<void> {
   try {
     await permissions.init();
-    await tabs.cleanup().catch(() => undefined);
+    // A limpeza mexe em abas: nunca durante uma execução do agente.
+    if (!busy && toolAborts.size === 0) {
+      await tabs.cleanup().catch(() => undefined);
+    }
     config = await getConfig();
     await adoptWorkspaceHint();
   } finally {

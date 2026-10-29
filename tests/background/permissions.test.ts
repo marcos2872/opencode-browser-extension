@@ -266,45 +266,138 @@ describe("background/permissions", () => {
       expect(sessionRequestKeys()).toEqual([])
     })
 
-    it("sem UI abre o popup e guarda o pedido em storage.session", async () => {
+    it("sem UI notifica, guarda o pedido e não abre janela", async () => {
       const { permissions, notify, sound } = setup({ hasUi: false })
       const decision = permissions.check(input(), "ses_1")
 
       expect(notify).not.toHaveBeenCalled()
       expect(sound).toHaveBeenCalledTimes(1)
-      expect(chromeMock.windows.create).toHaveBeenCalledTimes(1)
-
-      const options = chromeMock.windows.create.mock.calls[0]?.[0] as {
-        url: string
-        type: string
-        width: number
-        height: number
-        focused: boolean
-      }
-      expect(options).toMatchObject({ type: "popup", width: 560, height: 680, focused: true })
-      expect(options.url).toContain("permission.html?requestId=")
+      expect(chromeMock.windows.create).not.toHaveBeenCalled()
 
       const keys = sessionRequestKeys()
       expect(keys).toHaveLength(1)
       const requestId = keys[0]!.slice(REQUEST_PREFIX.length)
-      expect(options.url).toContain(encodeURIComponent(requestId))
 
       const stored = await chromeMock.storage.session.get(keys[0]!)
       expect(stored[keys[0]!]).toMatchObject({ id: requestId, host: "example.com" })
 
+      await vi.waitFor(() => expect(chromeMock.notifications.create).toHaveBeenCalledTimes(1))
+      expect(chromeMock.notifications.create).toHaveBeenCalledWith(
+        `oc-permission-${requestId}`,
+        expect.objectContaining({
+          type: "basic",
+          title: "OpenCode Browser: aprovação pendente",
+          message: "Navegar",
+          iconUrl: "chrome-extension://test-extension-id/icons/icon-128.png",
+        }),
+      )
+
       permissions.respond(requestId, { allowed: false })
       await expect(decision).resolves.toEqual({ allowed: false })
       expect(sessionRequestKeys()).toEqual([])
+      expect(chromeMock.notifications.clear).toHaveBeenCalledWith(`oc-permission-${requestId}`)
     })
 
-    it("nega quando a criação do popup falha", async () => {
-      chromeMock.windows.create.mockRejectedValueOnce(new Error("sem janela"))
-      const { permissions, resolved } = setup({ hasUi: false })
+    it("não cria notificação quando notifyEnabled é false", async () => {
+      await chromeMock.storage.local.set({
+        "opencode.config": {
+          baseUrl: "http://127.0.0.1:4096",
+          token: "t",
+          permissionMode: "ask",
+          notifyEnabled: false,
+        },
+      })
+      const { permissions } = setup({ hasUi: false })
       const decision = permissions.check(input(), "ses_1")
 
+      await vi.waitFor(() => expect(sessionRequestKeys()).toHaveLength(1))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(chromeMock.notifications.create).not.toHaveBeenCalled()
+      expect(chromeMock.windows.create).not.toHaveBeenCalled()
+
+      const requestId = sessionRequestKeys()[0]!.slice(REQUEST_PREFIX.length)
+      permissions.respond(requestId, { allowed: false })
       await expect(decision).resolves.toEqual({ allowed: false })
-      expect(resolved).toHaveBeenCalledTimes(1)
-      expect(sessionRequestKeys()).toEqual([])
+    })
+
+    it("clicar na notificação abre o side panel e limpa a notificação", async () => {
+      const { permissions } = setup({ hasUi: false })
+      const decision = permissions.check(input(), "ses_1")
+
+      // A janela alvo é capturada antes de criar a notificação.
+      await vi.waitFor(() => expect(chromeMock.notifications.create).toHaveBeenCalled())
+      const requestId = sessionRequestKeys()[0]!.slice(REQUEST_PREFIX.length)
+
+      chromeMock.notifications.onClicked.emit(`oc-permission-${requestId}`)
+
+      await vi.waitFor(() =>
+        expect(chromeMock.sidePanel.open).toHaveBeenCalledWith({ windowId: 1 }),
+      )
+      expect(chromeMock.notifications.clear).toHaveBeenCalledWith(`oc-permission-${requestId}`)
+      expect(chromeMock.windows.update).not.toHaveBeenCalled()
+
+      permissions.respond(requestId, { allowed: false })
+      await expect(decision).resolves.toEqual({ allowed: false })
+    })
+
+    it("não abre o painel quando o sidePanel.open falha", async () => {
+      chromeMock.sidePanel.open.mockRejectedValueOnce(new Error("sem gesto do usuário"))
+      const { permissions } = setup({ hasUi: false })
+      const decision = permissions.check(input(), "ses_1")
+
+      await vi.waitFor(() => expect(chromeMock.notifications.create).toHaveBeenCalled())
+      const requestId = sessionRequestKeys()[0]!.slice(REQUEST_PREFIX.length)
+
+      chromeMock.notifications.onClicked.emit(`oc-permission-${requestId}`)
+      await vi.waitFor(() => expect(chromeMock.sidePanel.open).toHaveBeenCalledTimes(1))
+
+      // A falha não resolve nem derruba o pedido; ele segue pendente.
+      expect(permissions.pendingRequest(requestId)).not.toBeNull()
+
+      permissions.respond(requestId, { allowed: false })
+      await expect(decision).resolves.toEqual({ allowed: false })
+    })
+
+    it("ignora clique quando o pedido já foi resolvido ou não existe", async () => {
+      const { permissions } = setup({ hasUi: false })
+      const decision = permissions.check(input(), "ses_1")
+
+      await vi.waitFor(() => expect(chromeMock.notifications.create).toHaveBeenCalled())
+      const requestId = sessionRequestKeys()[0]!.slice(REQUEST_PREFIX.length)
+
+      permissions.respond(requestId, { allowed: false })
+      await expect(decision).resolves.toEqual({ allowed: false })
+
+      chromeMock.sidePanel.open.mockClear()
+      chromeMock.notifications.clear.mockClear()
+
+      chromeMock.notifications.onClicked.emit(`oc-permission-${requestId}`)
+      chromeMock.notifications.onClicked.emit("oc-permission-inexistente")
+      chromeMock.notifications.onClicked.emit("outra-notificacao")
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(chromeMock.sidePanel.open).not.toHaveBeenCalled()
+      expect(chromeMock.notifications.clear).not.toHaveBeenCalled()
+      expect(chromeMock.windows.update).not.toHaveBeenCalled()
+    })
+
+    it("não abre o painel quando a janela não pôde ser capturada", async () => {
+      chromeMock.windows.getLastFocused.mockRejectedValueOnce(new Error("sem janela"))
+      const { permissions } = setup({ hasUi: false })
+      const decision = permissions.check(input(), "ses_1")
+
+      await vi.waitFor(() => expect(chromeMock.notifications.create).toHaveBeenCalled())
+      const requestId = sessionRequestKeys()[0]!.slice(REQUEST_PREFIX.length)
+
+      chromeMock.sidePanel.open.mockClear()
+      chromeMock.notifications.onClicked.emit(`oc-permission-${requestId}`)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(chromeMock.sidePanel.open).not.toHaveBeenCalled()
+
+      permissions.respond(requestId, { allowed: false })
+      await expect(decision).resolves.toEqual({ allowed: false })
     })
 
     it("repassa os detalhes do pedido para o notify", async () => {
@@ -344,6 +437,29 @@ describe("background/permissions", () => {
     })
   })
 
+  describe("current", () => {
+    it("devolve null sem pedidos pendentes", () => {
+      const { permissions } = setup()
+      expect(permissions.current()).toBeNull()
+    })
+
+    it("devolve o pendente mais antigo e avança quando ele é respondido", async () => {
+      const { permissions } = setup({ hasUi: true })
+      const first = permissions.check(input({ title: "Primeiro" }), "ses_1")
+      const second = permissions.check(input({ title: "Segundo" }), "ses_1")
+
+      expect(permissions.current()).toMatchObject({ title: "Primeiro" })
+
+      permissions.respond(permissions.current()!.id, { allowed: true })
+      await expect(first).resolves.toEqual({ allowed: true, scope: "once" })
+      expect(permissions.current()).toMatchObject({ title: "Segundo" })
+
+      permissions.respond(permissions.current()!.id, { allowed: true })
+      await expect(second).resolves.toEqual({ allowed: true, scope: "once" })
+      expect(permissions.current()).toBeNull()
+    })
+  })
+
   describe("check — timeout", () => {
     it("nega automaticamente após 60 s (fake timers)", async () => {
       vi.useFakeTimers()
@@ -369,6 +485,21 @@ describe("background/permissions", () => {
       // Responder depois do timeout é ignorado.
       permissions.respond(request.id, { allowed: true })
       expect(resolved).toHaveBeenCalledTimes(1)
+    })
+
+    it("limpa a notificação quando o pedido expira sem UI", async () => {
+      vi.useFakeTimers()
+      const { permissions } = setup({ hasUi: false, timeoutMs: 1_000 })
+      const promise = permissions.check(input(), "ses_1")
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(chromeMock.notifications.create).toHaveBeenCalled()
+      const notificationId = chromeMock.notifications.create.mock.calls[0]![0] as string
+      expect(notificationId.startsWith("oc-permission-")).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(promise).resolves.toEqual({ allowed: false })
+      expect(chromeMock.notifications.clear).toHaveBeenCalledWith(notificationId)
     })
 
     it("respeita timeout customizado", async () => {

@@ -25,3 +25,5 @@ sessão correspondente são desfeitos.
 - (+) Fechar o grupo encerra o contexto daquela sessão.
 - (−) O usuário precisa anexar manualmente a aba que já estava aberta.
 - (−) Anexar move a aba do grupo original do usuário.
+- (−) Anexar aba de outra janela é recusado (ver ADR 0009): `chrome.tabs.group`
+      moveria a aba para a janela do grupo.

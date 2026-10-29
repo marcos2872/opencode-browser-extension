@@ -14,7 +14,7 @@ npm ci                   # instalação limpa e reprodutível (CI)
 
 npm run dev              # servidor de desenvolvimento do Vite (apenas UI)
 npm run build            # build completo em dist/ (UI + background + content + offscreen)
-npm run build:ui         # side panel, options e permission
+npm run build:ui         # side panel e options
 npm run build:bg         # service worker (assets/background.js)
 npm run build:content    # content script (assets/content.js)
 npm run build:offscreen  # documento offscreen (assets/offscreen.js)
@@ -70,7 +70,7 @@ privado (`$XDG_RUNTIME_DIR/opencode-browser/relay.json` ou
 |---|---|---|
 | Background | `src/background/**` | Orquestrador, cliente da API v2, SSE, relay, CDP, grupos de abas, permissões e tools |
 | Conteúdo | `src/content/**` | Árvore de acessibilidade com refs, ações de DOM, indicador visual e botão Parar |
-| UI | `src/sidepanel`, `src/options`, `src/permission` | Chat, configurações e popup de permissão (React 19) |
+| UI | `src/sidepanel`, `src/options` | Chat e configurações (React 19); o pedido de permissão é um modal dentro do painel |
 | Offscreen | `src/offscreen.ts` | Keepalive do service worker, som e codificação de GIF |
 | Compartilhado | `src/shared/**` | Tipos, protocolo do relay/UI e armazenamento |
 
@@ -94,7 +94,7 @@ diferentes:
 
 | Config | Entrada | Formato | Saída |
 |---|---|---|---|
-| `vite.config.ts` | `sidepanel.html`, `options.html`, `permission.html` | ESM + HTML | páginas + `assets/*-[hash].js/css` |
+| `vite.config.ts` | `sidepanel.html`, `options.html` | ESM + HTML | páginas + `assets/*-[hash].js/css` |
 | `vite.background.config.ts` | `src/background/service-worker.ts` | ESM (lib) | `assets/background.js` |
 | `vite.content.config.ts` | `src/content/index.ts` | IIFE | `assets/content.js` |
 | `vite.offscreen.config.ts` | `src/offscreen.ts` | IIFE | `assets/offscreen.js` |
@@ -177,6 +177,12 @@ Decisões estruturais estão em `docs/adr/`.
   (`<!-- opencode-browser-agent vN -->`), com backup `.bak-vN`. Arquivo sem
   marcador ou com versão igual/maior é preservado.
 - O service worker não tem DOM: som e GIF ficam no documento offscreen.
+- Abas nunca são ativadas por padrão. Toda ativação passa por
+  `src/background/focus.ts` → `activateTab()` e depende de `bringTabsToFront`
+  (padrão `false`); `ensure()`, `createTab()` e `addTab()` criam/reaproveitam abas
+  em segundo plano e `tabs_attach` de outra janela é recusado. Para input sem
+  ativar a aba, o CDP usa `Emulation.setFocusEmulationEnabled`, que precisa ser
+  reenviada depois de cada navegação.
 - `plugin/browser-relay.ts` é copiado como arquivo local para
   `~/.config/opencode/plugins/`. Não importe `@opencode/plugin` nele: versões
   antigas do serviço não resolvem o pacote. `Plugin.define` é só identidade;

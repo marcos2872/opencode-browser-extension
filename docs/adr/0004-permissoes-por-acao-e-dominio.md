@@ -2,7 +2,7 @@
 
 ## Status
 
-aceito
+aceito; o popup dedicado foi substituído pelo modal do painel (ver ADR 0009)
 
 ## Contexto
 
@@ -20,14 +20,15 @@ Modelar permissões em três eixos:
 3. **Leitura x ação:** ferramentas de leitura executam direto; ações que mudam a
    página pedem confirmação.
 
-Quando o painel está aberto, o pedido aparece como card no próprio chat; quando
-está fechado, abre um popup dedicado (`permission.html`) que fecha ao responder.
-Um timeout (padrão 60 s, configurável) nega automaticamente.
+O pedido aparece como modal dentro do painel. Sem painel aberto, o usuário é
+avisado por som + notificação e o clique na notificação abre o painel com o modal
+(ADR 0009 substituiu o popup dedicado `permission.html`). Um timeout (padrão 60 s,
+configurável) nega automaticamente.
 
 ## Consequências
 
 - (+) O usuário controla o que o agente faz, domínio a domínio.
-- (+) O popup permite usar o agente com o painel fechado.
+- (+) O aviso por notificação permite usar o agente com o painel fechado.
 - (+) Planos de navegação podem liberar domínios em lote (`update_plan`).
 - (−) Aprovar cada domínio novo adiciona atrito na primeira visita.
 - (−) Um pedido ignorado expira como negado, exigindo nova tentativa.

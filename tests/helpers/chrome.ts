@@ -148,6 +148,7 @@ export interface ChromeMock {
     remove: ReturnType<typeof vi.fn>
     group: ReturnType<typeof vi.fn>
     ungroup: ReturnType<typeof vi.fn>
+    move: ReturnType<typeof vi.fn>
     goBack: ReturnType<typeof vi.fn>
     goForward: ReturnType<typeof vi.fn>
     sendMessage: ReturnType<typeof vi.fn>
@@ -235,6 +236,8 @@ export interface ChromeMock {
     addTab: (partial?: Partial<FakeTab>) => FakeTab
     addGroup: (partial?: Partial<FakeTabGroup>) => FakeTabGroup
     emitStorageChanged: (changes: StorageChanges, area: "local" | "session") => void
+    /** Simula o Chrome em primeiro plano (true) ou atrás de outro app (false). */
+    setWindowFocused: (focused: boolean) => void
   }
 }
 
@@ -263,6 +266,7 @@ export function createChromeMock(): ChromeMock {
   const ports: FakePort[] = []
   let nextTabId = 1
   let nextGroupId = 100
+  let windowFocused = true
 
   const runtimeOnMessage = new FakeEvent()
   const storageOnChanged = new FakeEvent()
@@ -307,13 +311,23 @@ export function createChromeMock(): ChromeMock {
     reload: vi.fn(),
   }
 
+  /**
+   * No Chrome real só existe uma aba ativa por janela: ativar uma desativa as
+   * irmãs. Sem isso os testes de foco dão falso positivo.
+   */
+  const deactivateSiblings = (tab: FakeTab): void => {
+    if (!tab.active) return
+    for (const other of tabs.values()) {
+      if (other.id !== tab.id && other.windowId === tab.windowId) other.active = false
+    }
+  }
+
   const tabsApi = {
     get: vi.fn(async (id: number) => {
       const tab = tabs.get(id)
       if (!tab) throw new Error(`No tab with id: ${id}`)
       return tab
-    }),
-    query: vi.fn(async (filter: Record<string, unknown> = {}) => {
+    }),    query: vi.fn(async (filter: Record<string, unknown> = {}) => {
       let list = [...tabs.values()]
       if (typeof filter.groupId === "number") list = list.filter((tab) => tab.groupId === filter.groupId)
       if (typeof filter.url === "string") {
@@ -338,25 +352,42 @@ export function createChromeMock(): ChromeMock {
         status: "complete",
       }
       tabs.set(tab.id, tab)
+      deactivateSiblings(tab)
       return tab
     }),
     update: vi.fn(async (id: number, props: Partial<FakeTab> = {}) => {
       const tab = tabs.get(id)
       if (!tab) throw new Error(`No tab with id: ${id}`)
       Object.assign(tab, props)
+      deactivateSiblings(tab)
       return tab
     }),
     remove: vi.fn(async (ids: number | number[]) => {
       for (const id of Array.isArray(ids) ? ids : [ids]) tabs.delete(id)
     }),
     group: vi.fn(async ({ tabIds, groupId }: { tabIds: number | number[]; groupId?: number }) => {
+      const ids = Array.isArray(tabIds) ? tabIds : [tabIds]
       const target = groupId ?? nextGroupId++
-      if (!groups.has(target)) {
-        groups.set(target, { id: target, title: "", color: "blue", collapsed: false, windowId: 1 })
+      let group = groups.get(target)
+      if (!group) {
+        group = {
+          id: target,
+          title: "",
+          color: "blue",
+          collapsed: false,
+          windowId: tabs.get(ids[0])?.windowId ?? 1,
+        }
+        groups.set(target, group)
       }
-      for (const id of Array.isArray(tabIds) ? tabIds : [tabIds]) {
+      for (const id of ids) {
         const tab = tabs.get(id)
-        if (tab) tab.groupId = target
+        if (!tab) continue
+        tab.groupId = target
+        // Como no Chrome, agrupar move a aba para a janela do grupo.
+        if (tab.windowId !== group.windowId) {
+          tab.windowId = group.windowId
+          deactivateSiblings(tab)
+        }
       }
       return target
     }),
@@ -365,6 +396,15 @@ export function createChromeMock(): ChromeMock {
         const tab = tabs.get(id)
         if (tab) tab.groupId = -1
       }
+    }),
+    move: vi.fn(async (id: number, props: { windowId?: number; index?: number } = {}) => {
+      const tab = tabs.get(id)
+      if (!tab) throw new Error(`No tab with id: ${id}`)
+      if (typeof props.windowId === "number") {
+        tab.windowId = props.windowId
+        deactivateSiblings(tab)
+      }
+      return tab
     }),
     goBack: vi.fn(async () => undefined),
     goForward: vi.fn(async () => undefined),
@@ -483,9 +523,9 @@ export function createChromeMock(): ChromeMock {
       onChanged: new FakeEvent(),
     },
     windows: {
-      getLastFocused: vi.fn(async () => ({ id: 1, focused: true })),
-      getCurrent: vi.fn(async () => ({ id: 1, focused: true })),
-      getAll: vi.fn(async () => [{ id: 1, focused: true }]),
+      getLastFocused: vi.fn(async () => ({ id: 1, focused: windowFocused })),
+      getCurrent: vi.fn(async () => ({ id: 1, focused: windowFocused })),
+      getAll: vi.fn(async () => [{ id: 1, focused: windowFocused }]),
       create: vi.fn(async () => ({ id: 2, tabs: [{ id: 99 }] })),
       update: vi.fn(async () => ({ id: 1 })),
       remove: vi.fn(async () => undefined),
@@ -514,6 +554,9 @@ export function createChromeMock(): ChromeMock {
       addTab,
       addGroup,
       emitStorageChanged: (changes, area) => storageOnChanged.emit(changes, area),
+      setWindowFocused: (focused) => {
+        windowFocused = focused
+      },
     },
   }
 }

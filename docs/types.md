@@ -25,6 +25,7 @@ pareamento.
 | `notifyEnabled` | boolean | Não | Notificação do sistema (padrão true) |
 | `toolDisplay` | `grouped` \| `rows` \| `full` \| `hidden` | Não | Exibição das tools no chat (padrão `grouped`; `hidden` esconde tools e raciocínio) |
 | `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
+| `bringTabsToFront` | boolean | Não | Ações do agente podem ativar abas/janelas (padrão false) |
 
 ## Modelos e sessões
 
