@@ -19,6 +19,7 @@ import { ToolRegistry } from "./tools/registry";
 import { tabsTools } from "./tools/tabs";
 import type { ToolContext } from "./tools/types";
 import { getConfig, setConfig } from "../shared/storage";
+import { sessionLabel } from "../shared/sessionLabel";
 import {
   PORT_NAME,
   RELAY_URL,
@@ -101,6 +102,7 @@ let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 let metaTimer: ReturnType<typeof setTimeout> | null = null;
 let followTimer: ReturnType<typeof setTimeout> | null = null;
 let followTabID: number | null = null;
+let followGeneration = 0;
 let probeInFlight = false;
 let healthTick = 0;
 let syncInFlight = false;
@@ -336,9 +338,14 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
     case "sessions:list":
       await refreshSessions();
       return { ok: true, snapshot: snapshot(), sessions };
-    case "session:new":
-      await createSession(request.model, request.agent);
-      return { ok: true, snapshot: snapshot() };
+    case "session:new": {
+      const session = await createSession(request.model, request.agent);
+      const groupCreated =
+        config?.autoGroupNewSessions === true
+          ? await ensureSessionGroup(session, request.windowId)
+          : false;
+      return { ok: true, snapshot: snapshot(), groupCreated };
+    }
     case "session:select":
       await selectSession(request.id);
       return { ok: true, snapshot: snapshot() };
@@ -714,8 +721,12 @@ function pickModel(explicit?: ModelRef): ModelRef | undefined {
     : undefined;
 }
 
-async function createSession(model?: ModelRef, agent?: string): Promise<void> {
+async function createSession(
+  model?: ModelRef,
+  agent?: string,
+): Promise<SessionInfo> {
   if (!client) throw new Error("OpenCode não configurado.");
+  cancelPendingFollow();
   const chosen = pickModel(model);
   const browserAgent =
     config?.browserAgentDefault !== false &&
@@ -741,6 +752,34 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
   state.hydrated = true;
   await chrome.storage.local.set({ [ACTIVE_SESSION_KEY]: session.id });
   broadcastNow();
+  return session;
+}
+
+/**
+ * Cria e rotula o grupo de abas de uma sessão. Best-effort: a conversa continua
+ * válida quando o grupo não pode ser aberto agora.
+ */
+async function ensureSessionGroup(
+  session: SessionInfo,
+  windowId?: number,
+): Promise<boolean> {
+  try {
+    const label = sessionLabel(session);
+    await tabs.ensure(session.id, label, windowId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Uma troca de aba pendente não pode reverter a conversa recém-criada. */
+function cancelPendingFollow(): void {
+  followGeneration += 1;
+  if (followTimer) {
+    clearTimeout(followTimer);
+    followTimer = null;
+  }
+  followTabID = null;
 }
 
 /**
@@ -749,6 +788,7 @@ async function createSession(model?: ModelRef, agent?: string): Promise<void> {
  */
 async function selectSession(id: string): Promise<void> {
   if (!sessions.some((session) => session.id === id)) return;
+  cancelPendingFollow();
   activeSessionID = id;
   const state = sessionStates.get(id);
   state.unread = false;
@@ -758,7 +798,8 @@ async function selectSession(id: string): Promise<void> {
   if (!state.hydrated) void hydrate(id);
   void loadForms(id);
   void refreshUsage(id);
-  void tabs.setLabel(id, sessions.find((item) => item.id === id)?.title);
+  const session = sessions.find((item) => item.id === id);
+  if (session) void tabs.setLabel(id, sessionLabel(session));
 }
 
 async function loadForms(id: string): Promise<void> {
@@ -909,14 +950,26 @@ async function deleteSession(id: string): Promise<void> {
   if (!client) return;
   await client.deleteSession(id);
   sessions = sessions.filter((session) => session.id !== id);
-  sessionStates.delete(id);
-  void tabs.release(id);
+  forgetSession(id);
   if (activeSessionID === id) {
     activeSessionID = sessions[0]?.id ?? null;
     if (activeSessionID) await selectSession(activeSessionID);
+    else await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   }
   void updateBadge();
   broadcastNow();
+}
+
+/** Esquece tudo que pertencia a uma sessão removida. */
+function forgetSession(sessionID: string): void {
+  sessionStates.delete(sessionID);
+  permissions.forget(sessionID);
+  for (const [id, entry] of [...toolAborts.entries()]) {
+    if (entry.sessionID !== sessionID) continue;
+    entry.controller.abort();
+    toolAborts.delete(id);
+  }
+  void tabs.release(sessionID);
 }
 
 async function switchModel(
@@ -1246,7 +1299,6 @@ function onOpencodeEvent(event: {
       : typeof info?.sessionID === "string"
         ? info.sessionID
         : undefined;
-  const state = sessionID ? stateOf(sessionID) : null;
   console.log(
     "[sse] evento",
     event.type,
@@ -1301,6 +1353,21 @@ function onOpencodeEvent(event: {
     return;
   }
 
+  if (event.type === "session.deleted" && sessionID) {
+    const known = sessions.some((session) => session.id === sessionID);
+    const wasActive = activeSessionID === sessionID;
+    sessions = sessions.filter((session) => session.id !== sessionID);
+    forgetSession(sessionID);
+    if (wasActive) {
+      activeSessionID = sessions[0]?.id ?? null;
+      if (activeSessionID) void selectSession(activeSessionID);
+      else void chrome.storage.local.remove(ACTIVE_SESSION_KEY);
+    }
+    void updateBadge();
+    if (known || wasActive) scheduleBroadcast();
+    return;
+  }
+
   if (event.type === "session.created" && sessionID) {
     const title = typeof data.title === "string" ? data.title : undefined;
     if (!sessions.some((session) => session.id === sessionID)) {
@@ -1328,7 +1395,11 @@ function onOpencodeEvent(event: {
     }
   }
 
-  if (!state || !sessionID) return;
+  if (!sessionID) return;
+  // Sessão excluída (ou filtrada por outro diretório): não recria estado
+  // fantasma a partir de eventos atrasados.
+  if (!sessions.some((session) => session.id === sessionID)) return;
+  const state = stateOf(sessionID);
   state.lastEventAt = Date.now();
 
   const assistantID =
@@ -1829,9 +1900,12 @@ function scheduleFollow(tabID: number | undefined): void {
 }
 
 async function followTab(tabID: number): Promise<void> {
+  const generation = followGeneration;
   const tab = await chrome.tabs.get(tabID).catch(() => undefined);
   if (!tab?.active) return;
   const sessionID = await tabs.sessionOfTab(tabID).catch(() => null);
+  // Uma criação/seleção aconteceu enquanto resolvíamos a aba: não reverter.
+  if (generation !== followGeneration) return;
   if (!sessionID || sessionID === activeSessionID) return;
   if (!sessions.some((session) => session.id === sessionID)) return;
   await selectSession(sessionID);
@@ -1867,13 +1941,11 @@ chrome.runtime.onConnect.addListener((port) => {
       type: "snapshot",
       snapshot: snapshot(),
     } satisfies UiEvent);
-    // Painel aberto pela notificação de permissão: mostra o pedido pendente.
-    const pending = permissions.current();
-    if (pending)
-      port.postMessage({
-        type: "permission",
-        request: pending,
-      } satisfies UiEvent);
+    // Painel (re)conectado: a lista de pendentes é a fonte autoritativa.
+    port.postMessage({
+      type: "permission:sync",
+      requests: permissions.pendingRequests(),
+    } satisfies UiEvent);
   } catch {
     ports.delete(port);
   }

@@ -27,6 +27,7 @@ pareamento.
 | `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
 | `bringTabsToFront` | boolean | Não | Ações do agente podem ativar abas/janelas (padrão false) |
 | `followTabGroups` | boolean | Não | Painel segue o grupo de abas em foco (padrão true) |
+| `autoGroupNewSessions` | boolean | Não | Cria grupo + aba ao iniciar uma conversa (padrão false) |
 
 ## Modelos e sessões
 

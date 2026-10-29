@@ -207,6 +207,11 @@ export interface OpencodeConfig {
   bringTabsToFront?: boolean;
   /** Mostra no painel a sessão do grupo de abas que está em foco. Padrão: true. */
   followTabGroups?: boolean;
+  /**
+   * Cria um grupo de abas (com uma aba em segundo plano) ao iniciar uma nova
+   * conversa. Padrão: `false` — o grupo nasce quando o agente usa o navegador.
+   */
+  autoGroupNewSessions?: boolean;
 }
 
 export interface PermissionRequest {

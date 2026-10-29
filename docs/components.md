@@ -48,6 +48,11 @@ mais de uma.
 **Descrição:** Seleção de sessão, seletor de agente, botão de anexar aba atual,
 nova conversa e excluir.
 
+Contrato dos controles: `busy` é o estado da **sessão exibida** e não bloqueia
+ações globais. "Nova conversa" fica desabilitado apenas durante a criação
+(`creating`), com `aria-busy`; excluir, trocar de agente e anexar aba continuam
+bloqueados durante a execução daquela sessão.
+
 ### `Onboarding`
 
 **Arquivo:** `src/sidepanel/Onboarding.tsx`

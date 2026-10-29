@@ -191,6 +191,16 @@ export class Permissions {
     return first.done ? null : first.value.request
   }
 
+  /** Todos os pedidos abertos, para o painel reconstituir a fila ao abrir. */
+  pendingRequests(): PermissionRequest[] {
+    return [...this.pending.values()].map((item) => item.request)
+  }
+
+  /** Esquece o escopo "site" de uma sessão removida. */
+  forget(sessionID: string): void {
+    this.sessionAllow.delete(sessionID)
+  }
+
   respond(requestId: string, decision: PermissionDecision): void {
     const pending = this.pending.get(requestId)
     if (!pending) return

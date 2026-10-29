@@ -256,6 +256,7 @@ describe("options/App", () => {
         toolDisplay: "grouped",
         browserAgentDefault: true,
         followTabGroups: true,
+        autoGroupNewSessions: false,
         directory: undefined,
       },
     })
@@ -407,5 +408,21 @@ describe("options/App", () => {
     await renderOptions(makeSnapshot())
     expect(screen.getByRole("heading", { name: "Segurança" })).toBeInTheDocument()
     expect(screen.getByText(/ws:\/\/127\.0\.0\.1:8799/)).toBeInTheDocument()
+  })
+})
+
+describe("options/App: grupo automático", () => {
+  it("salva a preferência de criar grupo ao iniciar uma conversa", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+
+    const toggle = screen.getByRole("checkbox", {
+      name: /Criar um grupo de abas ao iniciar uma nova conversa/,
+    })
+    expect(toggle).not.toBeChecked()
+
+    await user.click(toggle)
+    await user.click(screen.getByRole("button", { name: "Salvar", exact: true }))
+
+    expect(sent("settings:update").patch.autoGroupNewSessions).toBe(true)
   })
 })

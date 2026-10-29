@@ -21,6 +21,7 @@ ou na página de opções.
 | `browserAgentDefault` | Usa o agente `opencode-browser` nas novas sessões | boolean | `true` | Não | `service-worker` |
 | `bringTabsToFront` | Permite que ações do agente ativem abas/janelas (roubando o foco) | boolean | `false` | Não | `background/focus.ts` |
 | `followTabGroups` | Mostra no painel a sessão do grupo de abas em foco | boolean | `true` | Não | `service-worker` |
+| `autoGroupNewSessions` | Cria um grupo de abas (com aba em segundo plano) ao iniciar uma conversa | boolean | `false` | Não | `service-worker` |
 
 ### Modos de permissão
 

@@ -103,11 +103,17 @@ describe("sidepanel/SessionBar", () => {
     expect(screen.getByTitle("Excluir sessão")).toBeDisabled()
   })
 
-  it("desabilita os botões de ação enquanto busy", () => {
+  it("mantém nova conversa habilitada e bloqueia ações da sessão enquanto busy", () => {
     setup({ busy: true })
-    expect(screen.getByTitle("Nova conversa")).toBeDisabled()
+    expect(screen.getByTitle("Nova conversa")).toBeEnabled()
     expect(screen.getByTitle("Excluir sessão")).toBeDisabled()
     expect(screen.getByTitle("Agente do OpenCode")).toBeDisabled()
+  })
+
+  it("desabilita nova conversa apenas enquanto a criação está em andamento", () => {
+    setup({ creating: true })
+    expect(screen.getByTitle("Criando conversa…")).toBeDisabled()
+    expect(screen.getByTitle("Criando conversa…")).toHaveAttribute("aria-busy", "true")
   })
 
   it("mostra o select de agente somente quando há agentes", () => {

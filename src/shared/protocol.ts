@@ -67,7 +67,13 @@ export type UiRequest =
   | { type: "unpair" }
   | { type: "models:refresh" }
   | { type: "sessions:list" }
-  | { type: "session:new"; model?: ModelRef; agent?: string }
+  | {
+      type: "session:new";
+      model?: ModelRef;
+      agent?: string;
+      /** Janela do painel: o grupo automático nasce nela, não na última focada. */
+      windowId?: number;
+    }
   | { type: "session:select"; id: string }
   | { type: "session:delete"; id: string }
   | { type: "session:model"; model: ModelRef; sessionID?: string }
@@ -108,6 +114,8 @@ export type UiResponse =
       models?: ModelInfo[];
       sessions?: SessionInfo[];
       tabs?: BrowserTabContext[];
+      /** `session:new`: o grupo de abas foi criado junto com a conversa. */
+      groupCreated?: boolean;
     }
   | { ok: false; error: string; failure?: ConnectionFailure };
 
@@ -119,6 +127,8 @@ export type UiEvent =
   | { type: "sessions:meta"; items: SessionMeta[] }
   | { type: "relay"; relay: RelayState }
   | { type: "permission"; request: PermissionRequest }
+  /** Lista autoritativa de pedidos abertos, enviada ao conectar um painel. */
+  | { type: "permission:sync"; requests: PermissionRequest[] }
   | { type: "permission:resolved"; requestId: string };
 
 export interface OpencodeEvent {

@@ -286,7 +286,11 @@ describe("service-worker: inicialização", () => {
     expect(port.sent.some((message: any) => message?.type === "snapshot")).toBe(
       true,
     );
-    expect(port.sent).toHaveLength(1);
+    expect(port.sent).toHaveLength(2);
+    expect(port.sent[1]).toMatchObject({
+      type: "permission:sync",
+      requests: [],
+    });
     port.disconnect();
     expect(port.disconnected).toBe(true);
   });
@@ -828,12 +832,14 @@ describe("service-worker: sessões e conversa", () => {
     const sent = port.sent as any[];
     expect(sent[0]).toMatchObject({ type: "snapshot" });
     expect(sent[1]).toMatchObject({
-      type: "permission",
-      request: {
-        id: requestId,
-        tool: "tabs_attach",
-        host: "exemplo.com",
-      },
+      type: "permission:sync",
+      requests: [
+        {
+          id: requestId,
+          tool: "tabs_attach",
+          host: "exemplo.com",
+        },
+      ],
     });
 
     await chrome.runtime.sendMessage({
@@ -1748,5 +1754,132 @@ describe("service-worker: correções da revisão", () => {
     expect(
       apiCalls.some((call) => call.url.endsWith("/api/session/ses_b/interrupt")),
     ).toBe(true);
+  });
+});
+
+describe("service-worker: nova conversa e grupo de abas", () => {
+  it("não cria grupo ao iniciar uma conversa por padrão", async () => {
+    await loadWorker();
+    await pairWorker();
+
+    const response = await callWorker({ type: "session:new" });
+
+    expect(response.ok, response.error).toBe(true);
+    expect(response.groupCreated).toBe(false);
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("cria o grupo na janela informada quando a opção está ligada", async () => {
+    await loadWorker();
+    await pairWorker();
+    await callWorker({
+      type: "settings:update",
+      patch: { autoGroupNewSessions: true },
+    });
+
+    const response = await callWorker({ type: "session:new", windowId: 7 });
+
+    expect(response.ok, response.error).toBe(true);
+    expect(response.groupCreated).toBe(true);
+    expect(chrome.tabs.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        windowId: 7,
+        url: "about:blank",
+        active: false,
+      }),
+    );
+    const records = (chrome.storage.session.data.get("tabGroups") ??
+      []) as Array<{ sessionID: string; groupId: number }>;
+    expect(records.some((record) => record.sessionID === "ses_nova")).toBe(
+      true,
+    );
+    expect(chrome.tabGroups.update).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.objectContaining({ title: "OpenCode · Nova" }),
+    );
+  });
+
+  it("mantém a conversa quando o grupo não pode ser criado", async () => {
+    await loadWorker();
+    await pairWorker();
+    await callWorker({
+      type: "settings:update",
+      patch: { autoGroupNewSessions: true },
+    });
+    chrome.tabs.create.mockRejectedValueOnce(new Error("sem janela"));
+
+    const response = await callWorker({ type: "session:new", windowId: 7 });
+
+    expect(response.ok, response.error).toBe(true);
+    expect(response.groupCreated).toBe(false);
+    expect(response.snapshot.activeSessionID).toBe("ses_nova");
+  });
+
+  it("libera o grupo quando a sessão é excluída em outro cliente", async () => {
+    installFetch();
+    chrome.storage.session.data.set("tabGroups", [
+      { sessionID: "ses_test", groupId: 200, mainTabId: 12 },
+    ]);
+    chrome.__state.addGroup({ id: 200 });
+    chrome.__state.addTab({
+      id: 12,
+      groupId: 200,
+      url: "about:blank",
+      active: false,
+    });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    pushEvent("session.deleted", { sessionID: "ses_test" });
+    await flush();
+
+    expect(chrome.__state.tabs.has(12)).toBe(false);
+    expect(chrome.storage.session.data.get("tabGroups") ?? []).toEqual([]);
+    expect((await callWorker({ type: "state:get" })).snapshot.activeSessionID).toBeNull();
+  });
+});
+
+describe("service-worker: sessão excluída", () => {
+  it("ignora eventos atrasados da sessão removida", async () => {
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    pushEvent("session.deleted", { sessionID: "ses_test" });
+    pushEvent("session.step.started", { sessionID: "ses_test" });
+    await flush();
+
+    const snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.activeSessionID).toBeNull();
+    expect(
+      (snapshot.sessionMeta ?? []).some(
+        (item: any) => item.sessionID === "ses_test",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("service-worker: exclusão com outras sessões", () => {
+  it("escolhe a sessão mais recente quando a ativa é excluída", async () => {
+    installFetch({
+      sessions: [
+        makeSession({ id: "ses_a", time: { created: 1, updated: 3 } }),
+        makeSession({ id: "ses_b", time: { created: 1, updated: 2 } }),
+      ],
+    });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    expect((await callWorker({ type: "state:get" })).snapshot.activeSessionID).toBe(
+      "ses_a",
+    );
+
+    pushEvent("session.deleted", { sessionID: "ses_a" });
+    await flush();
+
+    expect((await callWorker({ type: "state:get" })).snapshot.activeSessionID).toBe(
+      "ses_b",
+    );
   });
 });
