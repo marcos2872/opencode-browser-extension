@@ -1516,3 +1516,237 @@ describe("service-worker: alarmes, atalhos e storage", () => {
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
   });
 });
+
+describe("service-worker: sessões paralelas", () => {
+  const twoSessions = () => [
+    makeSession({
+      id: "ses_a",
+      title: "Conversa A",
+      time: { created: 1, updated: 3 },
+    }),
+    makeSession({
+      id: "ses_b",
+      title: "Conversa B",
+      time: { created: 1, updated: 2 },
+    }),
+  ];
+
+  async function withTwoSessions(): Promise<void> {
+    installFetch({ sessions: twoSessions() });
+    await loadWorker();
+    const paired = await pairWorker();
+    expect(paired.ok, paired.error).toBe(true);
+    await flush();
+  }
+
+  it("mantém o estado de uma sessão em segundo plano", async () => {
+    await withTwoSessions();
+    pushEvent("session.text.started", {
+      sessionID: "ses_a",
+      assistantMessageID: "msg_a",
+    });
+    pushEvent("session.text.delta", {
+      sessionID: "ses_a",
+      assistantMessageID: "msg_a",
+      delta: "primeira",
+    });
+    await flush();
+    let snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.activeSessionID).toBe("ses_a");
+    expect(snapshot.messages[0].text).toBe("primeira");
+
+    await callWorker({ type: "session:select", id: "ses_b" });
+    pushEvent("session.execution.started", { sessionID: "ses_a" });
+    pushEvent("session.text.delta", {
+      sessionID: "ses_a",
+      assistantMessageID: "msg_a",
+      delta: " e segunda",
+    });
+    await flush();
+
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.activeSessionID).toBe("ses_b");
+    expect(snapshot.messages).toEqual([]);
+    expect(snapshot.sessionMeta).toContainEqual({
+      sessionID: "ses_a",
+      busy: true,
+      unread: false,
+    });
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_a" });
+    await flush();
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.sessionMeta).toContainEqual({
+      sessionID: "ses_a",
+      busy: false,
+      unread: true,
+    });
+
+    await callWorker({ type: "session:select", id: "ses_a" });
+    snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.activeSessionID).toBe("ses_a");
+    expect(
+      snapshot.messages.some((item: any) =>
+        String(item.text).includes("e segunda"),
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.sessionMeta.find((item: any) => item.sessionID === "ses_a")
+        ?.unread,
+    ).toBe(false);
+  });
+
+  it("segue o grupo de abas em foco", async () => {
+    installFetch({ sessions: twoSessions() });
+    chrome.storage.session.data.set("tabGroups", [
+      { sessionID: "ses_b", groupId: 200, mainTabId: 12 },
+    ]);
+    chrome.__state.addGroup({ id: 200, title: "OpenCode · Conversa B" });
+    chrome.__state.addTab({
+      id: 12,
+      groupId: 200,
+      url: "https://b.example/",
+      active: true,
+    });
+
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    expect((await callWorker({ type: "state:get" })).snapshot.activeSessionID).toBe(
+      "ses_a",
+    );
+
+    chrome.tabs.onActivated.emit({ tabId: 12 });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await flush();
+
+    const snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.activeSessionID).toBe("ses_b");
+  });
+
+  it("não troca de sessão em aba fora de grupo", async () => {
+    await withTwoSessions();
+    const loose = chrome.__state.addTab({
+      id: 77,
+      url: "https://solto.example/",
+      active: true,
+    });
+
+    chrome.tabs.onActivated.emit({ tabId: loose.id });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await flush();
+
+    expect((await callWorker({ type: "state:get" })).snapshot.activeSessionID).toBe(
+      "ses_a",
+    );
+  });
+
+  it("interrompe apenas a sessão pedida", async () => {
+    await withTwoSessions();
+    await callWorker({ type: "prompt", text: "primeira" });
+    await callWorker({ type: "session:select", id: "ses_b" });
+    await callWorker({ type: "prompt", text: "segunda", sessionID: "ses_b" });
+
+    const response = await callWorker({
+      type: "interrupt",
+      sessionID: "ses_a",
+    });
+
+    expect(response.snapshot.activeSessionID).toBe("ses_b");
+    expect(response.snapshot.busy).toBe(true);
+    expect(response.snapshot.sessionMeta).toContainEqual({
+      sessionID: "ses_a",
+      busy: false,
+      unread: false,
+    });
+    expect(
+      apiCalls.some((call) => call.url.endsWith("/api/session/ses_a/interrupt")),
+    ).toBe(true);
+    expect(
+      apiCalls.some((call) => call.url.endsWith("/api/session/ses_b/interrupt")),
+    ).toBe(false);
+  });
+
+  it("excluir a sessão libera o grupo de abas", async () => {
+    installFetch();
+    chrome.storage.session.data.set("tabGroups", [
+      { sessionID: "ses_test", groupId: 200, mainTabId: 12 },
+    ]);
+    chrome.__state.addGroup({ id: 200 });
+    chrome.__state.addTab({
+      id: 12,
+      groupId: 200,
+      url: "about:blank",
+      active: false,
+    });
+
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    await callWorker({ type: "session:delete", id: "ses_test" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flush();
+
+    expect(chrome.__state.tabs.has(12)).toBe(false);
+    expect(chrome.storage.session.data.get("tabGroups") ?? []).toEqual([]);
+  });
+});
+
+describe("service-worker: correções da revisão", () => {
+  const sessions = () => [
+    makeSession({ id: "ses_a", time: { created: 1, updated: 3 } }),
+    makeSession({ id: "ses_b", time: { created: 1, updated: 2 } }),
+  ];
+
+  async function withSessions(): Promise<void> {
+    installFetch({ sessions: sessions() });
+    await loadWorker();
+    const paired = await pairWorker();
+    expect(paired.ok, paired.error).toBe(true);
+    await flush();
+  }
+
+  it("ignora a seleção de uma sessão que não existe", async () => {
+    await withSessions();
+
+    const response = await callWorker({
+      type: "session:select",
+      id: "ses_fantasma",
+    });
+
+    expect(response.snapshot.activeSessionID).toBe("ses_a");
+  });
+
+  it("cai para a primeira sessão quando a ativa desaparece", async () => {
+    await withSessions();
+    installFetch({
+      sessions: [
+        makeSession({ id: "ses_b", time: { created: 1, updated: 9 } }),
+      ],
+    });
+
+    const response = await callWorker({ type: "sessions:list" });
+
+    expect(
+      response.snapshot.sessions.map((session: any) => session.id),
+    ).toEqual(["ses_b"]);
+    expect(response.snapshot.activeSessionID).toBe("ses_b");
+  });
+
+  it("para todas as execuções quando a aba não pertence a um grupo", async () => {
+    await withSessions();
+    await callWorker({ type: "prompt", text: "primeira" });
+    await callWorker({ type: "prompt", text: "segunda", sessionID: "ses_b" });
+
+    await callWorker({ type: "browser:stop" }, { tab: { id: 999 } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await flush();
+
+    expect(
+      apiCalls.some((call) => call.url.endsWith("/api/session/ses_a/interrupt")),
+    ).toBe(true);
+    expect(
+      apiCalls.some((call) => call.url.endsWith("/api/session/ses_b/interrupt")),
+    ).toBe(true);
+  });
+});

@@ -11,6 +11,7 @@ import type {
   PermissionRequest,
   RelayState,
   SessionInfo,
+  SessionMeta,
 } from "./types";
 
 export const RELAY_PORT = 8799;
@@ -69,14 +70,14 @@ export type UiRequest =
   | { type: "session:new"; model?: ModelRef; agent?: string }
   | { type: "session:select"; id: string }
   | { type: "session:delete"; id: string }
-  | { type: "session:model"; model: ModelRef }
-  | { type: "session:agent"; agent: string }
-  | { type: "tabs:attach-current" }
+  | { type: "session:model"; model: ModelRef; sessionID?: string }
+  | { type: "session:agent"; agent: string; sessionID?: string }
+  | { type: "tabs:attach-current"; sessionID?: string }
   | { type: "tabs:list"; sessionID: string }
   | { type: "tabs:detach"; sessionID: string; tabID: number }
-  | { type: "prompt"; text: string }
-  | { type: "command"; name: string; text: string }
-  | { type: "interrupt" }
+  | { type: "prompt"; text: string; sessionID?: string }
+  | { type: "command"; name: string; text: string; sessionID?: string }
+  | { type: "interrupt"; sessionID?: string }
   | { type: "settings:update"; patch: Partial<OpencodeConfig> }
   | { type: "open:options" }
   | { type: "open:sidepanel" }
@@ -114,6 +115,8 @@ export type UiResponse =
 export type UiEvent =
   | { type: "event"; event: OpencodeEvent }
   | { type: "snapshot"; snapshot: AppSnapshot }
+  /** Atualização barata de ocupado/não lido de outras sessões. */
+  | { type: "sessions:meta"; items: SessionMeta[] }
   | { type: "relay"; relay: RelayState }
   | { type: "permission"; request: PermissionRequest }
   | { type: "permission:resolved"; requestId: string };

@@ -205,11 +205,15 @@ export interface OpencodeConfig {
    * janela em que o usuário está.
    */
   bringTabsToFront?: boolean;
+  /** Mostra no painel a sessão do grupo de abas que está em foco. Padrão: true. */
+  followTabGroups?: boolean;
 }
 
 export interface PermissionRequest {
   id: string;
   kind: "action" | "plan" | "domain";
+  /** Sessão que pediu a permissão (permite exibir a origem do pedido). */
+  sessionID?: string;
   tool: string;
   title: string;
   detail?: string;
@@ -272,6 +276,13 @@ export interface ConnectionState {
   offlineSince: number | null;
 }
 
+/** Situação resumida de cada conversa viva, para a barra de sessões. */
+export interface SessionMeta {
+  sessionID: string;
+  busy: boolean;
+  unread: boolean;
+}
+
 export interface AppSnapshot {
   config: OpencodeConfig | null;
   models: ModelInfo[];
@@ -279,6 +290,8 @@ export interface AppSnapshot {
   activeSessionID: string | null;
   messages: ChatMessage[];
   forms: FormInfo[];
+  /** Sessões com estado vivo (executando ou com resultado não lido). */
+  sessionMeta?: SessionMeta[];
   relay: RelayState;
   busy: boolean;
   connection: ConnectionState;

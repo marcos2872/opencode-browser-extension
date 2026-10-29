@@ -61,6 +61,7 @@ export default function App() {
   const [bringTabsToFront, setBringTabsToFront] = useState(false)
   const [toolDisplay, setToolDisplay] = useState<"grouped" | "rows" | "full" | "hidden">("grouped")
   const [browserAgentDefault, setBrowserAgentDefault] = useState(true)
+  const [followTabGroups, setFollowTabGroups] = useState(true)
   const [workspace, setWorkspace] = useState("")
   const [link, setLink] = useState("")
   const [busy, setBusy] = useState(false)
@@ -85,6 +86,7 @@ export default function App() {
         setBringTabsToFront(response.snapshot.config?.bringTabsToFront === true)
         setToolDisplay(response.snapshot.config?.toolDisplay ?? "grouped")
         setBrowserAgentDefault(response.snapshot.config?.browserAgentDefault !== false)
+        setFollowTabGroups(response.snapshot.config?.followTabGroups !== false)
         setWorkspace(response.snapshot.config?.directory ?? "")
       }
     })
@@ -140,6 +142,7 @@ export default function App() {
         bringTabsToFront,
         toolDisplay,
         browserAgentDefault,
+        followTabGroups,
         directory: workspace.trim() || undefined,
       },
     })
@@ -323,6 +326,17 @@ export default function App() {
               <span>
                 Usar o agente `opencode-browser` nas novas sessões (desligue para usar o
                 agente selecionado acima)
+              </span>
+            </label>
+            <label className="row" style={{ gap: 8, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={followTabGroups}
+                onChange={(event) => setFollowTabGroups(event.target.checked)}
+              />
+              <span>
+                Mostrar no painel a conversa do grupo de abas que está em foco (cada sessão
+                fica atrelada ao seu grupo)
               </span>
             </label>
           </section>

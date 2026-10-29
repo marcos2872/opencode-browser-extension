@@ -8,7 +8,7 @@ import { Composer } from "./Composer"
 import { ConnectionBanner } from "./ConnectionBanner"
 import { ModelPicker } from "./ModelPicker"
 import { Onboarding } from "./Onboarding"
-import { SessionBar } from "./SessionBar"
+import { SessionBar, titleOf } from "./SessionBar"
 import { sessionStats } from "./sessionStats"
 import { request } from "./api"
 
@@ -47,6 +47,9 @@ export default function App() {
 
     const handle = (message: UiEvent) => {
       if (message.type === "snapshot") setSnapshot(message.snapshot)
+      if (message.type === "sessions:meta") {
+        setSnapshot((current) => current ? { ...current, sessionMeta: message.items } : current)
+      }
       if (message.type === "relay") {
         setSnapshot((current) => (current ? { ...current, relay: message.relay } : current))
       }
@@ -306,6 +309,11 @@ export default function App() {
           </span>
           <span className="brand-text">OpenCode</span>
         </div>
+        {activeSession ? (
+          <span className="session-title" title={titleOf(activeSession)}>
+            {titleOf(activeSession)}
+          </span>
+        ) : null}
         <span
           className="status"
           title={`API do OpenCode: ${statusLabel}${snapshot.connection.detail ? ` — ${snapshot.connection.detail}` : ""}`}
@@ -351,6 +359,7 @@ export default function App() {
             sessions={snapshot.sessions}
             activeID={snapshot.activeSessionID}
             busy={snapshot.busy}
+            meta={snapshot.sessionMeta ?? []}
             contextTabs={contextTabs}
             contextError={contextError}
             agents={snapshot.agents}
@@ -396,7 +405,19 @@ export default function App() {
 
       {permission ? (
         <div className="overlay">
-          <PermissionCard request={permission} onDecision={(decision) => void decide(decision)} />
+          <PermissionCard
+            request={permission}
+            sessionLabel={
+              permission.sessionID && permission.sessionID !== snapshot.activeSessionID
+                ? titleOf(
+                    snapshot.sessions.find((session) => session.id === permission.sessionID) ?? {
+                      id: permission.sessionID,
+                    },
+                  )
+                : undefined
+            }
+            onDecision={(decision) => void decide(decision)}
+          />
         </div>
       ) : null}
 

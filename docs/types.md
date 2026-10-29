@@ -26,6 +26,7 @@ pareamento.
 | `toolDisplay` | `grouped` \| `rows` \| `full` \| `hidden` | Não | Exibição das tools no chat (padrão `grouped`; `hidden` esconde tools e raciocínio) |
 | `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
 | `bringTabsToFront` | boolean | Não | Ações do agente podem ativar abas/janelas (padrão false) |
+| `followTabGroups` | boolean | Não | Painel segue o grupo de abas em foco (padrão true) |
 
 ## Modelos e sessões
 
@@ -142,6 +143,8 @@ Enviado do service worker para as páginas.
 | `sessions` | SessionInfo[] | Sessões ordenadas por atualização |
 | `activeSessionID` | string \| null | Sessão selecionada |
 | `messages` | ChatMessage[] | Conversa atual |
+| `forms` | FormInfo[] | Formulários pendentes da conversa atual |
+| `sessionMeta` | SessionMeta[] | `busy`/`unread` das sessões vivas |
 | `relay` | RelayState | Estado do plugin |
 | `busy` | boolean | Agente trabalhando |
 | `backend` | `unknown` \| `online` \| `offline` | Estado da API |
@@ -150,6 +153,14 @@ Enviado do service worker para as páginas.
 | `commands` | CommandInfo[] | Comandos `/` |
 | `statusMessage` | string \| null | Aviso (ex.: retry) |
 | `contextUsage` | TokenUsage | Usage da última mensagem (contexto do rodapé) |
+
+### `SessionMeta`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `sessionID` | string | Sessão |
+| `busy` | boolean | Execução em andamento |
+| `unread` | boolean | Terminou/gerou formulário enquanto não era a exibida |
 
 ### `RelayState`
 

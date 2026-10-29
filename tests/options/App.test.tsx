@@ -255,6 +255,7 @@ describe("options/App", () => {
         bringTabsToFront: false,
         toolDisplay: "grouped",
         browserAgentDefault: true,
+        followTabGroups: true,
         directory: undefined,
       },
     })

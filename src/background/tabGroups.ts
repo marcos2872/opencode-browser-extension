@@ -20,6 +20,8 @@ function sameBaseUrl(a?: string, b?: string): boolean {
 }
 
 const STORAGE_KEY = "tabGroups";
+const TITLE_BASE = "OpenCode";
+const TITLE_SEPARATOR = " · ";
 const COLORS = [
   "blue",
   "cyan",
@@ -30,6 +32,20 @@ const COLORS = [
   "yellow",
   "pink",
 ] as const;
+
+/** Título exibido no grupo; a sessão ativa aparece nele para diferenciar. */
+function groupTitle(label?: string): string {
+  const clean = (label ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return clean ? `${TITLE_BASE}${TITLE_SEPARATOR}${clean}` : TITLE_BASE;
+}
+
+/** Grupos da extensão: o título padrão ou o padrão seguido do nome da sessão. */
+function isManagedTitle(title: string | undefined): boolean {
+  return (
+    title === TITLE_BASE ||
+    (typeof title === "string" && title.startsWith(TITLE_BASE + TITLE_SEPARATOR))
+  );
+}
 
 export interface GroupTab {
   id: number;
@@ -106,7 +122,7 @@ export class TabGroups {
 
   async ensure(
     sessionID: string,
-    displayName = "OpenCode",
+    displayName?: string,
   ): Promise<GroupRecord> {
     return this.serialize(async () => {
       const records = await this.load();
@@ -161,21 +177,82 @@ export class TabGroups {
   private async createGroupLocked(
     sessionID: string,
     tabId: number,
-    displayName = "OpenCode",
+    displayName?: string,
   ): Promise<number> {
     const groupId = await chrome.tabs.group({ tabIds: [tabId] });
     const index = (this.records ?? []).length;
     await chrome.tabGroups.update(groupId, {
-      title: displayName,
+      title: groupTitle(displayName),
       color: COLORS[index % COLORS.length] as chrome.tabGroups.Color,
       collapsed: false,
     });
+    // Um grupo pertence a uma única sessão: descarta vínculos duplicados
+    // criados ao mover abas manualmente entre grupos.
     this.records = [
-      ...(this.records ?? []),
+      ...(this.records ?? []).filter(
+        (record) =>
+          record.groupId !== groupId && record.sessionID !== sessionID,
+      ),
       { sessionID, groupId, mainTabId: tabId },
     ];
     await this.save();
     return groupId;
+  }
+
+  /** Atualiza o título do grupo com o nome da sessão. */
+  async setLabel(sessionID: string, label: string | undefined): Promise<void> {
+    const record = await this.get(sessionID);
+    if (!record) return;
+    await chrome.tabGroups
+      .update(record.groupId, { title: groupTitle(label) })
+      .catch(() => undefined);
+  }
+
+  /** Sessão dona de um grupo, ou `null` se o grupo não é gerenciado. */
+  async sessionOfGroup(groupId: number): Promise<string | null> {
+    const records = await this.load(true);
+    const record = records.find((item) => item.groupId === groupId);
+    if (!record) return null;
+    try {
+      await chrome.tabGroups.get(record.groupId);
+    } catch {
+      return null;
+    }
+    return record.sessionID;
+  }
+
+  /** Sessão dona da aba, resolvida pelo grupo em que ela está. */
+  async sessionOfTab(tabId: number): Promise<string | null> {
+    const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+    if (!tab || typeof tab.groupId !== "number" || tab.groupId < 0) return null;
+    return this.sessionOfGroup(tab.groupId);
+  }
+
+  /**
+   * Remove o vínculo da sessão e libera as abas do grupo: fecha as que estão em
+   * branco e desagrupa as demais, para não destruir páginas do usuário.
+   */
+  async release(sessionID: string): Promise<void> {
+    await this.serialize(async () => {
+      const records = await this.load();
+      const record = records.find((item) => item.sessionID === sessionID);
+      if (!record) return;
+      this.records = records.filter((item) => item !== record);
+      await this.save();
+      const groupTabs = await chrome.tabs
+        .query({ groupId: record.groupId })
+        .catch(() => []);
+      for (const tab of groupTabs) {
+        if (tab.id === undefined) continue;
+        if (isBlankUrl(tab.url ?? tab.pendingUrl)) {
+          // Nunca fecha a aba que o usuário está usando: só desagrupa.
+          if (tab.active) await chrome.tabs.ungroup(tab.id).catch(() => undefined);
+          else await chrome.tabs.remove(tab.id).catch(() => undefined);
+        } else {
+          await chrome.tabs.ungroup(tab.id).catch(() => undefined);
+        }
+      }
+    });
   }
 
   async get(sessionID: string): Promise<GroupRecord | null> {
@@ -412,7 +489,9 @@ export class TabGroups {
       const known = new Set(records.map((record) => record.groupId));
       let groups: chrome.tabGroups.TabGroup[] = [];
       try {
-        groups = await chrome.tabGroups.query({ title: "OpenCode" });
+        groups = (await chrome.tabGroups.query({})).filter((group) =>
+          isManagedTitle(group.title),
+        );
       } catch {
         return;
       }

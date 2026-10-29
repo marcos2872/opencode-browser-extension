@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { AgentInfo, SessionInfo } from "../shared/types"
+import type { AgentInfo, SessionInfo, SessionMeta } from "../shared/types"
 import type { BrowserTabContext } from "../shared/types"
 import { LinkIcon, PlusIcon, TrashIcon, XIcon } from "../components/icons"
 
@@ -7,6 +7,7 @@ interface Props {
   sessions: SessionInfo[]
   activeID: string | null
   busy: boolean
+  meta?: SessionMeta[]
   contextTabs: BrowserTabContext[]
   contextError: string | null
   agents: AgentInfo[]
@@ -19,10 +20,17 @@ interface Props {
   onAgent: (agent: string) => void
 }
 
-function titleOf(session: SessionInfo): string {
+export function titleOf(session: SessionInfo): string {
   if (session.title?.trim()) return session.title.trim()
   if (session.slug?.trim()) return session.slug.trim()
   return `Sessão ${session.id.slice(-6)}`
+}
+
+/** Marca na lista as conversas executando ou com resultado não lido. */
+function metaSuffix(meta: SessionMeta | undefined): string {
+  if (meta?.busy) return " · executando"
+  if (meta?.unread) return " · nova resposta"
+  return ""
 }
 
 function originOf(url: string): string {
@@ -37,6 +45,7 @@ export function SessionBar({
   sessions,
   activeID,
   busy,
+  meta = [],
   contextTabs,
   contextError,
   agents,
@@ -50,6 +59,7 @@ export function SessionBar({
 }: Props) {
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
   const hasConnectedTabs = contextTabs.length > 0
+  const metaBySession = new Map(meta.map((item) => [item.sessionID, item]))
 
   return (
     <div className="session-bar">
@@ -59,11 +69,12 @@ export function SessionBar({
         disabled={sessions.length === 0}
         onChange={(event) => onSelect(event.target.value)}
         title="Sessões do OpenCode"
+        aria-label="Sessões do OpenCode"
       >
         {sessions.length === 0 ? <option value="">Nenhuma sessão</option> : null}
         {sessions.map((session) => (
           <option key={session.id} value={session.id}>
-            {titleOf(session)}
+            {`${titleOf(session)}${metaSuffix(metaBySession.get(session.id))}`}
           </option>
         ))}
       </select>

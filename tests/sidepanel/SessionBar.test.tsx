@@ -133,3 +133,23 @@ describe("sidepanel/SessionBar", () => {
     expect(onAgent).toHaveBeenCalledWith("plan")
   })
 })
+
+describe("sidepanel/SessionBar: sessões paralelas", () => {
+  it("marca executando e nova resposta nas opções", () => {
+    setup({
+      sessions: [
+        makeSession({ id: "ses_1", title: "Um" }),
+        makeSession({ id: "ses_2", title: "Dois" }),
+        makeSession({ id: "ses_3", title: "Três" }),
+      ],
+      meta: [
+        { sessionID: "ses_1", busy: true, unread: false },
+        { sessionID: "ses_2", busy: false, unread: true },
+      ],
+    })
+
+    expect(screen.getByRole("option", { name: "Um · executando" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Dois · nova resposta" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Três" })).toBeInTheDocument()
+  })
+})
