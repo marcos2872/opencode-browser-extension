@@ -967,6 +967,140 @@ describe("service-worker: pasta das conversas", () => {
       response.snapshot.sessions.map((session: { id: string }) => session.id),
     ).toEqual(["ses_sem_location"]);
   });
+
+  it("espera a configuração carregar antes de conectar o relay no boot", async () => {
+    installFetch({
+      sessions: [
+        makeSession({ id: "ses_dentro", location: { directory: "/tmp/ws" } }),
+        makeSession({
+          id: "ses_fora",
+          location: { directory: "/home/marcos" },
+        }),
+      ],
+    });
+    await chrome.storage.local.set({
+      "opencode.config": {
+        baseUrl: "http://127.0.0.1:49374",
+        token: "tok",
+        permissionMode: "ask",
+      },
+    });
+    let releaseConfig!: () => void;
+    const configGate = new Promise<void>((resolve) => {
+      releaseConfig = resolve;
+    });
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    vi.spyOn(chrome.storage.local, "get").mockImplementation(
+      async (keys?: Parameters<typeof originalGet>[0]) => {
+        if (keys === "opencode.config") await configGate;
+        return originalGet(keys);
+      },
+    );
+
+    await loadWorker();
+    chrome.runtime.onStartup.emit();
+    await flush();
+    // O `ready` chegaria com `config` nulo e o workspace seria descartado.
+    expect(FakeWebSocket.instances).toHaveLength(0);
+
+    releaseConfig();
+    await flush(20);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    socket.message({ type: "ready", v: 1, workspace: "/tmp/ws" });
+    await flush(20);
+
+    const response = await callWorker({ type: "sessions:list" });
+
+    expect(
+      response.snapshot.sessions.map((session: { id: string }) => session.id),
+    ).toEqual(["ses_dentro"]);
+    expect(
+      apiCalls.some((call) =>
+        decodeURIComponent(call.url).includes("/api/session?directory=/tmp/ws"),
+      ),
+    ).toBe(true);
+  });
+
+  it("guarda a pasta anunciada quando a extensão ainda não está pareada", async () => {
+    await loadWorker();
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    await flush();
+    socket.message({ type: "ready", v: 1, workspace: "/tmp/ws" });
+    await flush();
+
+    await pairWorker();
+
+    const stored = await chrome.storage.local.get("opencode.config");
+    expect(stored["opencode.config"]).toMatchObject({ directory: "/tmp/ws" });
+  });
+
+  it("conecta o relay mesmo quando a configuração falha ao carregar", async () => {
+    const originalGet = chrome.storage.local.get.bind(chrome.storage.local);
+    vi.spyOn(chrome.storage.local, "get").mockImplementation(
+      async (keys?: Parameters<typeof originalGet>[0]) => {
+        if (keys === "opencode.config") throw new Error("storage indisponível");
+        return originalGet(keys);
+      },
+    );
+
+    await loadWorker();
+
+    expect(FakeWebSocket.instances.length).toBeGreaterThan(0);
+  });
+
+  it("mantém a lista filtrada quando o ready chega no meio da inicialização", async () => {
+    installFetch({
+      sessions: [
+        makeSession({ id: "ses_dentro", location: { directory: "/tmp/ws" } }),
+        makeSession({
+          id: "ses_fora",
+          location: { directory: "/home/marcos" },
+        }),
+      ],
+    });
+    await chrome.storage.local.set({
+      "opencode.config": {
+        baseUrl: "http://127.0.0.1:49374",
+        token: "tok",
+        permissionMode: "ask",
+      },
+    });
+    let releaseModel!: () => void;
+    const modelGate = new Promise<void>((resolve) => {
+      releaseModel = resolve;
+    });
+    const baseFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/api/model") && !url.includes("/api/model/default"))
+          await modelGate;
+        return baseFetch(input as RequestInfo, init);
+      }),
+    );
+
+    // O init fica preso em `/api/model`; o `ready` adota a pasta no meio.
+    await loadWorker();
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    socket.message({ type: "ready", v: 1, workspace: "/tmp/ws" });
+    await flush(20);
+    releaseModel();
+    await flush(20);
+
+    const stored = await chrome.storage.local.get("opencode.config");
+    expect(stored["opencode.config"]).toMatchObject({ directory: "/tmp/ws" });
+
+    const response = await callWorker({ type: "sessions:list" });
+    expect(
+      response.snapshot.sessions.map((session: { id: string }) => session.id),
+    ).toEqual(["ses_dentro"]);
+  });
 });
 
 describe("service-worker: eventos SSE", () => {

@@ -86,6 +86,16 @@ let commands: CommandInfo[] = [];
 let relayState: RelayState = { connected: false, url: RELAY_URL };
 let statusMessage: string | null = null;
 let workspaceHint: string | null = null;
+/**
+ * O relay só pode conectar depois que a configuração está hidratada. No boot
+ * do navegador o `ready` do plugin pode chegar antes do `getConfig()`; sem esse
+ * sinal, o workspace anunciava a pasta mas era descartado e a lista mostrava as
+ * sessões de todos os projetos até o próximo reload da extensão.
+ */
+let markConfigHydrated!: () => void;
+const configHydrated = new Promise<void>((resolve) => {
+  markConfigHydrated = resolve;
+});
 let sseAbort: AbortController | null = null;
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 let hydrateToken = 0;
@@ -347,7 +357,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await chrome.runtime.openOptionsPage();
       return { ok: true };
     case "relay:reconnect":
-      relay.reconnect();
+      connectRelay(true);
       return { ok: true };
     case "connection:reconnect":
       await reconnectBackend();
@@ -360,6 +370,8 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
 async function applyWorkspace(workspace: string | undefined): Promise<void> {
   if (!workspace) return;
   workspaceHint = workspace;
+  // Sem configuração o workspace fica no hint e é adotado pelo `init()` (ou
+  // pelo `pair()`, quando a extensão ainda não está pareada).
   if (!config) return;
   const firstDirectory = !config.directory;
   if (firstDirectory) {
@@ -402,6 +414,33 @@ function ensureBrowserAgentInBackground(): void {
     await refreshAgents().catch(() => undefined);
     broadcastNow();
   });
+}
+
+/**
+ * Conecta o relay depois da hidratação da configuração, para o `ready` do
+ * plugin nunca chegar com `config` ainda nulo. Idempotente no cliente.
+ */
+function connectRelay(force = false): void {
+  void configHydrated.then(() => {
+    if (force) {
+      relay.reconnect();
+      return;
+    }
+    void relay.connect();
+  });
+}
+
+/**
+ * Adota a pasta anunciada pelo plugin quando a configuração ainda não tem uma.
+ * O gate `configHydrated` garante que o `ready` normalmente chegue depois do
+ * `getConfig()` (caminho do `applyWorkspace`); esta função é a rede de
+ * segurança para qualquer conexão fora do gate — sem ela o workspace viraria
+ * só um hint em memória e a lista cairia nas sessões de todos os projetos.
+ */
+async function adoptWorkspaceHint(): Promise<void> {
+  if (!config || config.directory || !workspaceHint) return;
+  config = { ...config, directory: workspaceHint };
+  await setConfig(config).catch(() => undefined);
 }
 
 async function pair(link: string): Promise<void> {
@@ -1689,7 +1728,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== "keepalive") return;
   void ensureOffscreen();
-  relay.connect();
+  connectRelay();
   void runHealthcheck();
 });
 
@@ -1766,12 +1805,12 @@ chrome.commands.onCommand.addListener((command) => {
 
 chrome.runtime.onStartup.addListener(() => {
   void ensureOffscreen();
-  relay.connect();
+  connectRelay();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   void ensureOffscreen();
-  relay.connect();
+  connectRelay();
   void updateBadge();
 });
 
@@ -1783,11 +1822,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 async function init(): Promise<void> {
-  await permissions.init();
-  await tabs.cleanup().catch(() => undefined);
-  config = await getConfig();
+  try {
+    await permissions.init();
+    await tabs.cleanup().catch(() => undefined);
+    config = await getConfig();
+    await adoptWorkspaceHint();
+  } finally {
+    // Sempre libera o relay, inclusive sem configuração ou em falha de leitura:
+    // prender a conexão deixaria o painel sem as tools `browser_*`.
+    markConfigHydrated();
+    connectRelay();
+  }
   if (config) {
     client = new OpencodeClient(config.baseUrl, config.token, config.directory);
+    // Salvaguarda: com o relay já conectado (conexão fora do gate), o `ready`
+    // não é reemitido, então o agente do navegador não seria instalado pelo
+    // `applyWorkspace`.
+    ensureBrowserAgentInBackground();
     setConnection({
       phase: "connecting",
       failure: null,
@@ -1820,7 +1871,6 @@ async function init(): Promise<void> {
   } else {
     connection = freshConnection("unconfigured");
   }
-  relay.connect();
   await updateBadge();
   await chrome.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
@@ -1830,4 +1880,4 @@ async function init(): Promise<void> {
   broadcastNow();
 }
 
-void init();
+void init().catch(() => undefined);
