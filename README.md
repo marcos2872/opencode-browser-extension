@@ -1,4 +1,4 @@
-# OpenCode Browser
+# <img src="public/icons/icon-128.png" width="34" height="34" alt="Ícone da extensão: um prompt de terminal" /> OpenCode Browser
 
 [![Testes](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/test.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/test.yml)
 [![Qualidade de código](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml)
