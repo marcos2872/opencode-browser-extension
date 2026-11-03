@@ -324,8 +324,10 @@ volta a ser uma aba normal sua.
 ### O grupo nasce quando é preciso
 
 Se a opção de criar grupo ao iniciar conversa estiver desligada (padrão), o grupo
-aparece no primeiro uso do navegador pelo agente — ou quando você conecta uma
-aba. É o fluxo mais econômico: nenhuma aba em branco acumulada.
+nasce quando o agente abre uma aba nova (`browser_tabs_create`) ou quando você
+conecta uma aba. Tools de leitura e interação não abrem aba sozinhas: sem aba,
+elas falham com uma orientação. É o fluxo mais econômico: nenhuma aba em branco
+acumulada.
 
 ---
 
@@ -370,8 +372,8 @@ abre uma aba em branco (em segundo plano, na janela do painel) e o grupo com o
 nome da conversa. É útil quando você quer ver a “âncora” de cada conversa na
 barra de abas desde o começo; o custo é uma aba em branco por conversa.
 
-Desligado (padrão), o grupo nasce no primeiro uso do navegador ou no anexo de uma
-aba.
+Desligado (padrão), o grupo nasce quando o agente abre uma aba nova ou no anexo
+de uma aba.
 
 ### Excluir uma conversa
 

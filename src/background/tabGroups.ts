@@ -19,6 +19,14 @@ function sameBaseUrl(a?: string, b?: string): boolean {
   }
 }
 
+/**
+ * Sessão sem aba não abre grupo por acidente. Sessões-filhas (subagentes) têm
+ * `sessionID` próprio e nunca recebem aba: qualquer tool que resolvesse a aba
+ * criava um grupo com `about:blank` que ficava para sempre no navegador.
+ */
+const NO_TAB_MESSAGE =
+  "Esta sessão não tem aba no navegador. Use browser_tabs_create para abrir uma página ou browser_tabs_attach para usar uma aba já aberta."
+
 const STORAGE_KEY = "tabGroups";
 const TITLE_BASE = "OpenCode";
 const TITLE_SEPARATOR = " · ";
@@ -120,6 +128,11 @@ export class TabGroups {
     await chrome.storage.session.set({ [STORAGE_KEY]: this.records ?? [] });
   }
 
+  /**
+   * Cria a aba reserva e o grupo. Só deve ser chamado por pedido explícito
+   * (`tabs_context` com `createIfEmpty`) — tools normais usam `resolveTab`, que
+   * falha quando a sessão ainda não tem aba.
+   */
   async ensure(
     sessionID: string,
     displayName?: string,
@@ -292,9 +305,17 @@ export class TabGroups {
     sessionID: string,
     requested?: number,
   ): Promise<{ tabId: number; groupId: number }> {
-    const record = await this.ensure(sessionID);
-    await this.expandGroup(record.groupId);
-    const tabs = await chrome.tabs.query({ groupId: record.groupId });
+    const record = await this.get(sessionID);
+    const groupId = record ? await this.groupOf(sessionID) : null;
+    if (!record || groupId === null) {
+      throw new Error(
+        requested === undefined
+          ? NO_TAB_MESSAGE
+          : `A aba ${requested} não pertence a esta sessão.`,
+      );
+    }
+    await this.expandGroup(groupId);
+    const tabs = await chrome.tabs.query({ groupId });
     if (requested !== undefined) {
       const match = tabs.find((tab) => tab.id === requested);
       if (!match) {
@@ -302,13 +323,13 @@ export class TabGroups {
           `A aba ${requested} não pertence ao grupo desta sessão.`,
         );
       }
-      return { tabId: requested, groupId: record.groupId };
+      return { tabId: requested, groupId };
     }
     const main =
       tabs.find((tab) => tab.id === record.mainTabId) ??
       tabs.find((tab) => tab.id !== undefined);
     if (!main?.id) throw new Error("O grupo desta sessão não tem abas.");
-    return { tabId: main.id, groupId: record.groupId };
+    return { tabId: main.id, groupId };
   }
 
   async addTab(
@@ -484,8 +505,9 @@ export class TabGroups {
   }
 
   async closeTab(sessionID: string, tabId: number): Promise<void> {
-    const record = await this.ensure(sessionID);
-    const tabs = await chrome.tabs.query({ groupId: record.groupId });
+    const groupId = await this.groupOf(sessionID);
+    if (groupId === null) throw new Error(NO_TAB_MESSAGE);
+    const tabs = await chrome.tabs.query({ groupId });
     if (!tabs.some((tab) => tab.id === tabId)) {
       throw new Error("A aba não pertence ao grupo desta sessão.");
     }

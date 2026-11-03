@@ -1445,6 +1445,14 @@ describe("service-worker: relay e ferramentas", () => {
     const socket = await withSocket();
     socket.message({
       type: "tool_request",
+      id: "t_setup",
+      tool: "tabs_context",
+      args: { createIfEmpty: true },
+      sessionID: "ses_relay",
+    });
+    await flush(20);
+    socket.message({
+      type: "tool_request",
       id: "t2",
       tool: "navigate",
       args: { url: "ftp://exemplo.com" },
@@ -1456,6 +1464,27 @@ describe("service-worker: relay e ferramentas", () => {
       .find((message) => message.type === "tool_result" && message.id === "t2");
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/http/);
+  });
+
+  it("não abre grupo quando sessão sem aba pede uma tool de leitura", async () => {
+    const socket = await withSocket();
+    socket.message({
+      type: "tool_request",
+      id: "t_sub",
+      tool: "read_page",
+      args: {},
+      sessionID: "ses_subagente",
+    });
+    await flush(20);
+    const result = socket
+      .sentJson()
+      .find(
+        (message) => message.type === "tool_result" && message.id === "t_sub",
+      );
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("não tem aba no navegador");
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.tabs.group).not.toHaveBeenCalled();
   });
 
   it("ignora cancelamento de chamada inexistente", async () => {
