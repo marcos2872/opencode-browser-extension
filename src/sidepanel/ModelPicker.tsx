@@ -19,7 +19,13 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
     groups.set(model.providerID, list)
   }
   const current = models.find((model) => keyOf(model) === selected)
+  // O valor salvo pode não estar mais na lista (modelo desabilitado, provider
+  // fora do ar): mostra o que está selecionado em vez de deixar o select vazio.
+  const missing = value !== null && current === undefined
   const variants = current?.variants ?? []
+  const missingVariant =
+    value?.variant !== undefined &&
+    !variants.some((variant) => variant.id === value.variant)
 
   return (
     <>
@@ -36,7 +42,10 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
         }}
         title="Modelo do OpenCode"
       >
-        {models.length === 0 ? <option value="">Sem modelos</option> : null}
+        {models.length === 0 && !missing ? <option value="">Sem modelos</option> : null}
+        {missing && value ? (
+          <option value={selected}>{`${value.providerID}/${value.id}`} (indisponível)</option>
+        ) : null}
         {[...groups.entries()].map(([provider, list]) => (
           <optgroup key={provider} label={provider}>
             {list.map((model) => (
@@ -48,7 +57,7 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
           </optgroup>
         ))}
       </select>
-      {variants.length > 1 ? (
+      {variants.length > 1 || missingVariant ? (
         <select
           className="select"
           value={value?.variant ?? variants[0]?.id ?? ""}
@@ -59,6 +68,9 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
           }}
           title="Variante do modelo"
         >
+          {missingVariant && value?.variant ? (
+            <option value={value.variant}>{value.variant} (indisponível)</option>
+          ) : null}
           {variants.map((variant) => (
             <option key={variant.id} value={variant.id}>
               {variant.id}

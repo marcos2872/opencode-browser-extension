@@ -296,15 +296,101 @@ describe("sidepanel/App", () => {
     expect(sent("interrupt")).toEqual({ type: "interrupt" })
   })
 
-  it("cria uma nova sessão com o modelo selecionado", async () => {
+  it("cria uma nova sessão sem herdar o modelo da conversa anterior", async () => {
     const { user } = await renderApp(makeSnapshot())
 
     await user.click(screen.getByTitle("Nova conversa"))
     expect(sent("session:new")).toEqual({
       type: "session:new",
-      model: { id: "model-1", providerID: "provider-1" },
       windowId: 1,
     })
+  })
+
+  it("segue o modelo padrão atualizado quando não há sessão ativa", async () => {
+    const models = [
+      makeModel(),
+      makeModel({ id: "model-2", providerID: "provider-2", name: "Model Two" }),
+    ]
+    const base = makeSnapshot({
+      sessions: [],
+      activeSessionID: null,
+      models,
+      config: {
+        ...makeSnapshot().config!,
+        defaultModel: { id: "model-1", providerID: "provider-1" },
+      },
+    })
+    const { port } = await renderApp(base)
+    expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue("provider-1/model-1")
+
+    act(() => {
+      port.postMessage({
+        type: "snapshot",
+        snapshot: {
+          ...base,
+          config: {
+            ...base.config!,
+            defaultModel: { id: "model-2", providerID: "provider-2" },
+          },
+        },
+      })
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue(
+        "provider-2/model-2",
+      ),
+    )
+  })
+
+  it("mostra imediatamente o modelo padrão escolhido sem sessão ativa", async () => {
+    const models = [
+      makeModel(),
+      makeModel({ id: "model-2", providerID: "provider-2", name: "Model Two" }),
+    ]
+    const base = makeSnapshot({
+      sessions: [],
+      activeSessionID: null,
+      models,
+      config: {
+        ...makeSnapshot().config!,
+        defaultModel: { id: "model-1", providerID: "provider-1" },
+      },
+    })
+    const updated = {
+      ...base,
+      config: {
+        ...base.config!,
+        defaultModel: { id: "model-2", providerID: "provider-2" },
+      },
+    }
+    const { user } = await renderApp(base, {
+      "settings:update": { ok: true, snapshot: updated },
+    })
+
+    await user.selectOptions(screen.getByTitle("Modelo do OpenCode"), "provider-2/model-2")
+    expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue("provider-2/model-2")
+  })
+
+  it("usa o modelo padrão quando a sessão ativa não tem modelo", async () => {
+    const models = [
+      makeModel(),
+      makeModel({ id: "model-2", providerID: "provider-2", name: "Model Two" }),
+    ]
+    await renderApp(
+      makeSnapshot({
+        models,
+        sessions: [makeSession({ model: undefined })],
+        config: {
+          ...makeSnapshot().config!,
+          defaultModel: { id: "model-2", providerID: "provider-2" },
+        },
+      }),
+    )
+
+    expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue(
+      "provider-2/model-2",
+    )
   })
 
   it("seleciona uma sessão", async () => {

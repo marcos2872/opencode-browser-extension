@@ -53,6 +53,7 @@ export default function App() {
   const [denyText, setDenyText] = useState("")
   const [mode, setMode] = useState<PermissionMode>("allow")
   const [defaultModel, setDefaultModel] = useState<ModelRef | null>(null)
+  const [modelTouched, setModelTouched] = useState(false)
   const [defaultAgent, setDefaultAgent] = useState<string>("")
   const [findMode, setFindMode] = useState<"heuristic" | "model">("heuristic")
   const [timeoutSeconds, setTimeoutSeconds] = useState(60)
@@ -109,6 +110,11 @@ export default function App() {
     }
     setLink("")
     setSnapshot(response.snapshot ?? null)
+    if (!modelTouched) {
+      setDefaultModel(
+        response.snapshot?.config?.defaultModel ?? response.snapshot?.defaultModel ?? null,
+      )
+    }
     showToast("Conectado.")
   }
 
@@ -118,7 +124,14 @@ export default function App() {
       showToast(response.error)
       return
     }
-    if (response.snapshot) setSnapshot(response.snapshot)
+    if (response.snapshot) {
+      setSnapshot(response.snapshot)
+      if (!modelTouched) {
+        setDefaultModel(
+          response.snapshot.config?.defaultModel ?? response.snapshot.defaultModel ?? null,
+        )
+      }
+    }
   }
 
   async function savePermissions() {
@@ -130,12 +143,14 @@ export default function App() {
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
+    // Só envia o modelo padrão quando o usuário mexeu no seletor: `undefined`
+    // no patch apagaria o valor salvo (ex.: modelo adotado no pareamento).
     await chrome.storage.local.set({ [ALLOW_KEY]: allow, [DENY_KEY]: deny })
     const response = await request({
       type: "settings:update",
       patch: {
         permissionMode: mode,
-        defaultModel: defaultModel ?? undefined,
+        ...(modelTouched ? { defaultModel: defaultModel ?? undefined } : {}),
         defaultAgent: defaultAgent || undefined,
         findMode,
         permissionTimeoutMs: timeoutSeconds * 1000,
@@ -156,6 +171,7 @@ export default function App() {
     setSnapshot((current) =>
       current && response.snapshot ? { ...current, config: response.snapshot.config } : current,
     )
+    setModelTouched(false)
     showToast("Permissões salvas.")
   }
 
@@ -296,7 +312,10 @@ export default function App() {
               <ModelPicker
                 models={snapshot.models}
                 value={defaultModel}
-                onChange={(model) => setDefaultModel(model)}
+                onChange={(model) => {
+                  setDefaultModel(model)
+                  setModelTouched(true)
+                }}
               />
               {snapshot.agents.length > 0 ? (
                 <select

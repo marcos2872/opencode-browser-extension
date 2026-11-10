@@ -117,6 +117,57 @@ describe("sidepanel/ModelPicker", () => {
     expect(screen.getByTitle("Variante do modelo")).toHaveValue("slow")
   })
 
+  it("mostra o modelo salvo como indisponível quando ele não está na lista", () => {
+    render(
+      <ModelPicker
+        models={MODELS}
+        value={{ id: "model-x", providerID: "provider-x" }}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue("provider-x/model-x")
+    expect(
+      screen.getByRole("option", { name: "provider-x/model-x (indisponível)" }),
+    ).toBeInTheDocument()
+  })
+
+  it("mostra o modelo salvo mesmo sem lista de modelos", () => {
+    render(
+      <ModelPicker
+        models={[]}
+        value={{ id: "model-x", providerID: "provider-x" }}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const select = screen.getByTitle("Modelo do OpenCode")
+    expect(select).toHaveValue("provider-x/model-x")
+    expect(select).toBeDisabled()
+    expect(screen.queryByRole("option", { name: "Sem modelos" })).not.toBeInTheDocument()
+  })
+
+  it("mostra a variante salva como indisponível", () => {
+    const models = [
+      makeModel({
+        id: "model-1",
+        providerID: "provider-1",
+        variants: [{ id: "fast" }, { id: "slow" }],
+      }),
+    ]
+    render(
+      <ModelPicker
+        models={models}
+        value={{ id: "model-1", providerID: "provider-1", variant: "turbo" }}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const variants = screen.getByTitle("Variante do modelo")
+    expect(variants).toHaveValue("turbo")
+    expect(screen.getByRole("option", { name: "turbo (indisponível)" })).toBeInTheDocument()
+  })
+
   it("esconde o select de variante com zero ou uma variante", () => {
     const { rerender } = render(<ModelPicker models={MODELS} value={null} onChange={vi.fn()} />)
     expect(screen.queryByTitle("Variante do modelo")).not.toBeInTheDocument()
