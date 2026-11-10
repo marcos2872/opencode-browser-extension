@@ -246,7 +246,6 @@ describe("options/App", () => {
       type: "settings:update",
       patch: {
         permissionMode: "allow",
-        defaultModel: undefined,
         defaultAgent: "build",
         findMode: "model",
         permissionTimeoutMs: 120000,
@@ -387,6 +386,54 @@ describe("options/App", () => {
     await user.selectOptions(screen.getByTitle("Modelo do OpenCode"), "provider-2/model-2")
     await user.click(screen.getByRole("button", { name: "Salvar" }))
     expect(sent("settings:update").patch.defaultModel).toEqual({ id: "model-2", providerID: "provider-2" })
+  })
+
+  it("não apaga o modelo padrão ao salvar sem mexer no seletor", async () => {
+    const { user } = await renderOptions(
+      makeSnapshot({
+        config: makeConfig({
+          defaultModel: { id: "model-2", providerID: "provider-2" },
+        }),
+        models: [makeModel()],
+      }),
+    )
+
+    // O modelo salvo não está na lista; mesmo assim não pode ser descartado.
+    expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue("provider-2/model-2")
+
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    expect(sent("settings:update").patch).not.toHaveProperty("defaultModel")
+  })
+
+  it("não apaga o modelo adotado no pareamento ao salvar sem tocar no seletor", async () => {
+    const user = userEvent.setup()
+    const unpaired = makeSnapshot({
+      config: null,
+      models: [],
+      connection: { ...CONNECTION_ONLINE, phase: "unconfigured" },
+    })
+    const paired = makeSnapshot({
+      config: makeConfig({
+        defaultModel: { id: "model-2", providerID: "provider-2" },
+      }),
+      models: [
+        makeModel(),
+        makeModel({ id: "model-2", providerID: "provider-2" }),
+      ],
+    })
+    mockSendMessage(unpaired, { pair: { ok: true, snapshot: paired } })
+    render(<App />)
+    await screen.findByText("Conexão")
+
+    await user.type(
+      screen.getByLabelText(/Link do/),
+      "http://127.0.0.1:49374/auth/connect/abc",
+    )
+    await user.click(screen.getByRole("button", { name: "Conectar" }))
+    await screen.findByText("Conectado.")
+
+    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    expect(sent("settings:update").patch).not.toHaveProperty("defaultModel")
   })
 
   it("troca o agente padrão", async () => {

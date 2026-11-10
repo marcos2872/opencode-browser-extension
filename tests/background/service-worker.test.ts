@@ -112,6 +112,8 @@ function installFetch(
     failPrompt?: boolean;
     agentStatus?: number;
     agents?: unknown[];
+    models?: unknown[];
+    serverDefault?: unknown;
   } = {},
 ): void {
   apiCalls.length = 0;
@@ -132,9 +134,12 @@ function installFetch(
     if (pathname === "/health") return new Response("{}", { status: 404 });
     if (pathname.startsWith("/auth/connect/"))
       return jsonResponse({ token: "token-teste" });
-    if (pathname === "/api/model") return jsonResponse({ data: [makeModel()] });
+    if (pathname === "/api/model")
+      return jsonResponse({ data: options.models ?? [makeModel()] });
     if (pathname === "/api/model/default")
-      return jsonResponse({ data: makeModel({ id: "model-1" }) });
+      return jsonResponse({
+        data: options.serverDefault ?? makeModel({ id: "model-1" }),
+      });
     if (pathname === "/api/agent")
       return options.agentStatus
         ? jsonResponse({ message: "agente indisponível" }, options.agentStatus)
@@ -1160,6 +1165,9 @@ describe("service-worker: eventos SSE", () => {
   async function withSse(): Promise<void> {
     await loadWorker();
     await pairWorker();
+    // A seleção automática do pareamento não adota a sessão; notificações e
+    // badge só valem para conversas da extensão.
+    await callWorker({ type: "session:select", id: "ses_test" });
     await flush();
   }
 
@@ -1390,6 +1398,23 @@ describe("service-worker: eventos SSE", () => {
     expect(snapshot.forms).toHaveLength(0);
   });
 
+  it("exibe formulário da conversa ativa sem ownership e sem avisar", async () => {
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    chrome.notifications.create.mockClear();
+    chrome.runtime.sendMessage.mockClear();
+
+    pushEvent("form.created", { form: makeForm() });
+    const snapshot = await waitForSnapshot((state) => state.forms.length === 1);
+
+    expect(snapshot.forms[0]).toMatchObject({ id: "frm_1" });
+    expect(chrome.notifications.create).not.toHaveBeenCalled();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({
+      type: "PLAY_NOTIFICATION",
+    });
+  });
+
   it("aceita o form embutido em form.cancelled e ignora ids desconhecidos", async () => {
     await withSse();
     const form = makeForm({ id: "frm_2" });
@@ -1404,6 +1429,236 @@ describe("service-worker: eventos SSE", () => {
     await flush();
     snapshot = (await callWorker({ type: "state:get" })).snapshot;
     expect(snapshot.forms).toHaveLength(0);
+  });
+});
+
+describe("service-worker: ownership de sessões", () => {
+  const sessionsWithCli = () => [
+    makeSession({ id: "ses_test", title: "Extensão", time: { created: 1, updated: 3 } }),
+    makeSession({ id: "ses_owned", title: "Adotada", time: { created: 1, updated: 2 } }),
+    makeSession({ id: "ses_cli", title: "CLI", time: { created: 1, updated: 1 } }),
+  ];
+
+  it("não notifica nem marca badge para sessão que não é da extensão", async () => {
+    installFetch({ sessions: sessionsWithCli() });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    chrome.notifications.create.mockClear();
+    chrome.runtime.sendMessage.mockClear();
+    chrome.action.setBadgeText.mockClear();
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_cli" });
+    await flush();
+
+    expect(chrome.notifications.create).not.toHaveBeenCalled();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({
+      type: "PLAY_NOTIFICATION",
+    });
+    expect(chrome.action.setBadgeText).not.toHaveBeenCalledWith({ text: "1" });
+    const snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(
+      snapshot.sessionMeta.find((item: any) => item.sessionID === "ses_cli")
+        ?.unread,
+    ).toBeFalsy();
+  });
+
+  it("notifica e conta no badge uma sessão da extensão em segundo plano", async () => {
+    installFetch({ sessions: sessionsWithCli() });
+    await loadWorker();
+    await pairWorker();
+    await callWorker({ type: "session:select", id: "ses_owned" });
+    await callWorker({ type: "session:select", id: "ses_test" });
+    await flush();
+    chrome.notifications.create.mockClear();
+    chrome.runtime.sendMessage.mockClear();
+    chrome.action.setBadgeText.mockClear();
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_owned" });
+    await flush();
+
+    expect(chrome.notifications.create).toHaveBeenCalled();
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: "PLAY_NOTIFICATION",
+    });
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: "1" });
+  });
+
+  it("ignora formulário de sessão que não é da extensão", async () => {
+    installFetch({ sessions: sessionsWithCli() });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    chrome.notifications.create.mockClear();
+    chrome.runtime.sendMessage.mockClear();
+
+    pushEvent("form.created", {
+      form: makeForm({ id: "frm_cli", sessionID: "ses_cli" }),
+    });
+    await flush();
+
+    expect(chrome.notifications.create).not.toHaveBeenCalled();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({
+      type: "PLAY_NOTIFICATION",
+    });
+    const snapshot = (await callWorker({ type: "state:get" })).snapshot;
+    expect(snapshot.forms).toHaveLength(0);
+    expect(
+      snapshot.sessionMeta.some((item: any) => item.sessionID === "ses_cli"),
+    ).toBe(false);
+  });
+
+  it("adota a sessão usada por prompt e a criada por nova conversa", async () => {
+    installFetch({ sessions: [makeSession({ id: "ses_cli" })] });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    await callWorker({ type: "prompt", text: "oi" });
+    await flush();
+    let owned = chrome.storage.session.data.get("sessionOwnership") as string[];
+    expect(owned).toContain("ses_cli");
+
+    await callWorker({ type: "session:new" });
+    await flush();
+    owned = chrome.storage.session.data.get("sessionOwnership") as string[];
+    expect(owned).toContain("ses_nova");
+  });
+
+  it("adota a sessão ao responder um formulário", async () => {
+    installFetch({ sessions: [makeSession()] });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+
+    await callWorker({
+      type: "form:respond",
+      sessionID: "ses_test",
+      formID: "frm_1",
+      answer: { q0: "Sim" },
+    });
+    await flush();
+
+    expect(chrome.storage.session.data.get("sessionOwnership")).toContain(
+      "ses_test",
+    );
+  });
+
+  it("com painel aberto, notifica só a conversa da extensão em segundo plano", async () => {
+    installFetch({ sessions: sessionsWithCli() });
+    await loadWorker();
+    await pairWorker();
+    await callWorker({ type: "session:select", id: "ses_owned" });
+    await callWorker({ type: "session:select", id: "ses_test" });
+    await flush();
+    const port = chrome.runtime.connect({ name: "opencode-browser-ui" });
+    chrome.notifications.create.mockClear();
+    chrome.runtime.sendMessage.mockClear();
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_test" });
+    await flush();
+    expect(chrome.notifications.create).not.toHaveBeenCalled();
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_owned" });
+    await flush();
+    expect(chrome.notifications.create).toHaveBeenCalledTimes(1);
+
+    // Sessão de CLI em segundo plano continua sem avisar.
+    pushEvent("session.execution.succeeded", { sessionID: "ses_cli" });
+    await flush();
+    expect(chrome.notifications.create).toHaveBeenCalledTimes(1);
+
+    port.disconnect();
+  });
+
+  it("restaura o ownership salvo no storage da sessão", async () => {
+    chrome.storage.session.data.set("sessionOwnership", ["ses_cli"]);
+    installFetch({ sessions: sessionsWithCli() });
+    await loadWorker();
+    await pairWorker();
+    await flush();
+    chrome.notifications.create.mockClear();
+
+    pushEvent("session.execution.succeeded", { sessionID: "ses_cli" });
+    await flush();
+
+    expect(chrome.notifications.create).toHaveBeenCalled();
+  });
+
+  it("remove do ownership quando a sessão é excluída", async () => {
+    installFetch({ sessions: [makeSession()] });
+    await loadWorker();
+    await pairWorker();
+    await callWorker({ type: "session:select", id: "ses_test" });
+    await flush();
+    expect(chrome.storage.session.data.get("sessionOwnership")).toContain(
+      "ses_test",
+    );
+
+    await callWorker({ type: "session:delete", id: "ses_test" });
+    await flush();
+    expect(chrome.storage.session.data.get("sessionOwnership")).not.toContain(
+      "ses_test",
+    );
+  });
+
+  it("limpa o ownership ao desconectar", async () => {
+    await loadWorker();
+    await pairWorker();
+    await callWorker({ type: "session:select", id: "ses_test" });
+    await flush();
+
+    await callWorker({ type: "unpair" });
+    expect(chrome.storage.session.data.get("sessionOwnership")).toEqual([]);
+  });
+
+  it("preserva o modelo padrão salvo quando a listagem vem vazia", async () => {
+    installFetch({
+      models: [],
+      serverDefault: makeModel({ id: "model-2", providerID: "provider-2" }),
+    });
+    await chrome.storage.local.set({
+      "opencode.config": {
+        baseUrl: "http://127.0.0.1:49374",
+        token: "tok",
+        permissionMode: "ask",
+        defaultModel: { id: "model-9", providerID: "provider-9" },
+      },
+    });
+    await loadWorker();
+
+    const stored = await chrome.storage.local.get("opencode.config");
+    expect(
+      (stored["opencode.config"] as { defaultModel?: unknown }).defaultModel,
+    ).toEqual({ id: "model-9", providerID: "provider-9" });
+  });
+
+  it("cria a nova conversa com o modelo salvo nas configurações", async () => {
+    installFetch({
+      models: [
+        makeModel(),
+        makeModel({ id: "model-2", providerID: "provider-2" }),
+      ],
+    });
+    await chrome.storage.local.set({
+      "opencode.config": {
+        baseUrl: "http://127.0.0.1:49374",
+        token: "tok",
+        permissionMode: "allow",
+        defaultModel: { id: "model-2", providerID: "provider-2" },
+      },
+    });
+    await loadWorker();
+    apiCalls.length = 0;
+
+    const response = await callWorker({ type: "session:new" });
+    expect(response.ok).toBe(true);
+    const created = apiCalls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
+    );
+    expect(created?.body).toMatchObject({
+      model: { id: "model-2", providerID: "provider-2" },
+    });
   });
 });
 
@@ -1547,6 +1802,8 @@ describe("service-worker: sessões paralelas", () => {
 
   it("mantém o estado de uma sessão em segundo plano", async () => {
     await withTwoSessions();
+    // A sessão precisa ser adotada para contar no badge/notificação.
+    await callWorker({ type: "session:select", id: "ses_a" });
     pushEvent("session.text.started", {
       sessionID: "ses_a",
       assistantMessageID: "msg_a",

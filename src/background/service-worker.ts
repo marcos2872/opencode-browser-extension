@@ -8,6 +8,7 @@ import { messageUsage } from "./opencode/usage";
 import { Permissions } from "./permissions";
 import { Recording } from "./recording";
 import { RelayClient } from "./relay";
+import { ownedSessions } from "./sessionOwnership";
 import { SessionStates, type SessionState } from "./sessionState";
 import { TabGroups } from "./tabGroups";
 import { computerTools } from "./tools/computer";
@@ -204,6 +205,9 @@ function notifySession(sessionID: string | null): void {
 function markUnread(sessionID: string): void {
   const state = sessionStates.peek(sessionID);
   if (!state || state.unread) return;
+  // Sessões do CLI/subagentes chegam pelo SSE global, mas não são conversas da
+  // extensão: não entram no badge nem no som/notificação.
+  if (!ownedSessions.isOwned(sessionID)) return;
   state.unread = true;
   void updateBadge();
 }
@@ -347,7 +351,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       return { ok: true, snapshot: snapshot(), groupCreated };
     }
     case "session:select":
-      await selectSession(request.id);
+      await selectSession(request.id, true);
       return { ok: true, snapshot: snapshot() };
     case "session:delete":
       await deleteSession(request.id);
@@ -497,6 +501,7 @@ async function adoptWorkspaceHint(): Promise<void> {
 }
 
 async function pair(link: string): Promise<void> {
+  await ownedSessions.init();
   const previous = config;
   const { baseUrl, token } = await OpencodeClient.pair(link);
   config = {
@@ -553,6 +558,7 @@ async function unpair(): Promise<void> {
   agents = [];
   commands = [];
   syncPending = false;
+  await ownedSessions.clear();
   await chrome.storage.local.remove(ACTIVE_SESSION_KEY);
   await updateBadge();
   broadcastNow();
@@ -603,8 +609,11 @@ async function refreshModels(): Promise<void> {
   if (client !== active || !config) return;
   defaultModel = fallback ?? defaultModel;
   const preferred = config.defaultModel;
+  // Lista vazia costuma ser resposta incompleta do servidor: não descarta a
+  // escolha salva por causa disso.
   if (
     preferred &&
+    models.length > 0 &&
     !models.some(
       (model) =>
         model.id === preferred.id && model.providerID === preferred.providerID,
@@ -696,6 +705,8 @@ async function refreshSessions(): Promise<void> {
     )
     .sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0));
   sessionStates.retain(sessions.map((session) => session.id));
+  // `retain` pode descartar um estado unread: revalida o badge.
+  void updateBadge();
   let lostActive = false;
   if (
     activeSessionID &&
@@ -742,6 +753,7 @@ async function createSession(
   if (!session.agent && chosenAgent) session.agent = chosenAgent;
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)];
   activeSessionID = session.id;
+  await ownedSessions.add(session.id);
   const state = stateOf(session.id);
   state.messages = [];
   state.forms = [];
@@ -786,8 +798,11 @@ function cancelPendingFollow(): void {
  * Troca a conversa exibida sem descartar o estado das demais: execuções em
  * segundo plano continuam chegando pelo SSE e ficam no cache da sessão.
  */
-async function selectSession(id: string): Promise<void> {
+async function selectSession(id: string, own = false): Promise<void> {
   if (!sessions.some((session) => session.id === id)) return;
+  // Só a seleção explícita do usuário adota a sessão; a escolha automática
+  // (boot, exclusão, grupo de abas) pode cair em uma sessão do CLI.
+  if (own) await ownedSessions.add(id);
   cancelPendingFollow();
   activeSessionID = id;
   const state = sessionStates.get(id);
@@ -828,6 +843,7 @@ async function respondForm(
   answer: FormAnswer,
 ): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
+  await ownedSessions.add(sessionID);
   await client.replyForm(sessionID, formID, answer);
   removeForm(sessionID, formID);
   notifySession(sessionID);
@@ -839,6 +855,7 @@ async function cancelForm(
   message?: string,
 ): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
+  await ownedSessions.add(sessionID);
   await client.cancelForm(sessionID, formID, message);
   removeForm(sessionID, formID);
   notifySession(sessionID);
@@ -963,6 +980,7 @@ async function deleteSession(id: string): Promise<void> {
 /** Esquece tudo que pertencia a uma sessão removida. */
 function forgetSession(sessionID: string): void {
   sessionStates.delete(sessionID);
+  void ownedSessions.remove(sessionID);
   permissions.forget(sessionID);
   for (const [id, entry] of [...toolAborts.entries()]) {
     if (entry.sessionID !== sessionID) continue;
@@ -979,6 +997,7 @@ async function switchModel(
   const target = sessionID ?? activeSessionID;
   if (!client || !target) throw new Error("Nenhuma sessão ativa.");
   await client.switchModel(target, model);
+  await ownedSessions.add(target);
   const session = sessions.find((item) => item.id === target);
   if (session) session.model = model;
   notifySession(target);
@@ -1050,6 +1069,7 @@ async function runCommand(
 ): Promise<void> {
   if (!client) throw new Error("OpenCode não configurado.");
   const target = await targetSession(sessionID);
+  await ownedSessions.add(target);
   const state = stateOf(target);
   const optimisticID = `local_${crypto.randomUUID()}`;
   state.messages.push({
@@ -1073,6 +1093,7 @@ async function switchAgent(agent: string, sessionID?: string): Promise<void> {
   const target = sessionID ?? activeSessionID;
   if (target) {
     await client.switchAgent(target, agent);
+    await ownedSessions.add(target);
     const session = sessions.find((item) => item.id === target);
     if (session) session.agent = agent;
     notifySession(target);
@@ -1088,6 +1109,7 @@ async function sendPrompt(text: string, sessionID?: string): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
   const target = await targetSession(sessionID);
+  await ownedSessions.add(target);
   const state = stateOf(target);
   const optimisticID = `local_${crypto.randomUUID()}`;
   state.messages.push({
@@ -1259,6 +1281,7 @@ async function syncAfterReconnect(): Promise<void> {
 }
 
 async function reconnectBackend(): Promise<void> {
+  await ownedSessions.init();
   const stored = await getConfig();
   if (!stored) {
     setConnection({ phase: "unconfigured" });
@@ -1313,12 +1336,21 @@ function onOpencodeEvent(event: {
     const formSessionID =
       typeof form?.sessionID === "string" ? form.sessionID : sessionID;
     if (!form?.id || !formSessionID) return;
+    // O SSE é global: formulários de sessões que a extensão não criou/abriu
+    // (CLI, subagentes) não geram estado nem avisos. Se o usuário abrir a
+    // sessão depois, `loadForms` busca os pendentes.
+    const owned = ownedSessions.isOwned(formSessionID);
+    if (!owned) {
+      // Sessão de fora só aparece se for a conversa exibida e conhecida.
+      if (formSessionID !== activeSessionID) return;
+      if (!sessions.some((session) => session.id === formSessionID)) return;
+    }
     const formState = stateOf(formSessionID);
     if (formState.forms.some((item) => item.id === form.id)) return;
     formState.forms = [...formState.forms, form];
     if (formSessionID !== activeSessionID) markUnread(formSessionID);
-    playSound();
-    if (shouldNotify(formSessionID) && config?.notifyEnabled !== false) {
+    if (owned) playSound();
+    if (owned && shouldNotify(formSessionID) && config?.notifyEnabled !== false) {
       void chrome.notifications
         .create(`oc-form-${form.id}`, {
           type: "basic",
@@ -1568,7 +1600,7 @@ function onOpencodeEvent(event: {
       }
       refreshSessionUsage();
       if (sessionID !== activeSessionID) markUnread(sessionID);
-      if (shouldNotify(sessionID)) {
+      if (ownedSessions.isOwned(sessionID) && shouldNotify(sessionID)) {
         playSound();
         if (config?.notifyEnabled !== false) {
           const title = describeSession(sessionID);
@@ -1868,7 +1900,8 @@ async function updateBadge(): Promise<void> {
     } else {
       const unread = sessionStates
         .meta()
-        .filter((item) => item.unread).length;
+        .filter((item) => item.unread && ownedSessions.isOwned(item.sessionID))
+        .length;
       await chrome.action.setBadgeText({
         text: unread ? String(Math.min(unread, 9)) : "",
       });
@@ -2087,6 +2120,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 async function init(): Promise<void> {
   try {
+    await ownedSessions.init();
     await permissions.init();
     // A limpeza mexe em abas: nunca durante uma execução do agente.
     if (!sessionStates.anyBusy() && toolAborts.size === 0) {
