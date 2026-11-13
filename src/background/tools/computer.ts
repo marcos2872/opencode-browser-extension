@@ -155,7 +155,7 @@ export const computerTools: ToolMap = {
       const point = await pointFor(args, ctx, tabId)
       const button = args.button === "right" ? "right" : args.button === "middle" ? "middle" : "left"
       const count = Math.min(Math.max(num(args.click_count) ?? num(args.clickCount) ?? 1, 1), 3)
-      await ctx.cursor(tabId, point.x, point.y)
+      await ctx.cursor(tabId, point.x, point.y, { click: true })
       await ctx.indicator(tabId, "Clicando", true)
       try {
         await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
@@ -164,9 +164,15 @@ export const computerTools: ToolMap = {
           await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button, clickCount: index })
         }
       } catch (error) {
-        if (!ref) throw error
+        if (!ref) {
+          await ctx.hideIndicator(tabId)
+          throw error
+        }
         const fallback = await clickRef(tabId, ref)
-        if (!fallback.ok) throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).", { cause: error })
+        if (!fallback.ok) {
+          await ctx.hideIndicator(tabId)
+          throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).", { cause: error })
+        }
       }
       await sleep(250)
       const adopted = await adoptOpenerTabs(ctx, tabId)
@@ -207,7 +213,7 @@ export const computerTools: ToolMap = {
           await sleep(80)
         } else {
           const point = await pointFor(args, ctx, tabId)
-          await ctx.cursor(tabId, point.x, point.y)
+          await ctx.cursor(tabId, point.x, point.y, { click: true })
           await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button: "left", clickCount: 1 })
           await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button: "left", clickCount: 1 })
           await sleep(100)
@@ -254,10 +260,14 @@ export const computerTools: ToolMap = {
           : await center(tabId)
       const deltaX = direction === "left" ? -amount : direction === "right" ? amount : 0
       const deltaY = direction === "up" ? -amount : direction === "down" ? amount : 0
+      await ctx.cursor(tabId, point.x, point.y)
       await ctx.indicator(tabId, "Rolando", true)
-      await ctx.cdp.wheel(tabId, point.x, point.y, deltaX, deltaY)
-      await sleep(250)
-      await ctx.hideIndicator(tabId)
+      try {
+        await ctx.cdp.wheel(tabId, point.x, point.y, deltaX, deltaY)
+        await sleep(250)
+      } finally {
+        await ctx.hideIndicator(tabId)
+      }
       return { content: `Scroll ${direction} de ${amount}px.` }
     }
 

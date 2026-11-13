@@ -145,7 +145,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "click", ref: "ref_1" }, mocks.ctx)
 
       expect(a11yMock.resolveRef).toHaveBeenCalledWith(1, "ref_1")
-      expect(mocks.cursor).toHaveBeenCalledWith(1, 10, 20)
+      expect(mocks.cursor).toHaveBeenCalledWith(1, 10, 20, { click: true })
       expect(mocks.cdp.mouse.mock.calls).toEqual([
         [1, "mouseMoved", 10, 20],
         [1, "mousePressed", 10, 20, { button: "left", clickCount: 1 }],
@@ -161,7 +161,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "click", coordinate: [100.4, 200.6] }, mocks.ctx)
 
       expect(a11yMock.resolveRef).not.toHaveBeenCalled()
-      expect(mocks.cursor).toHaveBeenCalledWith(1, 100.4, 200.6)
+      expect(mocks.cursor).toHaveBeenCalledWith(1, 100.4, 200.6, { click: true })
       expect(mocks.cdp.mouse).toHaveBeenNthCalledWith(1, 1, "mouseMoved", 100.4, 200.6)
       expect(result.content).toBe("Clique em (100, 201).")
     })
@@ -369,7 +369,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.computer({ action: "type", ref: "ref_1", text: "olá" }, mocks.ctx)
 
-      expect(mocks.cursor).toHaveBeenCalledWith(1, 10, 20)
+      expect(mocks.cursor).toHaveBeenCalledWith(1, 10, 20, { click: true })
       expect(mocks.cdp.mouse.mock.calls).toEqual([
         [1, "mousePressed", 10, 20, { button: "left", clickCount: 1 }],
         [1, "mouseReleased", 10, 20, { button: "left", clickCount: 1 }],
@@ -483,6 +483,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "scroll" }, mocks.ctx)
 
       expect(mocks.cdp.wheel).toHaveBeenCalledWith(1, 400, 300, 0, 600)
+      expect(mocks.cursor).toHaveBeenCalledWith(1, 400, 300)
       expect(result.content).toBe("Scroll down de 600px.")
       expect(mocks.indicator).toHaveBeenCalledWith(1, "Rolando", true)
       expect(mocks.hideIndicator).toHaveBeenCalledWith(1)

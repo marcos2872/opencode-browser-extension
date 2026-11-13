@@ -6,6 +6,7 @@ import {
 } from "./opencode/client";
 import { messageUsage } from "./opencode/usage";
 import { Permissions } from "./permissions";
+import { Presence } from "./presence";
 import { Recording } from "./recording";
 import { RelayClient } from "./relay";
 import { ownedSessions } from "./sessionOwnership";
@@ -1156,6 +1157,7 @@ async function interrupt(sessionID?: string | null): Promise<void> {
     for (const message of state.messages) {
       if (message.kind === "assistant") message.streaming = false;
     }
+    void presence.hideSession(target);
     notifySession(target);
   }
   if (stopAll) {
@@ -1632,6 +1634,7 @@ function onOpencodeEvent(event: {
       const status = data.status as { type?: string } | undefined;
       if (status?.type === "idle") {
         state.busy = false;
+        void presence.hideSession(sessionID);
         for (const message of state.messages) {
           if (message.kind === "assistant") message.streaming = false;
         }
@@ -1747,6 +1750,16 @@ function contentText(content: unknown): string | undefined {
   return text || undefined;
 }
 
+/** Borda animada + mouse virtual nas abas em uso pelo agente. */
+const presence = new Presence({
+  send: (tabId, message) =>
+    chrome.tabs.sendMessage(tabId, message).then(
+      () => true,
+      () => false,
+    ),
+  isBusy: (sessionID) => sessionStates.peek(sessionID)?.busy ?? false,
+});
+
 async function executeRelayTool(
   request: Extract<RelayInbound, { type: "tool_request" }>,
 ): Promise<void> {
@@ -1763,22 +1776,13 @@ async function executeRelayTool(
       relay.send({ type: "progress", id: request.id, phase, detail });
     },
     indicator: async (tabId, status, busy = true) => {
-      await chrome.tabs
-        .sendMessage(tabId, { type: "indicator:show" })
-        .catch(() => undefined);
-      await chrome.tabs
-        .sendMessage(tabId, { type: "indicator:status", text: status, busy })
-        .catch(() => undefined);
+      await presence.show(tabId, status, busy, sessionID);
     },
     hideIndicator: async (tabId) => {
-      await chrome.tabs
-        .sendMessage(tabId, { type: "indicator:hide" })
-        .catch(() => undefined);
+      presence.release(tabId);
     },
-    cursor: async (tabId, x, y) => {
-      await chrome.tabs
-        .sendMessage(tabId, { type: "indicator:cursor", x, y })
-        .catch(() => undefined);
+    cursor: async (tabId, x, y, options) => {
+      await presence.cursor(tabId, x, y, sessionID, options?.click === true);
     },
     rank: async (query, candidates) => {
       if (!client || (config?.findMode ?? "heuristic") !== "model") return null;
@@ -1874,6 +1878,7 @@ async function executeRelayTool(
 
 function handleStop(sender: chrome.runtime.MessageSender): void {
   if (sender.tab?.id !== undefined) {
+    void presence.hide(sender.tab.id);
     void chrome.tabs
       .sendMessage(sender.tab.id, { type: "indicator:hide" })
       .catch(() => undefined);
@@ -2086,6 +2091,17 @@ chrome.commands.onCommand.addListener((command) => {
         .open({ windowId: window.id })
         .catch(() => undefined);
   });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  // Navegar recria o content script: reenvia borda e cursor se o agente ainda usa a aba.
+  if (info.status === "complete" && presence.has(tabId)) {
+    void presence.restore(tabId);
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  presence.forget(tabId);
 });
 
 chrome.tabs.onActivated.addListener((info) => {
