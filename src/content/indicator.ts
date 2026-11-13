@@ -110,7 +110,8 @@ function mount(): void {
     if (cursorPlaced) cursor?.classList.add("on")
     return
   }
-  if (document.getElementById(HOST_ID)) return
+  // Sobra de um content script órfão (extensão recarregada): sem dono, nunca seria apagada.
+  document.getElementById(HOST_ID)?.remove()
   host = document.createElement("div")
   host.id = HOST_ID
   host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483647;"

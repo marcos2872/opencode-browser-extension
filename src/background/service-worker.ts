@@ -12,6 +12,7 @@ import { RelayClient } from "./relay";
 import { ownedSessions } from "./sessionOwnership";
 import { SessionStates, type SessionState } from "./sessionState";
 import { TabGroups } from "./tabGroups";
+import { injectContentScript } from "./tools/a11y";
 import { computerTools } from "./tools/computer";
 import { gifTools } from "./tools/gif";
 import { pageTools } from "./tools/page";
@@ -1752,11 +1753,18 @@ function contentText(content: unknown): string | undefined {
 
 /** Borda animada + mouse virtual nas abas em uso pelo agente. */
 const presence = new Presence({
-  send: (tabId, message) =>
-    chrome.tabs.sendMessage(tabId, message).then(
-      () => true,
-      () => false,
-    ),
+  send: async (tabId, message) => {
+    const deliver = () =>
+      chrome.tabs.sendMessage(tabId, message).then(
+        () => true,
+        () => false,
+      );
+    if (await deliver()) return true;
+    // Aba aberta antes de a extensão ser (re)carregada: ainda não tem content script.
+    if (message.type === "indicator:hide") return false;
+    if (!(await injectContentScript(tabId))) return false;
+    return deliver();
+  },
   isBusy: (sessionID) => sessionStates.peek(sessionID)?.busy ?? false,
 });
 

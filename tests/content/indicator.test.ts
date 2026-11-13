@@ -150,6 +150,18 @@ describe("content/indicator — show/hide", () => {
     expect(css).toContain("prefers-reduced-motion")
   })
 
+  it("substitui um host órfão deixado por um content script antigo", () => {
+    const stale = document.createElement("div")
+    stale.id = HOST_ID
+    document.documentElement.appendChild(stale)
+
+    listener({ type: "indicator:cursor", x: 1, y: 2 })
+
+    expect(document.querySelectorAll(`#${HOST_ID}`)).toHaveLength(1)
+    expect(host()).not.toBe(stale)
+    expect(ui().cursor?.classList.contains("on")).toBe(true)
+  })
+
   it("apaga com fade e remove o host só depois da transição", () => {
     vi.useFakeTimers()
     listener({ type: "indicator:show" })
