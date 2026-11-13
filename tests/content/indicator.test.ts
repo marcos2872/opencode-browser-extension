@@ -41,6 +41,7 @@ function ui() {
 }
 
 beforeEach(async () => {
+  vi.useRealTimers()
   document.body.innerHTML = ""
   host()?.remove()
   delete (window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled
@@ -136,14 +137,45 @@ describe("content/indicator — show/hide", () => {
     expect(shadowRoots).toHaveLength(1)
   })
 
-  it("remove o host no hide", () => {
+  it("monta o anel animado e o brilho da borda, apagados até o fade-in", () => {
+    listener({ type: "indicator:show" })
+
+    const root = lastShadowRoot()
+    const frame = root.querySelector(".frame")
+    expect(frame?.querySelector(".ring")).toBeTruthy()
+    expect(frame?.querySelector(".glow")).toBeTruthy()
+    expect(frame?.classList.contains("on")).toBe(true)
+    const css = root.querySelector("style")?.textContent ?? ""
+    expect(css).toContain("conic-gradient")
+    expect(css).toContain("prefers-reduced-motion")
+  })
+
+  it("apaga com fade e remove o host só depois da transição", () => {
+    vi.useFakeTimers()
     listener({ type: "indicator:show" })
     expect(host()).toBeTruthy()
 
     listener({ type: "indicator:hide" })
 
+    expect(host()).toBeTruthy()
+    expect(lastShadowRoot().querySelector(".frame")?.classList.contains("on")).toBe(false)
+
+    vi.advanceTimersByTime(400)
     expect(host()).toBeNull()
     expect(document.querySelectorAll(`#${HOST_ID}`)).toHaveLength(0)
+  })
+
+  it("show durante o fade-out cancela a remoção e reaproveita o host", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:show" })
+    listener({ type: "indicator:hide" })
+
+    listener({ type: "indicator:show" })
+    vi.advanceTimersByTime(1000)
+
+    expect(host()).toBeTruthy()
+    expect(shadowRoots).toHaveLength(1)
+    expect(lastShadowRoot().querySelector(".frame")?.classList.contains("on")).toBe(true)
   })
 
   it("ignora hide quando o host não existe", () => {
@@ -152,12 +184,15 @@ describe("content/indicator — show/hide", () => {
   })
 
   it("permite remontar depois do hide", () => {
+    vi.useFakeTimers()
     listener({ type: "indicator:show" })
     listener({ type: "indicator:hide" })
+    vi.advanceTimersByTime(400)
     listener({ type: "indicator:show" })
 
     expect(document.querySelectorAll(`#${HOST_ID}`)).toHaveLength(1)
     expect(host()?.parentElement).toBe(document.documentElement)
+    expect(shadowRoots).toHaveLength(2)
   })
 })
 
@@ -228,22 +263,93 @@ describe("content/indicator — cursor", () => {
     expect(cursor?.style.transform).toBe("")
   })
 
-  it("não cria cursor sem host montado", () => {
+  it("o cursor monta o overlay sozinho, sem depender de indicator:show", () => {
+    expect(host()).toBeNull()
+
+    listener({ type: "indicator:cursor", x: 1, y: 2 })
+
+    expect(host()).toBeTruthy()
+    expect(ui().cursor?.style.transform).toBe("translate3d(1px, 2px, 0)")
+    expect(ui().cursor?.classList.contains("on")).toBe(true)
+  })
+
+  it("não monta nada quando a janela não é o frame de topo", () => {
+    vi.stubGlobal("top", {})
+
     expect(() => listener({ type: "indicator:cursor", x: 1, y: 2 })).not.toThrow()
+    expect(() => listener({ type: "indicator:click", x: 1, y: 2 })).not.toThrow()
 
     expect(host()).toBeNull()
-    expect(shadowRoots).toHaveLength(0)
+  })
+
+  it("nasce no destino (snap) e só depois passa a viajar com transição", () => {
+    listener({ type: "indicator:show" })
+
+    listener({ type: "indicator:cursor", x: 300, y: 200 })
+
+    const { cursor } = ui()
+    expect(cursor?.classList.contains("snap")).toBe(false)
+    expect(lastShadowRoot().querySelector("style")?.textContent).toContain(".cursor.snap")
   })
 
   it("descarta o cursor ao remontar", () => {
+    vi.useFakeTimers()
     listener({ type: "indicator:show" })
     listener({ type: "indicator:cursor", x: 1, y: 2 })
     expect(ui().cursor).toBeTruthy()
 
     listener({ type: "indicator:hide" })
+    vi.advanceTimersByTime(400)
     listener({ type: "indicator:show" })
 
     expect(ui().cursor).toBeNull()
+  })
+
+  it("apaga o cursor junto com a borda no hide", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:cursor", x: 1, y: 2 })
+
+    listener({ type: "indicator:hide" })
+
+    expect(ui().cursor?.classList.contains("on")).toBe(false)
+  })
+})
+
+describe("content/indicator — clique", () => {
+  it("move o cursor, afunda e solta uma onda no ponto do clique", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:show" })
+
+    listener({ type: "indicator:click", x: 120, y: 80 })
+
+    const { cursor, root } = ui()
+    expect(cursor?.style.transform).toBe("translate3d(120px, 80px, 0)")
+    expect(cursor?.classList.contains("press")).toBe(true)
+    const ripple = root.querySelector<HTMLElement>(".ripple")
+    expect(ripple).toBeTruthy()
+    expect(ripple?.style.getPropertyValue("--x")).toBe("120px")
+    expect(ripple?.style.getPropertyValue("--y")).toBe("80px")
+
+    vi.advanceTimersByTime(200)
+    expect(ui().cursor?.classList.contains("press")).toBe(false)
+
+    vi.advanceTimersByTime(800)
+    expect(root.querySelector(".ripple")).toBeNull()
+  })
+
+  it("monta o overlay sozinho quando o clique chega primeiro", () => {
+    listener({ type: "indicator:click", x: 5, y: 6 })
+
+    expect(host()).toBeTruthy()
+    expect(ui().root.querySelector(".ripple")).toBeTruthy()
+  })
+
+  it("não solta onda com coordenadas inválidas", () => {
+    listener({ type: "indicator:show" })
+
+    listener({ type: "indicator:click", x: "5", y: null })
+
+    expect(ui().root.querySelector(".ripple")).toBeNull()
   })
 })
 
