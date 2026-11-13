@@ -1226,10 +1226,18 @@ function startSse(resetBackoff = true): void {
         });
       } catch (error) {
         if (controller.signal.aborted) return;
-        console.error("[sse] erro", error);
+        const failure = classifyFailure(error);
+        // Servidor fora do ar é esperado (reinício, fechamento): o painel já
+        // mostra o banner e a reconexão é automática, então não vai para a
+        // lista de erros da extensão.
+        if (failure === "unreachable" || failure === "timeout") {
+          console.log("[sse] indisponível, tentando novamente", errorMessage(error));
+        } else {
+          console.error("[sse] erro", error);
+        }
         setConnection({
           phase: "offline",
-          failure: classifyFailure(error),
+          failure,
           detail: errorMessage(error),
           attempts: connection.attempts + 1,
         });
