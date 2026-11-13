@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Consulte as opções de conexão, sessões, permissões e exibição." />
+<title>Configurações — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html" aria-current="page">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#12-configuracoes">12. Configurações</a><a class="n3" href="#conexao">Conexão</a><a class="n3" href="#conversas-e-modelo">Conversas e modelo</a><a class="n3" href="#permissoes">Permissões</a><a class="n3" href="#avisos-e-exibicao">Avisos e exibição</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Configurações</h1>
+  <h2 id="12-configuracoes">12. Configurações</h2>
+<p>Abra pelo botão <strong>Configurações</strong> no cabeçalho do painel.</p>
+<h3 id="conexao">Conexão</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo / botão</th><th style="text-align:left">Para que serve</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Link do <code>opencode pair</code></strong> + <strong>Conectar</strong></td><td style="text-align:left">Aparece só quando não há pareamento; cola o link e conecta</td></tr>
+<tr><td style="text-align:left"><strong>Servidor</strong></td><td style="text-align:left">Mostra o endereço, só leitura</td></tr>
+<tr><td style="text-align:left"><strong>Token</strong></td><td style="text-align:left">Mostra os primeiros e últimos caracteres, só leitura</td></tr>
+<tr><td style="text-align:left"><strong>Abrir painel</strong></td><td style="text-align:left">Abre o painel lateral na janela atual</td></tr>
+<tr><td style="text-align:left"><strong>Reconectar</strong></td><td style="text-align:left">Reconecta à API do OpenCode</td></tr>
+<tr><td style="text-align:left"><strong>Reconectar plugin</strong></td><td style="text-align:left">Reconecta ao plugin das ferramentas</td></tr>
+<tr><td style="text-align:left"><strong>Desconectar</strong></td><td style="text-align:left">Remove o token (pede confirmação)</td></tr></tbody></table></div>
+<p>Duas linhas de status: <strong>API:</strong> (online, conectando, não configurada ou o motivo do offline) e <strong>Ferramentas:</strong> (estado do plugin).</p>
+<h3 id="conversas-e-modelo">Conversas e modelo</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Pasta das conversas do navegador</strong></td><td style="text-align:left"><code>~/.opencode-browser-extensions</code></td><td style="text-align:left">Só lista conversas dessa pasta</td></tr>
+<tr><td style="text-align:left"><strong>Modelo padrão</strong> (+ variante)</td><td style="text-align:left">modelo padrão do servidor</td><td style="text-align:left">Modelo das novas conversas; modelos sem ferramentas aparecem como “(sem tools)”</td></tr>
+<tr><td style="text-align:left"><strong>Agente padrão</strong></td><td style="text-align:left"><code>build</code></td><td style="text-align:left">Usado quando o agente do navegador está desligado</td></tr>
+<tr><td style="text-align:left"><strong>Usar o agente <code>opencode-browser</code> nas novas sessões</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Novas conversas nascem no agente que sabe usar o navegador</td></tr>
+<tr><td style="text-align:left"><strong>Mostrar no painel a conversa do grupo de abas que está em foco</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">O painel segue o grupo da aba em foco</td></tr>
+<tr><td style="text-align:left"><strong>Criar um grupo de abas ao iniciar uma nova conversa</strong></td><td style="text-align:left">desligado</td><td style="text-align:left">O <strong>+</strong> já cria grupo e aba em branco</td></tr>
+<tr><td style="text-align:left"><strong>Permitir que abas abertas ou anexadas pelo agente venham para frente</strong></td><td style="text-align:left">desligado</td><td style="text-align:left">Ligado, a extensão passa a ativar abas</td></tr></tbody></table></div>
+<h3 id="permissoes">Permissões</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left">Modo (perguntar / permitir / bloquear)</td><td style="text-align:left">permitir</td><td style="text-align:left">Ver seção 10</td></tr>
+<tr><td style="text-align:left"><strong>Tempo para responder a um pedido</strong></td><td style="text-align:left">1 minuto</td><td style="text-align:left">Depois disso, a ação é negada</td></tr>
+<tr><td style="text-align:left"><strong>Busca por elemento</strong></td><td style="text-align:left">Heurística (grátis)</td><td style="text-align:left">A opção “Modelo do OpenCode” usa tokens no <code>find</code></td></tr>
+<tr><td style="text-align:left">Sites sempre permitidos / bloqueados</td><td style="text-align:left">vazio</td><td style="text-align:left">Listas de host, uma por linha</td></tr></tbody></table></div>
+<h3 id="avisos-e-exibicao">Avisos e exibição</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Campo</th><th style="text-align:left">Padrão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Tocar um aviso sonoro quando o agente terminar ou pedir permissão com o painel fechado</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Bipe curto</td></tr>
+<tr><td style="text-align:left"><strong>Mostrar notificação do sistema quando o agente terminar com o painel fechado</strong></td><td style="text-align:left">ligado</td><td style="text-align:left">Notificação do Chrome</td></tr>
+<tr><td style="text-align:left"><strong>Ferramentas no chat</strong></td><td style="text-align:left">Agrupadas</td><td style="text-align:left">Agrupadas, linhas compactas, cards completos ou ocultar</td></tr></tbody></table></div>
+<p>Os botões <strong>Salvar</strong> (modelo/agente) e <strong>Salvar permissões</strong> gravam as alterações; o aviso <strong>“Permissões salvas.”</strong> confirma.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

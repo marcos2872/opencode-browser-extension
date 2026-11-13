@@ -34,7 +34,7 @@ ou na página de opções.
 ## Pasta das conversas
 
 Por padrão, o plugin anuncia e cria a pasta `~/.opencode-browser-extensions`
-(equivalente em cada sistema, veja [plugin.md](plugin.md)). A extensão usa essa
+(equivalente em cada sistema, veja [plugin.md](../arquitetura/plugin.md)). A extensão usa essa
 pasta como `location` das sessões e filtra a listagem por ela: só aparecem as
 conversas criadas ali. O campo "Pasta das conversas do navegador" nas opções
 permite trocar o caminho; um valor definido pelo usuário não é sobrescrito pelo

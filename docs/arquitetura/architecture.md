@@ -112,6 +112,6 @@ flowchart TD
 
 ## Decisões registradas
 
-As escolhas estruturais estão em [adr/](adr/): MV3 + side panel, pareamento por
+As escolhas estruturais estão em [adr/](../adr/): MV3 + side panel, pareamento por
 link, plugin local com relay, permissões por ação/domínio, CDP com fallback,
 grupos de abas por sessão, ranking opcional no `find` e GIF no offscreen.

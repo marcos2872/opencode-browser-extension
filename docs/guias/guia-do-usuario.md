@@ -46,8 +46,9 @@ Na pasta do projeto:
 
 O script, nesta ordem:
 
-1. confere se existem **Node.js 20+**, **npm** e **OpenCode v2+** (para com uma
-   mensagem clara se faltar algum);
+1. confere se existem **[Node.js 20+](https://nodejs.org/en/download)**, **npm**
+   e **[OpenCode v2+](https://opencode.ai/docs/)** (para com uma mensagem clara
+   se faltar algum);
 2. instala as dependências (`npm install`);
 3. gera o build da extensão (`npm run build`) em `dist/`;
 4. copia o plugin e o template do agente para a pasta de plugins do OpenCode

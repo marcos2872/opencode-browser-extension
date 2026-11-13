@@ -115,7 +115,8 @@ edite `dist/`: é artefato gerado e está no `.gitignore`.
 - `public/manifest.json` — manifest MV3 (permissões, content script, side panel).
 
 Documentação detalhada em `docs/` (comece por `docs/index.md`, depois
-`architecture.md`, `extension.md`, `plugin.md`, `tools.md` e `development.md`).
+`docs/arquitetura/architecture.md`, `docs/arquitetura/extension.md`,
+`docs/arquitetura/plugin.md`, `docs/referencia/tools.md` e `docs/development.md`).
 Decisões estruturais estão em `docs/adr/`.
 
 ## Convenções
@@ -149,7 +150,7 @@ Decisões estruturais estão em `docs/adr/`.
   linhas, funções, branches e instruções (`vitest.config.ts`).
 - **Commits:** Conventional Commits em português (`feat:`, `fix:`, `docs:`,
   `test:`, `ci:`, `chore:`), conforme o histórico do repositório.
-- **Documentação:** vive em `docs/`, nunca dentro de `src/`.
+- **Documentação:** fontes Markdown vivem em `docs/`, páginas HTML em `web/`; nenhuma fica dentro de `src/`.
 
 ### Armadilhas conhecidas
 

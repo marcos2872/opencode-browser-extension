@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Avisos, problemas comuns, privacidade e referência rápida." />
+<title>Ajuda e referência — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html" aria-current="page">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#13-avisos-e-sinais">13. Avisos e sinais</a><a class="n2" href="#14-problemas-comuns">14. Problemas comuns</a><a class="n2" href="#15-limites-e-privacidade">15. Limites e privacidade</a><a class="n2" href="#16-referencia-rapida">16. Referência rápida</a><a class="n3" href="#caminhos">Caminhos</a><a class="n3" href="#comandos-uteis">Comandos úteis</a><a class="n3" href="#pedidos-que-funcionam-bem">Pedidos que funcionam bem</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Ajuda e referência</h1>
+  <h2 id="13-avisos-e-sinais">13. Avisos e sinais</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Sinal</th><th style="text-align:left">O que significa</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Badge “!”</strong> no ícone</td><td style="text-align:left">Falta configurar o pareamento</td></tr>
+<tr><td style="text-align:left"><strong>Badge com número</strong></td><td style="text-align:left">Quantas conversas têm novidade (no máximo 9)</td></tr>
+<tr><td style="text-align:left"><strong>Ponto verde/vermelho/âmbar</strong> no cabeçalho</td><td style="text-align:left">API online, offline ou conectando</td></tr>
+<tr><td style="text-align:left"><strong>Banner de conexão</strong></td><td style="text-align:left">Explica a falha e oferece <strong>Tentar novamente</strong>, <strong>Reconectar</strong> ou <strong>Abrir configurações</strong></td></tr>
+<tr><td style="text-align:left"><strong>Faixa de status</strong> abaixo do chat</td><td style="text-align:left">Tentativas de reconexão e mensagens do backend</td></tr>
+<tr><td style="text-align:left"><strong>Borda azul na página</strong></td><td style="text-align:left">O agente está agindo naquela aba; tem botão <strong>Parar</strong></td></tr>
+<tr><td style="text-align:left"><strong>“ferramentas conectadas” / “ferramentas offline”</strong></td><td style="text-align:left">Estado do plugin no rodapé do composer</td></tr>
+<tr><td style="text-align:left"><strong>Som + notificação</strong></td><td style="text-align:left">Algo aconteceu com o painel fechado (fim de execução, permissão, pergunta)</td></tr>
+<tr><td style="text-align:left"><strong>Aviso temporário no rodapé</strong></td><td style="text-align:left">Confirmação ou erro de uma ação sua</td></tr></tbody></table></div>
+<hr />
+<h2 id="14-problemas-comuns">14. Problemas comuns</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Sintoma</th><th style="text-align:left">Causa provável</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">Painel diz que o OpenCode não está respondendo</td><td style="text-align:left">Servidor parado</td><td style="text-align:left">Rode <code>opencode serve</code> e clique em <strong>Tentar novamente</strong></td></tr>
+<tr><td style="text-align:left">“Token do OpenCode inválido ou expirado”</td><td style="text-align:left">Token revogado ou trocado</td><td style="text-align:left"><code>opencode pair</code> e cole o link novo nas configurações</td></tr>
+<tr><td style="text-align:left">“O OpenCode demorou demais para responder”</td><td style="text-align:left">Servidor travado</td><td style="text-align:left">Reinicie o OpenCode</td></tr>
+<tr><td style="text-align:left">Ferramentas offline</td><td style="text-align:left">Plugin não instalado ou serviço antigo em memória</td><td style="text-align:left"><code>npm run install:plugin</code> + <code>opencode service restart</code></td></tr>
+<tr><td style="text-align:left">“Plugin recusou a conexão”</td><td style="text-align:left">ID da extensão diferente do esperado</td><td style="text-align:left">Recarregue a extensão; se persistir, ajuste <code>OPENCODE_BROWSER_EXTENSION_ID</code></td></tr>
+<tr><td style="text-align:left">O agente não acha <code>browser_tabs_close</code></td><td style="text-align:left">Nome reservado por outro plugin</td><td style="text-align:left">Use <code>browser_tabs_close_tab</code> e reagende as ferramentas</td></tr>
+<tr><td style="text-align:left">Mudança no código não aparece</td><td style="text-align:left">Service worker em cache</td><td style="text-align:left"><strong>Recarregar</strong> em <code>chrome://extensions</code></td></tr>
+<tr><td style="text-align:left">“Não foi possível preparar a página…”</td><td style="text-align:left">Página <code>chrome://</code>, Chrome Web Store ou aba em branco</td><td style="text-align:left">Abra uma página normal e tente de novo</td></tr>
+<tr><td style="text-align:left">“O DevTools está aberto nesta aba…”</td><td style="text-align:left">DevTools interfere na automação</td><td style="text-align:left">Feche o DevTools daquela aba</td></tr>
+<tr><td style="text-align:left">“A ref … está dentro de um iframe…”</td><td style="text-align:left">Ação por coordenadas em elemento de iframe</td><td style="text-align:left">Peça a ação por referência (clicar/preencher)</td></tr>
+<tr><td style="text-align:left">“Ref … não encontrada”</td><td style="text-align:left">A página mudou depois da leitura</td><td style="text-align:left">Peça ao agente para ler a página de novo</td></tr>
+<tr><td style="text-align:left">“Só é possível anexar abas http(s).”</td><td style="text-align:left">Aba interna do navegador</td><td style="text-align:left">Use uma página comum</td></tr>
+<tr><td style="text-align:left">“A aba está em outra janela…”</td><td style="text-align:left">Grupo pertence a outra janela</td><td style="text-align:left">Abra uma aba pela conversa ou mova a aba de janela</td></tr>
+<tr><td style="text-align:left">“O arquivo … excede o limite de ~5 MB.”</td><td style="text-align:left">Upload grande demais</td><td style="text-align:left">Reduza o arquivo</td></tr>
+<tr><td style="text-align:left">“Nenhum quadro gravado…”</td><td style="text-align:left">GIF sem <code>start</code></td><td style="text-align:left">Peça para iniciar a gravação antes</td></tr>
+<tr><td style="text-align:left">“Falha ao gerar o GIF (offscreen indisponível).”</td><td style="text-align:left">Documento offscreen não subiu</td><td style="text-align:left">Recarregue a extensão</td></tr>
+<tr><td style="text-align:left">Erro <code>403</code> nas ferramentas</td><td style="text-align:left">Token do relay desatualizado</td><td style="text-align:left">Apague <code>~/.cache/opencode-browser/relay.json</code> (ou em <code>$XDG_RUNTIME_DIR/opencode-browser/</code>) e reinicie o OpenCode</td></tr></tbody></table></div>
+<hr />
+<h2 id="15-limites-e-privacidade">15. Limites e privacidade</h2>
+<ul>
+<li><strong>Tudo local</strong>: a extensão fala com <code>127.0.0.1</code>; o plugin escuta apenas em loopback (portas 8799–8802) e exige um “hello” da extensão antes de atender.</li>
+<li><strong>O painel é uma visão só</strong>: duas janelas abertas mostram a mesma conversa.</li>
+<li><strong>Vínculo conversa↔grupo</strong> não sobrevive a fechar o Chrome por completo.</li>
+<li><strong>Até 4 conversas</strong> com estado detalhado em memória ao mesmo tempo.</li>
+<li><strong>Uma resposta em streaming por vez</strong>, mas várias conversas podem executar em paralelo.</li>
+<li><strong>Grupo automático</strong> cria uma aba em branco por conversa; grupos de conversas apagadas fora da extensão só são liberados no próximo início do navegador.</li>
+<li><strong>O card de permissão é modal</strong>: enquanto houver um pedido aberto, o painel fica coberto — responda (ou use <strong>Esc</strong>) para continuar.</li>
+</ul>
+<hr />
+<h2 id="16-referencia-rapida">16. Referência rápida</h2>
+<h3 id="caminhos">Caminhos</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">O quê</th><th style="text-align:left">Onde</th></tr></thead><tbody><tr><td style="text-align:left">Build da extensão</td><td style="text-align:left"><code>dist/</code> (é a pasta a carregar no Chrome)</td></tr>
+<tr><td style="text-align:left">Plugin e agente</td><td style="text-align:left"><code>~/.config/opencode/plugins/</code></td></tr>
+<tr><td style="text-align:left">Conversas do navegador</td><td style="text-align:left"><code>~/.opencode-browser-extensions</code></td></tr>
+<tr><td style="text-align:left">Capturas do agente</td><td style="text-align:left"><code>~/.cache/opencode-browser/capturas/</code></td></tr>
+<tr><td style="text-align:left">Token e porta do relay</td><td style="text-align:left"><code>$XDG_RUNTIME_DIR/opencode-browser/relay.json</code> ou <code>~/.cache/opencode-browser/relay.json</code></td></tr></tbody></table></div>
+<h3 id="comandos-uteis">Comandos úteis</h3>
+<pre data-linguagem="bash"><code>npm run build              # gera dist/
+npm run install:plugin     # copia plugin e agente
+opencode service restart   # recarrega plugin e agente
+opencode pair              # gera o link de pareamento
+curl http://127.0.0.1:8799/health</code></pre>
+<h3 id="pedidos-que-funcionam-bem">Pedidos que funcionam bem</h3>
+<ul>
+<li>“Abra example.com e me diga o título da página.”</li>
+<li>“Leia a página atual e liste os links do menu.”</li>
+<li>“Preencha o formulário de contato com dados de teste e me mostre um print antes de enviar.”</li>
+<li>“Investigue por que o botão Salvar não responde: veja o console e a rede.”</li>
+<li>“Pesquise o preço deste produto em três lojas e monte uma tabela.”</li>
+<li>“Grave um GIF mostrando o passo a passo do login.”</li>
+</ul>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

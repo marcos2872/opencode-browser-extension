@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Pré-requisitos, instalação, pareamento e conexão do plugin." />
+<title>Instalação e conexão — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html" aria-current="page">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#1-o-que-voce-precisa">1. O que você precisa</a><a class="n2" href="#2-instalar-a-extensao">2. Instalar a extensão</a><a class="n3" href="#2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</a><a class="n3" href="#2-2-manual">2.2 Manual</a><a class="n3" href="#2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</a><a class="n2" href="#3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</a><a class="n3" href="#se-o-pareamento-falhar">Se o pareamento falhar</a><a class="n2" href="#4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</a><a class="n3" href="#se-o-plugin-nao-conectar">Se o plugin não conectar</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Instalação e conexão</h1>
+  <h2 id="1-o-que-voce-precisa">1. O que você precisa</h2>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Item</th><th style="text-align:left">Versão mínima</th><th style="text-align:left">Observação</th></tr></thead><tbody><tr><td style="text-align:left">Chrome ou Chromium</td><td style="text-align:left">116</td><td style="text-align:left">A extensão usa o painel lateral (side panel)</td></tr>
+<tr><td style="text-align:left">Node.js</td><td style="text-align:left">20</td><td style="text-align:left">Usado só para gerar o build e instalar o plugin</td></tr>
+<tr><td style="text-align:left">npm</td><td style="text-align:left">vem com o Node</td><td style="text-align:left">—</td></tr>
+<tr><td style="text-align:left">OpenCode Terminal</td><td style="text-align:left">v2</td><td style="text-align:left">É quem roda os modelos e as conversas</td></tr></tbody></table></div>
+<p>Os modelos são os mesmos que você já usa no OpenCode: se o seu OpenCode funciona no terminal, a extensão funciona.</p>
+<hr />
+<h2 id="2-instalar-a-extensao">2. Instalar a extensão</h2>
+<h3 id="2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</h3>
+<p>Na pasta do projeto:</p>
+<pre data-linguagem="bash"><code>./scripts/install.sh        # Linux e macOS</code></pre>
+<pre data-linguagem="powershell"><code>.\scripts\install.ps1       # Windows (PowerShell 5.1+)</code></pre>
+<p>O script, nesta ordem:</p>
+<ol>
+<li>confere se existem <strong><a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer">Node.js 20+</a></strong>, <strong>npm</strong> e <strong><a href="https://opencode.ai/docs/" target="_blank" rel="noopener noreferrer">OpenCode v2+</a></strong> (para com uma mensagem clara se faltar algum);</li>
+<li>instala as dependências (<code>npm install</code>);</li>
+<li>gera o build da extensão (<code>npm run build</code>) em <code>dist/</code>;</li>
+<li>copia o plugin e o template do agente para a pasta de plugins do OpenCode (<code>npm run install:plugin</code>);</li>
+<li>reinicia o serviço do OpenCode (<code>opencode service restart</code>);</li>
+<li>espera o plugin responder em <code>http://127.0.0.1:8799/health</code>.</li>
+</ol>
+<p>Se o passo 6 falhar, o próprio script avisa: abra o painel da extensão e verifique.</p>
+<blockquote><p>O <code>install.sh</code> reinicia o serviço do OpenCode. Se você estiver usando o OpenCode em um terminal, a sessão atual cai por alguns segundos e reconecta — não é erro.</p></blockquote>
+<h3 id="2-2-manual">2.2 Manual</h3>
+<pre data-linguagem="bash"><code>npm install
+npm run build
+npm run install:plugin
+opencode service restart</code></pre>
+<p>Depois, no Chrome:</p>
+<ol>
+<li>abra <code>chrome://extensions</code>;</li>
+<li>ligue o <strong>modo desenvolvedor</strong> (canto superior direito);</li>
+<li>clique em <strong>Carregar sem compactação</strong> e escolha a pasta <strong><code>dist/</code></strong> do projeto (não a raiz);</li>
+<li>o ícone do OpenCode Browser aparece na barra.</li>
+</ol>
+<h3 id="2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</h3>
+<p>O Chrome mantém o service worker em cache. Sempre que você rodar <code>npm run build</code> de novo:</p>
+<ol>
+<li>abra <code>chrome://extensions</code>;</li>
+<li>clique em <strong>Recarregar</strong> no cartão da extensão.</li>
+</ol>
+<p>Sem esse passo, o comportamento antigo continua no ar mesmo com o código novo.</p>
+<hr />
+<h2 id="3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</h2>
+<ol>
+<li>Abra o painel: clique no ícone da extensão, ou use o atalho <strong>Ctrl+Shift+O</strong> (<strong>Command+Shift+O</strong> no macOS).</li>
+<li>Na primeira vez aparece a tela <strong>“Conecte o navegador ao OpenCode da sua máquina”</strong>.</li>
+<li>No terminal, rode:</li>
+</ol>
+<p><code></code><code>bash opencode pair </code><code></code></p>
+<ol>
+<li>Copie o link exibido (é o mesmo que abre a interface web do OpenCode) e cole no campo <strong>“Link do <code>opencode pair</code>”</strong>.</li>
+<li>Clique em <strong>“Conectar ao OpenCode”</strong>. Ao terminar aparece o aviso <strong>“Conectado ao OpenCode.”</strong></li>
+</ol>
+<p>O link é de uso único e <strong>expira em 5 minutos</strong>. Se expirar, rode <code>opencode pair</code> de novo. O token anterior continua válido até você desconectar.</p>
+<h3 id="se-o-pareamento-falhar">Se o pareamento falhar</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Mensagem</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">“Link inválido. Cole o link completo exibido por <code>opencode pair</code>.”</td><td style="text-align:left">Copie o link inteiro, sem cortar o código final</td></tr>
+<tr><td style="text-align:left">“O link precisa começar com http:// ou https://.”</td><td style="text-align:left">Você colou só o código; cole a URL completa</td></tr>
+<tr><td style="text-align:left">“O link não contém /auth/connect/&lt;código&gt;.”</td><td style="text-align:left">Não é um link de pareamento</td></tr>
+<tr><td style="text-align:left">“Não foi possível falar com o OpenCode em … Ele está rodando?”</td><td style="text-align:left">O servidor não está no ar: rode <code>opencode serve</code></td></tr>
+<tr><td style="text-align:left">“Link expirado ou já usado. Rode <code>opencode pair</code> novamente.”</td><td style="text-align:left">Gere um link novo</td></tr>
+<tr><td style="text-align:left">“O servidor não devolveu um token de sessão.”</td><td style="text-align:left">Versão do OpenCode incompatível: atualize para a v2</td></tr></tbody></table></div>
+<hr />
+<h2 id="4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</h2>
+<p>O chat funciona só com a API — para o agente <strong>controlar o Chrome</strong>, ele precisa do plugin:</p>
+<pre data-linguagem="bash"><code>npm run install:plugin
+opencode service restart</code></pre>
+<p>O comando copia, para a pasta de plugins do OpenCode:</p>
+<ul>
+<li><code>browser-relay.ts</code> — o servidor que expõe as ferramentas do navegador;</li>
+<li><code>opencode-browser.agent.md</code> — o template do agente <code>opencode-browser</code>.</li>
+</ul>
+<p>e cria a pasta padrão das conversas do navegador (<code>~/.opencode-browser-extensions</code>).</p>
+<p>Confira se está tudo certo:</p>
+<pre data-linguagem="bash"><code>curl http://127.0.0.1:8799/health</code></pre>
+<p>No painel, o rodapé do composer mostra <strong>“ferramentas conectadas”</strong> quando o plugin está ativo.</p>
+<h3 id="se-o-plugin-nao-conectar">Se o plugin não conectar</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Status</th><th style="text-align:left">Significado</th><th style="text-align:left">O que fazer</th></tr></thead><tbody><tr><td style="text-align:left">“Plugin conectado”</td><td style="text-align:left">Tudo certo</td><td style="text-align:left">—</td></tr>
+<tr><td style="text-align:left">“Plugin não encontrado — instale o plugin e reinicie o OpenCode”</td><td style="text-align:left">O plugin não foi carregado</td><td style="text-align:left"><code>npm run install:plugin</code> + <code>opencode service restart</code></td></tr>
+<tr><td style="text-align:left">“Plugin recusou a conexão — confira o ID da extensão”</td><td style="text-align:left">A extensão não é a esperada</td><td style="text-align:left">Recarregue a extensão ou ajuste <code>OPENCODE_BROWSER_EXTENSION_ID</code></td></tr>
+<tr><td style="text-align:left">“Plugin parou de responder — reinicie o OpenCode”</td><td style="text-align:left">O plugin travou ou o worker dormiu</td><td style="text-align:left">Reinicie o OpenCode</td></tr>
+<tr><td style="text-align:left">“Plugin desconectado — reinicie o OpenCode para reconectar”</td><td style="text-align:left">O socket caiu</td><td style="text-align:left">Reinicie o OpenCode ou use <strong>Reconectar plugin</strong> nas configurações</td></tr></tbody></table></div>
+<blockquote><p>Mantenha <strong>uma única</strong> cópia do plugin na pasta de plugins. Duas cópias registram o mesmo plugin e uma delas falha.</p></blockquote>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Apresentação do guia do usuário do OpenCode Browser." />
+<title>Guia do usuário — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html" aria-current="page">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Guia do usuário</div>
+  <a href="#explorar">Explore por assunto</a>
+  <a href="#demonstracoes">Demonstrações</a>
+  <a href="#percurso">Sugestão de percurso</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-inicial">
+  <section class="hero">
+    <h1 id="guia-do-usuario-opencode-browser">Guia do usuário — OpenCode Browser</h1>
+<p>Este guia percorre <strong>todas as funcionalidades</strong> da extensão, na ordem em que você vai encontrar cada uma: instalar, conectar, conversar, deixar o agente mexer no navegador, aprovar permissões, rodar várias conversas ao mesmo tempo e ajustar as configurações.</p>
+<p>O OpenCode Browser é um painel lateral do Chrome que conversa com o <strong>OpenCode Terminal</strong> rodando na sua máquina. O agente lê páginas, clica, preenche formulários e navega dentro de um grupo de abas isolado por conversa — e cada ação que muda algo pede a sua permissão (ou não, conforme o modo escolhido).</p>
+<p><strong>Nada sai do seu computador</strong>: a extensão fala com <code>127.0.0.1</code>, e o plugin que dá as ferramentas ao agente só escuta em loopback.</p>
+  </section>
+  <section id="explorar" class="apresentacao">
+    <h2>Explore por assunto</h2>
+    <p>Escolha uma área do guia para encontrar instruções e referências sem percorrer uma única página longa.</p>
+    <div class="cartoes">
+      <a class="cartao" href="instalacao.html">
+  <span class="numero">01 / GUIA</span>
+  <h3>Instalação e conexão</h3>
+  <p>Pré-requisitos, instalação, pareamento e conexão do plugin.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="conversas.html">
+  <span class="numero">02 / GUIA</span>
+  <h3>Conversas e perguntas</h3>
+  <p>Conheça o painel, comece conversas, use comandos e responda ao agente.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="ferramentas.html">
+  <span class="numero">03 / GUIA</span>
+  <h3>Ferramentas do navegador</h3>
+  <p>Veja o que o agente pode fazer no navegador e como os resultados aparecem no chat.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="abas-e-sessoes.html">
+  <span class="numero">04 / GUIA</span>
+  <h3>Abas e sessões</h3>
+  <p>Entenda grupos de abas, conversas paralelas e alternância entre sessões.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="permissoes.html">
+  <span class="numero">05 / GUIA</span>
+  <h3>Permissões</h3>
+  <p>Configure modos de permissão e entenda os pedidos de aprovação.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="configuracoes.html">
+  <span class="numero">06 / GUIA</span>
+  <h3>Configurações</h3>
+  <p>Consulte as opções de conexão, sessões, permissões e exibição.</p>
+  <span class="acao">Abrir seção →</span>
+</a><a class="cartao" href="ajuda-e-referencia.html">
+  <span class="numero">07 / GUIA</span>
+  <h3>Ajuda e referência</h3>
+  <p>Avisos, problemas comuns, privacidade e referência rápida.</p>
+  <span class="acao">Abrir seção →</span>
+</a>
+    </div>
+  </section>
+  <section id="demonstracoes" class="demonstracoes">
+    <h2>Veja o OpenCode Browser em ação</h2>
+    <p>Vídeos curtos mostram fluxos de navegação, leitura de páginas e formulários. Use os controles ou deslize para os lados para ver os próximos.</p>
+    <div class="carrossel-videos">
+      <div class="videos" id="videos-demo" tabindex="0" role="region" aria-label="Vídeos de demonstração">
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Vídeo 1 de 3">
+        <video controls preload="metadata" playsinline aria-label="Demonstração de formulários no navegador">
+          <source src="../assets/videos/teste-beowser-forms.mp4" type="video/mp4" />
+          Seu navegador não consegue reproduzir este vídeo.
+        </video>
+        <div class="video-info">
+          <h3>Formulários no navegador</h3>
+          <p>Veja o agente interagir com formulários em uma página web.</p>
+        </div>
+      </article>
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Vídeo 2 de 3">
+        <video controls preload="metadata" playsinline aria-label="Demonstração de leitura e extração de conteúdo de páginas">
+          <source src="../assets/videos/teste-browser-scraping.mp4" type="video/mp4" />
+          Seu navegador não consegue reproduzir este vídeo.
+        </video>
+        <div class="video-info">
+          <h3>Leitura de páginas</h3>
+          <p>Demonstração de extração de informações do conteúdo do navegador.</p>
+        </div>
+      </article>
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Vídeo 3 de 3">
+        <video controls preload="metadata" playsinline aria-label="Demonstração de formulários pelo CLI">
+          <source src="../assets/videos/teste-cli-forms.mp4" type="video/mp4" />
+          Seu navegador não consegue reproduzir este vídeo.
+        </video>
+        <div class="video-info">
+          <h3>Formulários pelo CLI</h3>
+          <p>Exemplo de fluxo de formulários acionado a partir da linha de comando.</p>
+        </div>
+      </article>
+      </div>
+      <div class="controles-carrossel">
+        <button id="video-anterior" type="button" aria-label="Mostrar vídeo anterior" disabled>‹ Anterior</button>
+        <span id="video-contador" aria-live="polite">1 de 3</span>
+        <button id="video-proximo" type="button" aria-label="Mostrar próximo vídeo">Próximo ›</button>
+      </div>
+    </div>
+  </section>
+  <section id="percurso" class="percurso">
+    <h2>Sugestão de percurso</h2>
+    <ol>
+      <li>Comece por <a href="instalacao.html">instalação e conexão</a>.</li>
+      <li>Conheça <a href="conversas.html">o painel e as conversas</a>.</li>
+      <li>Leia sobre <a href="abas-e-sessoes.html">abas e sessões</a> e <a href="permissoes.html">permissões</a>.</li>
+    </ol>
+    <p>O guia completo também está disponível em <a href="../docs/guias/guia-do-usuario.md">Markdown</a>.</p>
+  </section>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

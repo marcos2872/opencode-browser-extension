@@ -105,7 +105,7 @@ A branch `main` é protegida por um ruleset do GitHub:
 | Log do OpenCode | `~/.local/share/opencode/log/opencode.log` (Windows: `%USERPROFILE%\.local\share\opencode\log`); procure `browser-relay` |
 | Plugins do OpenCode | `~/.config/opencode/plugins` (Windows: `%USERPROFILE%\.config\opencode\plugins`) |
 | Pasta das conversas | `~/.opencode-browser-extensions` (criada pelo plugin) |
-| Testar tool direto | `POST /tool` com `x-relay-token` (ver [plugin.md](plugin.md)) |
+| Testar tool direto | `POST /tool` com `x-relay-token` (ver [plugin.md](arquitetura/plugin.md)) |
 | Lista de tools | Harness com `Plugin.define` fake, ou `opencode plugin list` |
 
 ## Convenções
@@ -114,7 +114,7 @@ A branch `main` é protegida por um ruleset do GitHub:
 - Tipos compartilhados em `src/shared/`; nada de tipos duplicados nos módulos.
 - Mensagens de erro voltadas ao usuário final, em português, dizendo o que fazer.
 - Commits em Conventional Commits (`feat:`, `fix:`, `docs:`…).
-- Sem arquivos de documentação dentro de `src/`; a documentação vive em `docs/`.
+- Fontes Markdown em `docs/`, páginas HTML em `web/`; nenhum arquivo de documentação dentro de `src/`.
 
 ## Dependências
 

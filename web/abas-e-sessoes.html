@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Entenda grupos de abas, conversas paralelas e alternância entre sessões." />
+<title>Abas e sessões — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html" aria-current="page">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#8-abas-e-grupos-onde-o-agente-trabalha">8. Abas e grupos: onde o agente trabalha</a><a class="n3" href="#abas-em-segundo-plano">Abas em segundo plano</a><a class="n3" href="#conectar-uma-aba-sua-ao-agente">Conectar uma aba sua ao agente</a><a class="n3" href="#o-grupo-nasce-quando-e-preciso">O grupo nasce quando é preciso</a><a class="n2" href="#9-varias-conversas-ao-mesmo-tempo">9. Várias conversas ao mesmo tempo</a><a class="n3" href="#criar-uma-conversa">Criar uma conversa</a><a class="n3" href="#trocar-de-conversa">Trocar de conversa</a><a class="n3" href="#seguir-o-grupo-de-abas-em-foco">Seguir o grupo de abas em foco</a><a class="n3" href="#criar-o-grupo-junto-com-a-conversa-opcional">Criar o grupo junto com a conversa (opcional)</a><a class="n3" href="#excluir-uma-conversa">Excluir uma conversa</a><a class="n3" href="#limites">Limites</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Abas e sessões</h1>
+  <h2 id="8-abas-e-grupos-onde-o-agente-trabalha">8. Abas e grupos: onde o agente trabalha</h2>
+<p>Cada conversa tem o seu <strong>grupo de abas</strong>, com título <strong>“OpenCode · nome da conversa”</strong> e uma cor própria. É o espaço de trabalho daquele agente — ele não mexe nas suas outras abas.</p>
+<h3 id="abas-em-segundo-plano">Abas em segundo plano</h3>
+<p>Por padrão a extensão <strong>não rouba o foco</strong>: abas criadas ou anexadas pelo agente nascem em segundo plano, e a janela em que você está trabalhando continua onde está. Se você preferir ver as abas surgindo, ligue <strong>“Permitir que abas abertas ou anexadas pelo agente venham para frente”</strong> nas configurações.</p>
+<p>Na página em que o agente está agindo aparece uma borda azul pastel animada com o aviso <strong>“OpenCode está nesta aba”</strong>, um <strong>Parar</strong> e um mouse virtual que desliza até o alvo e mostra uma onda a cada clique.</p>
+<h3 id="conectar-uma-aba-sua-ao-agente">Conectar uma aba sua ao agente</h3>
+<ul>
+<li><strong>Conectar aba atual</strong> (ícone de link na barra de conversas): traz a aba ativa para o grupo da conversa.</li>
+<li>Com abas conectadas, o mesmo botão abre a lista: <strong>“Conectar nova aba”</strong> e, em cada aba, <strong>“Remover … do contexto”</strong>.</li>
+</ul>
+<p>Remover uma aba do contexto <strong>não fecha</strong> a aba: apenas a tira do grupo, e ela volta a ser uma aba normal sua.</p>
+<blockquote><p>Abas de <strong>outra janela</strong> não podem ser anexadas. A extensão responde: “A aba está em outra janela. Abra uma aba nova pela sessão ou mova a aba para a janela do grupo antes de anexá-la.”</p></blockquote>
+<h3 id="o-grupo-nasce-quando-e-preciso">O grupo nasce quando é preciso</h3>
+<p>Se a opção de criar grupo ao iniciar conversa estiver desligada (padrão), o grupo nasce quando o agente abre uma aba nova (<code>browser_tabs_create</code>) ou quando você conecta uma aba. Tools de leitura e interação não abrem aba sozinhas: sem aba, elas falham com uma orientação. É o fluxo mais econômico: nenhuma aba em branco acumulada.</p>
+<hr />
+<h2 id="9-varias-conversas-ao-mesmo-tempo">9. Várias conversas ao mesmo tempo</h2>
+<p>Este é o ponto forte da extensão: cada conversa corre sozinha, no seu grupo de abas, e você alterna entre elas sem parar nada.</p>
+<h3 id="criar-uma-conversa">Criar uma conversa</h3>
+<p>Clique em <strong>+</strong> (Nova conversa). O botão <strong>funciona mesmo com a conversa atual executando</strong> — ele só fica bloqueado durante a própria criação, para não criar duas conversas com um clique duplo.</p>
+<p>A conversa nova nasce vazia, com o modelo (e o agente) selecionados, e já fica em foco no painel.</p>
+<h3 id="trocar-de-conversa">Trocar de conversa</h3>
+<p>Use o seletor <strong>“Sessões do OpenCode”</strong>. Cada item mostra o nome da conversa e um sufixo:</p>
+<ul>
+<li><strong>“ · executando”</strong> — aquela conversa está rodando;</li>
+<li><strong>“ · nova resposta”</strong> — chegou algo novo enquanto você estava em outra.</li>
+</ul>
+<p>Escolher a conversa limpa o aviso de novidade.</p>
+<h3 id="seguir-o-grupo-de-abas-em-foco">Seguir o grupo de abas em foco</h3>
+<p>Com <strong>“Mostrar no painel a conversa do grupo de abas que está em foco”</strong> ligado (padrão), basta clicar em uma aba de um grupo: o painel troca para a conversa daquele grupo. A troca tem uma pequena espera (150 ms) para não piscar quando você passa por várias abas.</p>
+<p>Criar ou selecionar uma conversa manualmente cancela essa troca automática — o painel não vai “voltar sozinho” para outra conversa logo depois do seu clique.</p>
+<h3 id="criar-o-grupo-junto-com-a-conversa-opcional">Criar o grupo junto com a conversa (opcional)</h3>
+<p>Ligando <strong>“Criar um grupo de abas ao iniciar uma nova conversa”</strong>, o <strong>+</strong> já abre uma aba em branco (em segundo plano, na janela do painel) e o grupo com o nome da conversa. É útil quando você quer ver a “âncora” de cada conversa na barra de abas desde o começo; o custo é uma aba em branco por conversa.</p>
+<p>Desligado (padrão), o grupo nasce quando o agente abre uma aba nova ou no anexo de uma aba.</p>
+<h3 id="excluir-uma-conversa">Excluir uma conversa</h3>
+<p>Use a lixeira (<strong>Excluir sessão</strong>). A confirmação diz: “Excluir esta sessão? O histórico será removido do OpenCode.”</p>
+<p>Ao excluir:</p>
+<ul>
+<li>o histórico sai do OpenCode;</li>
+<li>o grupo é liberado: as abas em branco são fechadas e as páginas reais são apenas <strong>desagrupadas</strong> (nada seu é fechado);</li>
+<li>se era a conversa exibida, a mais recente passa a ser mostrada.</li>
+</ul>
+<h3 id="limites">Limites</h3>
+<ul>
+<li>O painel mantém estado detalhado de até <strong>4 conversas</strong>. As demais continuam existindo no OpenCode e recarregam quando você as abre.</li>
+<li>O vínculo conversa↔grupo fica na sessão do navegador: <strong>fechar o Chrome completamente</strong> desfaz o vínculo (as abas continuam lá, sem dono).</li>
+<li>O painel é uma visão só: duas janelas abertas mostram a mesma conversa.</li>
+</ul>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

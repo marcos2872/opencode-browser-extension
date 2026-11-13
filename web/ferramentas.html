@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Veja o que o agente pode fazer no navegador e como os resultados aparecem no chat." />
+<title>Ferramentas do navegador — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html" aria-current="page">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#7-o-que-o-agente-consegue-fazer-no-navegador">7. O que o agente consegue fazer no navegador</a><a class="n3" href="#cards-de-ferramenta">Cards de ferramenta</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Ferramentas do navegador</h1>
+  <h2 id="7-o-que-o-agente-consegue-fazer-no-navegador">7. O que o agente consegue fazer no navegador</h2>
+<p>O agente recebe 18 ferramentas. Algumas são só de leitura e <strong>nunca</strong> pedem permissão; as outras mudam algo e passam pela sua aprovação (conforme o modo).</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Ferramenta</th><th style="text-align:left">O que faz</th><th style="text-align:left">Permissão</th></tr></thead><tbody><tr><td style="text-align:left"><code>browser_tabs_context</code></td><td style="text-align:left">Lista as abas do grupo da conversa</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_create</code></td><td style="text-align:left">Abre uma URL no grupo (em segundo plano)</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_attach</code></td><td style="text-align:left">Traz uma aba já aberta para o grupo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_close_tab</code></td><td style="text-align:left">Fecha uma aba do grupo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_navigate</code></td><td style="text-align:left">Navega, volta ou avança no histórico</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_read_page</code></td><td style="text-align:left">Lê a página e devolve os elementos com referências</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_find</code></td><td style="text-align:left">Procura elementos por texto, papel ou nome</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_get_page_text</code></td><td style="text-align:left">Extrai o texto principal, sem HTML</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_form_input</code></td><td style="text-align:left">Preenche um campo</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_computer</code></td><td style="text-align:left">Clica, digita, pressiona teclas, rola, passa o mouse, tira screenshot, dá zoom, espera</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_javascript_tool</code></td><td style="text-align:left">Executa JavaScript na página</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_read_console_messages</code></td><td style="text-align:left">Lê o console e os erros da aba</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_read_network_requests</code></td><td style="text-align:left">Lê as requisições de rede da aba</td><td style="text-align:left">Leitura</td></tr>
+<tr><td style="text-align:left"><code>browser_resize_window</code></td><td style="text-align:left">Redimensiona a janela para testar layout</td><td style="text-align:left">Sem pedido</td></tr>
+<tr><td style="text-align:left"><code>browser_update_plan</code></td><td style="text-align:left">Mostra domínios e passos para você aprovar antes</td><td style="text-align:left">Card de plano</td></tr>
+<tr><td style="text-align:left"><code>browser_upload_image</code></td><td style="text-align:left">Envia arquivos para um campo de arquivo ou área de arrastar</td><td style="text-align:left">Pede</td></tr>
+<tr><td style="text-align:left"><code>browser_gif_creator</code></td><td style="text-align:left">Grava quadros das ações e exporta um GIF</td><td style="text-align:left">Exportar pede</td></tr>
+<tr><td style="text-align:left"><code>browser_batch</code></td><td style="text-align:left">Executa várias ferramentas em sequência (até 20)</td><td style="text-align:left">Cada ação pede a sua</td></tr></tbody></table></div>
+<h3 id="cards-de-ferramenta">Cards de ferramenta</h3>
+<p>Cada chamada aparece no chat com um rótulo em português — “Navegar”, “Ler página”, “Clicar na página”, “Preencher campo”, “Console”, “Rede” — e um status: <strong>ok</strong>, <strong>erro</strong> ou <strong>rodando</strong>.</p>
+<p>Você escolhe quanto detalhe quer ver em <strong>Configurações → Ferramentas no chat</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Modo</th><th style="text-align:left">Como fica</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Agrupadas (abrem em um modal)</strong> (padrão)</td><td style="text-align:left">Uma linha-resumo por execução (“4 ferramentas · ver”); o detalhe abre no modal “Ferramentas desta execução”</td></tr>
+<tr><td style="text-align:left"><strong>Linhas compactas, uma por chamada</strong></td><td style="text-align:left">Uma linha por ferramenta, com o erro resumido na própria linha</td></tr>
+<tr><td style="text-align:left"><strong>Cards completos, com parâmetros e resultado</strong></td><td style="text-align:left">Tudo aberto no chat, incluindo o JSON de entrada e a saída</td></tr>
+<tr><td style="text-align:left"><strong>Ocultar tools e raciocínio (só “trabalhando”)</strong></td><td style="text-align:left">O chat mostra só a atividade (“trabalhando: lendo a página”)</td></tr></tbody></table></div>
+<p>No modo agrupado, o modal tem filtro <strong>“Somente erros”</strong> e fecha com <strong>Esc</strong> ou clicando fora.</p>
+<p>Screenshots aparecem como imagem dentro do card (até 3 por vez) e também são salvas em disco: o caminho do arquivo vem na resposta do agente.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>
