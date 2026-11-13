@@ -154,12 +154,6 @@ export default function App() {
   }, [snapshot?.activeSessionID])
 
   useEffect(() => {
-    if (!selectedModel && snapshot) {
-      setSelectedModel(activeSession?.model ?? snapshot.config?.defaultModel ?? snapshot.defaultModel ?? null)
-    }
-  }, [snapshot?.config?.defaultModel, snapshot?.defaultModel])
-
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" })
   }, [snapshot?.messages, snapshot?.busy, activePermission])
 
@@ -180,7 +174,14 @@ export default function App() {
       return
     }
     const response = await request({ type: "settings:update", patch: { defaultModel: model } })
-    if (!response.ok) showToast(response.error)
+    if (!response.ok) {
+      showToast(response.error)
+      return
+    }
+    const next = response.snapshot
+    if (next) {
+      setSnapshot((current) => (current ? { ...current, config: next.config } : next))
+    }
   }
 
   async function changeAgent(agent: string) {
@@ -196,9 +197,10 @@ export default function App() {
     try {
       const window = await chrome.windows.getCurrent().catch(() => undefined)
       // Sem `agent`: o servidor escolhe o padrão (hoje, o agente do navegador).
+      // Sem `model`: o worker usa o modelo padrão das configurações, em vez do
+      // modelo que estava selecionado na conversa anterior.
       const response = await request({
         type: "session:new",
-        model: selectedModel ?? undefined,
         windowId: window?.id,
       })
       if (!response.ok) showToast(response.error)
@@ -363,6 +365,11 @@ export default function App() {
     selectedModel ??
     snapshot.config?.defaultModel ??
     snapshot.defaultModel
+  // Sem sessão ativa o seletor representa o modelo padrão das configurações,
+  // que pode mudar enquanto o painel está aberto.
+  const pickerModel = snapshot.activeSessionID
+    ? selectedModel ?? snapshot.config?.defaultModel ?? snapshot.defaultModel
+    : snapshot.config?.defaultModel ?? snapshot.defaultModel ?? selectedModel
   const modelInfo = snapshot.models.find(
     (model) =>
       model.id === currentModel?.id &&
@@ -400,7 +407,7 @@ export default function App() {
         {snapshot.config ? (
           <ModelPicker
             models={snapshot.models}
-            value={selectedModel}
+            value={pickerModel}
             disabled={snapshot.busy}
             onChange={(model) => void changeModel(model)}
           />
