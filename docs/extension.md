@@ -29,7 +29,7 @@ src/
 │       └── plan.ts              # update_plan
 ├── content/
 │   ├── a11y.ts                  # árvore de acessibilidade + ações de DOM
-│   ├── indicator.ts             # moldura, cursor fantasma e botão Parar
+│   ├── indicator.ts             # borda animada, mouse virtual e botão Parar
 │   └── index.ts                 # instala os dois
 ├── sidepanel/                   # chat (App, Chat, Composer, ModelPicker, SessionBar...)
 ├── options/                     # configurações
@@ -185,11 +185,25 @@ As refs são estáveis por elemento (mapa fraco + contador) e valores sensíveis
 
 ### Indicador visual
 
-- Moldura animada nas bordas, com o rótulo de status atual.
-- Cursor fantasma posicionado antes de cliques.
-- Botão **Parar** flutuante que envia `browser:stop`.
+- Borda animada: anel de 3px com gradiente cônico girando e brilho interno
+  pulsando, com fade-in/out. Respeita `prefers-reduced-motion`.
+- Mouse virtual: viaja suavemente até o alvo (a primeira aparição nasce no
+  destino), "afunda" e solta uma onda no clique, e fica visível enquanto o
+  overlay existir.
+- Rótulo de status e botão **Parar** flutuante que envia `browser:stop`.
 - Mensagens aceitas: `indicator:show`, `indicator:hide`, `indicator:status`,
-  `indicator:cursor`.
+  `indicator:cursor`, `indicator:click`.
+
+O estado de presença vive no service worker (`src/background/presence.ts`),
+porque o overlay some quando a página navega:
+
+- O overlay **não** some a cada ação. `hideIndicator` só agenda a saída
+  (2,5 s ociosa; 20 s enquanto a sessão está ocupada, para cobrir o "pensar" do
+  modelo), e qualquer ação nova cancela o agendamento — sem piscar.
+- Clique: o cursor viaja (≈320 ms), a onda dispara e só então o CDP clica.
+- Navegação (`tabs.onUpdated` → `complete`) reenvia borda e rótulo.
+- Some na hora ao clicar em **Parar**, ao interromper ou quando a sessão fica
+  ociosa (`hideSession`).
 
 ## Páginas de UI
 

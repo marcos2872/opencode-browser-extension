@@ -303,9 +303,10 @@ nascem em segundo plano, e a janela em que você está trabalhando continua onde
 está. Se você preferir ver as abas surgindo, ligue **“Permitir que abas abertas
 ou anexadas pelo agente venham para frente”** nas configurações.
 
-Na página em que o agente está agindo aparece uma moldura laranja com o aviso
-**“OpenCode está nesta aba”**, um **Parar** e um cursor animado mostrando onde
-ele clica.
+Na página em que o agente está agindo aparece uma borda laranja animada com o aviso
+**“OpenCode está nesta aba”**, um **Parar** e um mouse virtual que desliza até
+o alvo e mostra uma onda a cada clique. A borda fica acesa enquanto o agente
+trabalha e some sozinha pouco depois que ele termina.
 
 ### Conectar uma aba sua ao agente
 

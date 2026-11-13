@@ -110,10 +110,11 @@ chamado `opencode-browser-ui` (SW → páginas).
 
 | Mensagem           | Direção     | Campos         | Efeito                                 |
 | ------------------ | ----------- | -------------- | -------------------------------------- |
-| `indicator:show`   | SW → página | —              | Monta moldura e botão Parar            |
-| `indicator:hide`   | SW → página | —              | Remove o indicador                     |
+| `indicator:show`   | SW → página | —              | Acende a borda animada e o botão Parar (fade-in) |
+| `indicator:hide`   | SW → página | —              | Apaga com fade-out e remove o indicador |
 | `indicator:status` | SW → página | `text`, `busy` | Atualiza rótulo e animação             |
-| `indicator:cursor` | SW → página | `x`, `y`       | Move o cursor fantasma                 |
+| `indicator:cursor` | SW → página | `x`, `y`       | Move o mouse virtual (monta o overlay se preciso) |
+| `indicator:click`  | SW → página | `x`, `y`       | Mouse afunda e solta uma onda no ponto |
 | `browser:stop`     | página → SW | —              | Aborta execuções e interrompe a sessão |
 
 ## Alarmes
