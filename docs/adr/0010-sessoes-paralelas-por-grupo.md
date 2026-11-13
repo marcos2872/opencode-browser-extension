@@ -33,7 +33,7 @@ foco existia para ligar o grupo em foco à conversa exibida.
    `followTabGroups` está ligado. A troca de conversa nunca move o foco do
    navegador, o que evita ciclos de ativação.
 6. O título do grupo passa a ser `OpenCode · <nome da sessão>`, e excluir uma
-   sessão libera o grupo (fecha abas em branco e desagrupa as demais).
+   sessão encerra o grupo (fecha todas as abas dele, o que remove o grupo).
 7. O grupo continua **lazy por padrão**: nasce quando o agente abre ou anexa uma
    aba, ou quando usa `browser_tabs_context` com `createIfEmpty`. Tools que só
    resolvem a aba não criam grupo; sem aba, falham com orientação. Assim uma

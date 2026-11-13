@@ -383,8 +383,9 @@ histórico será removido do OpenCode.”
 Ao excluir:
 
 - o histórico sai do OpenCode;
-- o grupo é liberado: as abas em branco são fechadas e as páginas reais são
-  apenas **desagrupadas** (nada seu é fechado);
+- todas as abas do grupo da sessão são **fechadas** e o grupo desaparece do
+  navegador (se o grupo era tudo o que havia na janela, uma aba em branco
+  mantém a janela aberta);
 - se era a conversa exibida, a mais recente passa a ser mostrada.
 
 ### Limites

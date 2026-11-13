@@ -366,7 +366,15 @@ export function createChromeMock(): ChromeMock {
       return tab
     }),
     remove: vi.fn(async (ids: number | number[]) => {
-      for (const id of Array.isArray(ids) ? ids : [ids]) tabs.delete(id)
+      for (const id of Array.isArray(ids) ? ids : [ids]) {
+        const groupId = tabs.get(id)?.groupId
+        tabs.delete(id)
+        // Como no Chrome, o grupo some junto com a última aba.
+        if (typeof groupId === "number" && groupId >= 0) {
+          const empty = ![...tabs.values()].some((tab) => tab.groupId === groupId)
+          if (empty) groups.delete(groupId)
+        }
+      }
     }),
     group: vi.fn(async ({ tabIds, groupId }: { tabIds: number | number[]; groupId?: number }) => {
       const ids = Array.isArray(tabIds) ? tabIds : [tabIds]

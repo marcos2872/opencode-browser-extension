@@ -714,18 +714,51 @@ describe("background/tabGroups: sessões paralelas", () => {
     expect(chromeMock.__state.groups.get(record.groupId)?.title).toBe("OpenCode")
   })
 
-  it("release fecha abas em branco e desagrupa páginas", async () => {
+  it("release fecha todas as abas do grupo e remove o vínculo", async () => {
     const record = await groups.ensure("ses_1")
+    const other = chromeMock.__state.addTab({ url: "https://user.example/", active: true })
     const page = chromeMock.__state.addTab({
       groupId: record.groupId,
       url: "https://a.example/",
+      active: false,
     })
 
     await groups.release("ses_1")
 
     expect(chromeMock.__state.tabs.has(record.mainTabId)).toBe(false)
-    expect(chromeMock.__state.tabs.get(page.id)?.groupId).toBe(-1)
+    expect(chromeMock.__state.tabs.has(page.id)).toBe(false)
+    expect(chromeMock.__state.tabs.has(other.id)).toBe(true)
+    expect(chromeMock.tabs.ungroup).not.toHaveBeenCalled()
+    expect(chromeMock.__state.groups.has(record.groupId)).toBe(false)
     expect(storedRecords()).toEqual([])
+  })
+
+  it("release fecha também a aba que o grupo mantinha ativa", async () => {
+    const record = await groups.ensure("ses_1")
+    chromeMock.__state.tabs.get(record.mainTabId)!.active = true
+
+    await groups.release("ses_1")
+
+    expect(chromeMock.__state.tabs.has(record.mainTabId)).toBe(false)
+  })
+
+  it("release preserva a janela quando o grupo é o único conteúdo dela", async () => {
+    chromeMock.__state.tabs.clear()
+    const record = await groups.ensure("ses_1", undefined, 7)
+
+    await groups.release("ses_1")
+
+    expect(chromeMock.__state.tabs.has(record.mainTabId)).toBe(false)
+    const remaining = [...chromeMock.__state.tabs.values()]
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].windowId).toBe(7)
+    expect(remaining[0].groupId).toBe(-1)
+  })
+
+  it("release ignora sessões sem grupo", async () => {
+    await groups.release("ses_inexistente")
+
+    expect(chromeMock.tabs.remove).not.toHaveBeenCalled()
   })
 
   it("cleanup reconhece grupos com nome de sessão e preserva os demais", async () => {

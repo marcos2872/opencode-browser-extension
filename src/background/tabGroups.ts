@@ -251,8 +251,9 @@ export class TabGroups {
   }
 
   /**
-   * Remove o vínculo da sessão e libera as abas do grupo: fecha as que estão em
-   * branco e desagrupa as demais, para não destruir páginas do usuário.
+   * Encerra a sessão: remove o vínculo e fecha todas as abas do grupo, o que
+   * também elimina o grupo no Chrome. Se o grupo ocupa sozinho a janela, abre
+   * antes uma aba nova em segundo plano para a janela não fechar junto.
    */
   async release(sessionID: string): Promise<void> {
     await this.serialize(async () => {
@@ -263,17 +264,31 @@ export class TabGroups {
       await this.save();
       const groupTabs = await chrome.tabs
         .query({ groupId: record.groupId })
-        .catch(() => []);
-      for (const tab of groupTabs) {
-        if (tab.id === undefined) continue;
-        if (isBlankUrl(tab.url ?? tab.pendingUrl)) {
-          // Nunca fecha a aba que o usuário está usando: só desagrupa.
-          if (tab.active) await chrome.tabs.ungroup(tab.id).catch(() => undefined);
-          else await chrome.tabs.remove(tab.id).catch(() => undefined);
-        } else {
-          await chrome.tabs.ungroup(tab.id).catch(() => undefined);
+        .catch(() => [] as chrome.tabs.Tab[]);
+      const ids = groupTabs
+        .map((tab) => tab.id)
+        .filter((id): id is number => id !== undefined);
+      if (ids.length === 0) return;
+
+      const windowId = groupTabs.find((tab) => tab.windowId !== undefined)
+        ?.windowId;
+      if (windowId !== undefined) {
+        const windowTabs = await chrome.tabs
+          .query({ windowId })
+          .catch(() => [] as chrome.tabs.Tab[]);
+        const others = windowTabs.filter(
+          (tab) =>
+            tab.windowId === windowId &&
+            tab.id !== undefined &&
+            !ids.includes(tab.id),
+        );
+        if (others.length === 0) {
+          await chrome.tabs
+            .create({ windowId, active: false })
+            .catch(() => undefined);
         }
       }
+      await chrome.tabs.remove(ids).catch(() => undefined);
     });
   }
 
