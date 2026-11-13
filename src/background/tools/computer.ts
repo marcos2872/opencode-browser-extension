@@ -142,7 +142,7 @@ export const computerTools: ToolMap = {
     if (action === "click") {
       const ref = typeof args.ref === "string" ? args.ref : undefined
       if (ref && !isMainFrameRef(ref)) {
-        const result = await clickRef(tabId, ref)
+        const result = await withIndicator(ctx, tabId, "Clicando", () => clickRef(tabId, ref))
         if (!result.ok) throw new Error(result.error ?? "Falha ao clicar no elemento.")
         await sleep(200)
         const adopted = await adoptOpenerTabs(ctx, tabId)
@@ -155,8 +155,8 @@ export const computerTools: ToolMap = {
       const point = await pointFor(args, ctx, tabId)
       const button = args.button === "right" ? "right" : args.button === "middle" ? "middle" : "left"
       const count = Math.min(Math.max(num(args.click_count) ?? num(args.clickCount) ?? 1, 1), 3)
-      await ctx.cursor(tabId, point.x, point.y, { click: true })
       await ctx.indicator(tabId, "Clicando", true)
+      await ctx.cursor(tabId, point.x, point.y, { click: true })
       try {
         await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
         for (let index = 1; index <= count; index += 1) {
@@ -185,49 +185,54 @@ export const computerTools: ToolMap = {
     }
 
     if (action === "hover") {
-      const ref = typeof args.ref === "string" ? args.ref : undefined
-      if (ref && !isMainFrameRef(ref)) {
-        const result = await hoverRef(tabId, ref)
-        if (!result.ok) throw new Error(result.error ?? "Falha no hover.")
-        return { content: `Hover em ${ref} (iframe, via eventos de DOM).` }
-      }
-      const point = await pointFor(args, ctx, tabId)
-      await ctx.cursor(tabId, point.x, point.y)
-      try {
-        await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
-      } catch (error) {
-        if (!ref) throw error
-        const fallback = await hoverRef(tabId, ref)
-        if (!fallback.ok) throw new Error(fallback.error ?? "Falha no hover (DevTools aberto?).", { cause: error })
-      }
-      return { content: `Hover em (${Math.round(point.x)}, ${Math.round(point.y)}).` }
+      return withIndicator(ctx, tabId, "Passando o mouse", async () => {
+        const ref = typeof args.ref === "string" ? args.ref : undefined
+        if (ref && !isMainFrameRef(ref)) {
+          const result = await hoverRef(tabId, ref)
+          if (!result.ok) throw new Error(result.error ?? "Falha no hover.")
+          return { content: `Hover em ${ref} (iframe, via eventos de DOM).` }
+        }
+        const point = await pointFor(args, ctx, tabId)
+        await ctx.cursor(tabId, point.x, point.y)
+        try {
+          await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
+        } catch (error) {
+          if (!ref) throw error
+          const fallback = await hoverRef(tabId, ref)
+          if (!fallback.ok) throw new Error(fallback.error ?? "Falha no hover (DevTools aberto?).", { cause: error })
+        }
+        return { content: `Hover em (${Math.round(point.x)}, ${Math.round(point.y)}).` }
+      })
     }
 
     if (action === "type") {
       const text = typeof args.text === "string" ? args.text : ""
       if (!text) throw new Error("Informe `text`.")
-      if (typeof args.ref === "string") {
-        if (!isMainFrameRef(args.ref)) {
-          const result = await focusRef(tabId, args.ref)
-          if (!result.ok) throw new Error(result.error ?? "Falha ao focar o campo.")
-          await sleep(80)
-        } else {
-          const point = await pointFor(args, ctx, tabId)
-          await ctx.cursor(tabId, point.x, point.y, { click: true })
-          await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button: "left", clickCount: 1 })
-          await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button: "left", clickCount: 1 })
-          await sleep(100)
-        }
-      }
       await ctx.indicator(tabId, "Digitando", true)
-      await ctx.cdp.text(tabId, text)
-      if (args.submit === true) {
-        await ctx.cdp.key(tabId, "keyDown", "Enter", { code: "Enter", windowsVirtualKeyCode: 13 })
-        await ctx.cdp.key(tabId, "keyUp", "Enter", { code: "Enter", windowsVirtualKeyCode: 13 })
+      try {
+        if (typeof args.ref === "string") {
+          if (!isMainFrameRef(args.ref)) {
+            const result = await focusRef(tabId, args.ref)
+            if (!result.ok) throw new Error(result.error ?? "Falha ao focar o campo.")
+            await sleep(80)
+          } else {
+            const point = await pointFor(args, ctx, tabId)
+            await ctx.cursor(tabId, point.x, point.y, { click: true })
+            await ctx.cdp.mouse(tabId, "mousePressed", point.x, point.y, { button: "left", clickCount: 1 })
+            await ctx.cdp.mouse(tabId, "mouseReleased", point.x, point.y, { button: "left", clickCount: 1 })
+            await sleep(100)
+          }
+        }
+        await ctx.cdp.text(tabId, text)
+        if (args.submit === true) {
+          await ctx.cdp.key(tabId, "keyDown", "Enter", { code: "Enter", windowsVirtualKeyCode: 13 })
+          await ctx.cdp.key(tabId, "keyUp", "Enter", { code: "Enter", windowsVirtualKeyCode: 13 })
+        }
+        await sleep(150)
+        await adoptOpenerTabs(ctx, tabId)
+      } finally {
+        await ctx.hideIndicator(tabId)
       }
-      await sleep(150)
-      await adoptOpenerTabs(ctx, tabId)
-      await ctx.hideIndicator(tabId)
       return { content: `Digitou ${text.length} caractere(s)${args.submit === true ? " e pressionou Enter" : ""}.` }
     }
 
@@ -247,12 +252,11 @@ export const computerTools: ToolMap = {
         throw new Error(`Direção de scroll inválida: ${direction}. Use up, down, left ou right.`)
       }
       const amount = Math.min(Math.max(num(args.scroll_amount) ?? 600, 50), 5000)
-      if (typeof args.ref === "string" && !isMainFrameRef(args.ref)) {
-        await ctx.indicator(tabId, "Rolando", true)
-        const result = await scrollRef(tabId, args.ref)
-        await ctx.hideIndicator(tabId)
+      const ref = typeof args.ref === "string" ? args.ref : undefined
+      if (ref && !isMainFrameRef(ref)) {
+        const result = await withIndicator(ctx, tabId, "Rolando", () => scrollRef(tabId, ref))
         if (!result.ok) throw new Error(result.error ?? "Falha ao rolar até o elemento.")
-        return { content: `Rolou até ${args.ref} (iframe).` }
+        return { content: `Rolou até ${ref} (iframe).` }
       }
       const point =
         typeof args.ref === "string" || Array.isArray(args.coordinate)
@@ -260,8 +264,8 @@ export const computerTools: ToolMap = {
           : await center(tabId)
       const deltaX = direction === "left" ? -amount : direction === "right" ? amount : 0
       const deltaY = direction === "up" ? -amount : direction === "down" ? amount : 0
-      await ctx.cursor(tabId, point.x, point.y)
       await ctx.indicator(tabId, "Rolando", true)
+      await ctx.cursor(tabId, point.x, point.y)
       try {
         await ctx.cdp.wheel(tabId, point.x, point.y, deltaX, deltaY)
         await sleep(250)

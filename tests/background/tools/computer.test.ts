@@ -193,6 +193,8 @@ describe("background/tools/computer", () => {
 
       expect(a11yMock.clickRef).toHaveBeenCalledWith(1, "f2_ref_1")
       expect(mocks.cdp.mouse).not.toHaveBeenCalled()
+      expect(mocks.indicator).toHaveBeenCalledWith(1, "Clicando", true)
+      expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
       expect(result.content).toBe("Clique em f2_ref_1 (iframe, via eventos de DOM).")
     })
 
@@ -330,6 +332,8 @@ describe("background/tools/computer", () => {
 
       expect(a11yMock.hoverRef).toHaveBeenCalledWith(1, "f2_ref_1")
       expect(mocks.cdp.mouse).not.toHaveBeenCalled()
+      expect(mocks.indicator).toHaveBeenCalledWith(1, "Passando o mouse", true)
+      expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
       expect(result.content).toBe("Hover em f2_ref_1 (iframe, via eventos de DOM).")
     })
 
@@ -405,6 +409,16 @@ describe("background/tools/computer", () => {
       expect(mocks.cdp.mouse).not.toHaveBeenCalled()
       expect(mocks.cdp.text).toHaveBeenCalledWith(1, "texto solto")
       expect(result.content).toBe("Digitou 11 caractere(s).")
+    })
+
+    it("esconde o indicador quando a digitação falha", async () => {
+      const mocks = makeMocks()
+      mocks.cdp.text.mockRejectedValue(new Error("aba sumiu"))
+
+      await expect(computerTools.computer({ action: "type", text: "abc" }, mocks.ctx)).rejects.toThrow("aba sumiu")
+
+      expect(mocks.indicator).toHaveBeenCalledWith(1, "Digitando", true)
+      expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
     })
 
     it("envia Enter quando submit é true", async () => {
@@ -521,6 +535,8 @@ describe("background/tools/computer", () => {
 
       expect(a11yMock.scrollRef).toHaveBeenCalledWith(1, "f2_ref_1")
       expect(mocks.cdp.wheel).not.toHaveBeenCalled()
+      expect(mocks.indicator).toHaveBeenCalledWith(1, "Rolando", true)
+      expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
       expect(result.content).toBe("Rolou até f2_ref_1 (iframe).")
     })
 

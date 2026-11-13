@@ -164,6 +164,48 @@ describe("background/presence — cursor", () => {
 
     expect(types()).not.toContain("indicator:hide")
   })
+
+  it("não espera de novo quando o clique repete o ponto já alcançado", async () => {
+    await presence.show(1, "Lendo", true, "s1")
+    await presence.cursor(1, 10, 20, "s1")
+    await vi.advanceTimersByTimeAsync(300)
+
+    slept.length = 0
+    await presence.cursor(1, 10, 20, "s1")
+
+    expect(slept).toEqual([])
+  })
+
+  it("volta a esperar quando o alvo muda", async () => {
+    await presence.show(1, "Lendo", true, "s1")
+    await presence.cursor(1, 10, 20, "s1")
+    await vi.advanceTimersByTimeAsync(300)
+
+    slept.length = 0
+    await presence.cursor(1, 30, 40, "s1")
+
+    expect(slept).toEqual([300])
+  })
+
+  it("não espera a viagem quando a aba prefere reduced motion", async () => {
+    presence = new Presence({
+      send: async (tabId, message) => {
+        sent.push([tabId, message])
+        return true
+      },
+      isReducedMotion: () => true,
+      moveMs: 300,
+      sleep: async (ms) => {
+        slept.push(ms)
+      },
+    })
+    await presence.show(1, "Lendo", true, "s1")
+
+    await presence.cursor(1, 10, 20, "s1", true)
+
+    expect(slept).toEqual([])
+    expect(types()).toContain("indicator:click")
+  })
 })
 
 describe("background/presence — restore, hide e forget", () => {

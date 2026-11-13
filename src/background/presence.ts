@@ -8,6 +8,11 @@
  * atividade, ao terminar a sessão ou quando o usuário clica em Parar.
  */
 
+import {
+  INDICATOR_DEFAULT_STATUS,
+  INDICATOR_MOVE_MS,
+} from "../shared/indicator"
+
 export type PresenceMessage =
   | { type: "indicator:show" }
   | { type: "indicator:hide" }
@@ -28,7 +33,15 @@ export interface PresenceOptions {
   busyMs?: number
   /** Duração da viagem do cursor; o clique espera esse tempo. */
   moveMs?: number
+  /** Aba com `prefers-reduced-motion`: o clique não espera a animação. */
+  isReducedMotion?: (tabId: number) => boolean
   sleep?: (ms: number) => Promise<void>
+}
+
+interface CursorPoint {
+  x: number
+  y: number
+  at: number
 }
 
 interface Entry {
@@ -36,9 +49,10 @@ interface Entry {
   status: string
   busy: boolean
   timer: ReturnType<typeof setTimeout> | null
+  lastPoint: CursorPoint | null
 }
 
-export const DEFAULT_STATUS = "OpenCode está nesta aba"
+export const DEFAULT_STATUS = INDICATOR_DEFAULT_STATUS
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -49,6 +63,7 @@ export class Presence {
   private readonly idleMs: number
   private readonly busyMs: number
   private readonly moveMs: number
+  private readonly isReducedMotion: (tabId: number) => boolean
   private readonly sleep: (ms: number) => Promise<void>
 
   constructor(options: PresenceOptions) {
@@ -56,7 +71,8 @@ export class Presence {
     this.isBusy = options.isBusy ?? (() => false)
     this.idleMs = options.idleMs ?? 2500
     this.busyMs = options.busyMs ?? 20_000
-    this.moveMs = options.moveMs ?? 320
+    this.moveMs = options.moveMs ?? INDICATOR_MOVE_MS
+    this.isReducedMotion = options.isReducedMotion ?? (() => false)
     this.sleep = options.sleep ?? defaultSleep
   }
 
@@ -94,7 +110,17 @@ export class Presence {
     try {
       const delivered = await this.send(tabId, { type: "indicator:cursor", x, y })
       if (!delivered) return
-      await this.sleep(this.moveMs)
+      const previous = entry.lastPoint
+      const elapsed =
+        previous && previous.x === x && previous.y === y
+          ? Date.now() - previous.at
+          : 0
+      // Reduced motion desliga a transição no CSS; não faz sentido esperar.
+      const wait = this.isReducedMotion(tabId)
+        ? 0
+        : Math.max(0, this.moveMs - elapsed)
+      entry.lastPoint = { x, y, at: Date.now() }
+      if (wait > 0) await this.sleep(wait)
       if (click) await this.send(tabId, { type: "indicator:click", x, y })
     } finally {
       // Ações sem release (hover) também precisam acabar saindo da aba.
@@ -142,7 +168,13 @@ export class Presence {
   private touch(tabId: number, sessionID: string | null): Entry {
     let entry = this.entries.get(tabId)
     if (!entry) {
-      entry = { sessionID, status: DEFAULT_STATUS, busy: true, timer: null }
+      entry = {
+        sessionID,
+        status: DEFAULT_STATUS,
+        busy: true,
+        timer: null,
+        lastPoint: null,
+      }
       this.entries.set(tabId, entry)
     }
     if (sessionID) entry.sessionID = sessionID

@@ -206,6 +206,64 @@ describe("content/indicator — show/hide", () => {
     expect(host()?.parentElement).toBe(document.documentElement)
     expect(shadowRoots).toHaveLength(2)
   })
+
+  it("expõe o rótulo como status e o botão como button", () => {
+    listener({ type: "indicator:show" })
+    const { label, stop, dot } = ui()
+
+    expect(label?.getAttribute("role")).toBe("status")
+    expect(label?.getAttribute("aria-live")).toBe("polite")
+    expect(stop?.getAttribute("type")).toBe("button")
+    expect(stop?.getAttribute("aria-label")).toBe("Parar o agente nesta aba")
+    expect(dot?.getAttribute("aria-hidden")).toBe("true")
+  })
+
+  it("pausa a animação quando a aba fica oculta", () => {
+    listener({ type: "indicator:show" })
+    const frame = lastShadowRoot().querySelector(".frame")
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    })
+    document.dispatchEvent(new Event("visibilitychange"))
+    expect(frame?.classList.contains("paused")).toBe(true)
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    })
+    document.dispatchEvent(new Event("visibilitychange"))
+    expect(frame?.classList.contains("paused")).toBe(false)
+  })
+
+  it("esconde o overlay depois do watchdog sem mensagens", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:show" })
+
+    vi.advanceTimersByTime(119_999)
+    expect(host()).toBeTruthy()
+
+    vi.advanceTimersByTime(2)
+    expect(lastShadowRoot().querySelector(".frame")?.classList.contains("on")).toBe(false)
+
+    vi.advanceTimersByTime(400)
+    expect(host()).toBeNull()
+  })
+
+  it("reinicia o watchdog a cada mensagem", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:show" })
+
+    vi.advanceTimersByTime(60_000)
+    listener({ type: "indicator:status", text: "Lendo", busy: true })
+    vi.advanceTimersByTime(60_000)
+    expect(host()).toBeTruthy()
+
+    vi.advanceTimersByTime(60_001)
+    vi.advanceTimersByTime(400)
+    expect(host()).toBeNull()
+  })
 })
 
 describe("content/indicator — status", () => {
@@ -325,6 +383,24 @@ describe("content/indicator — cursor", () => {
 
     expect(ui().cursor?.classList.contains("on")).toBe(false)
   })
+
+  it("some alguns segundos depois da última ação, mantendo a borda", () => {
+    vi.useFakeTimers()
+    listener({ type: "indicator:show" })
+    listener({ type: "indicator:cursor", x: 10, y: 20 })
+
+    expect(ui().cursor?.classList.contains("on")).toBe(true)
+
+    vi.advanceTimersByTime(2_999)
+    expect(ui().cursor?.classList.contains("on")).toBe(true)
+
+    vi.advanceTimersByTime(2)
+    expect(ui().cursor?.classList.contains("on")).toBe(false)
+    expect(lastShadowRoot().querySelector(".frame")?.classList.contains("on")).toBe(true)
+
+    listener({ type: "indicator:cursor", x: 11, y: 21 })
+    expect(ui().cursor?.classList.contains("on")).toBe(true)
+  })
 })
 
 describe("content/indicator — clique", () => {
@@ -391,5 +467,24 @@ describe("content/indicator — mensagens desconhecidas", () => {
 
     expect(host()).toBeNull()
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
+  })
+})
+
+describe("content/indicator — reduced motion", () => {
+  it("informa a preferência da aba ao instalar e acompanha mudanças", async () => {
+    chrome.runtime.onMessage.clear()
+    delete (window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled
+    const addEventListener = vi.fn()
+    vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener }))
+
+    vi.resetModules()
+    const module = await import("../../src/content/indicator")
+    module.installIndicator()
+
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: "indicator:prefers-reduced-motion",
+      value: true,
+    })
+    expect(addEventListener).toHaveBeenCalledWith("change", expect.any(Function))
   })
 })

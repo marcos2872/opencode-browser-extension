@@ -1,3 +1,10 @@
+import {
+  INDICATOR_CURSOR_IDLE_MS,
+  INDICATOR_DEFAULT_STATUS,
+  INDICATOR_MOVE_MS,
+  INDICATOR_WATCHDOG_MS,
+} from "../shared/indicator"
+
 const HOST_ID = "opencode-browser-indicator"
 const FADE_MS = 350
 const PRESS_MS = 160
@@ -12,9 +19,16 @@ let cursor: HTMLDivElement | null = null
 let cursorPlaced = false
 let fadeTimer: ReturnType<typeof setTimeout> | null = null
 let pressTimer: ReturnType<typeof setTimeout> | null = null
+let cursorTimer: ReturnType<typeof setTimeout> | null = null
+let watchdogTimer: ReturnType<typeof setTimeout> | null = null
 
 const STYLE = `
-  :host { all: initial; }
+  :host {
+    all: initial;
+    --indicator-accent: #8fb8ee;
+    --indicator-accent-soft: #c5dcf7;
+    --indicator-accent-rgb: 143, 184, 238;
+  }
 
   /* Borda: anel de 3px onde um gradiente cônico gira, mais um brilho interno pulsando. */
   .frame {
@@ -32,14 +46,17 @@ const STYLE = `
     content: ""; position: absolute; left: 50%; top: 50%;
     width: 200vmax; height: 200vmax; margin: -100vmax 0 0 -100vmax;
     background: conic-gradient(from 0deg,
-      #8fb8ee 0%, #c5dcf7 12%, #8fb8ee 28%,
-      rgba(143,184,238,.18) 50%,
-      #8fb8ee 72%, #c5dcf7 88%, #8fb8ee 100%);
+      var(--indicator-accent) 0%, var(--indicator-accent-soft) 12%,
+      var(--indicator-accent) 28%,
+      rgba(var(--indicator-accent-rgb), .18) 50%,
+      var(--indicator-accent) 72%, var(--indicator-accent-soft) 88%,
+      var(--indicator-accent) 100%);
     animation: spin 3.4s linear infinite;
   }
   .glow {
     position: absolute; inset: 0;
-    box-shadow: inset 0 0 40px 4px rgba(143,184,238,.30), inset 0 0 120px rgba(143,184,238,.10);
+    box-shadow: inset 0 0 40px 4px rgba(var(--indicator-accent-rgb), .30),
+      inset 0 0 120px rgba(var(--indicator-accent-rgb), .10);
     animation: pulse 2.6s ease-in-out infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -49,6 +66,7 @@ const STYLE = `
   .pill {
     position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
     display: flex; align-items: center; gap: 10px;
+    max-width: calc(100vw - 24px);
     background: #141413; color: #faf9f5;
     font: 500 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding: 9px 10px 9px 14px; border-radius: 999px;
@@ -57,7 +75,12 @@ const STYLE = `
     opacity: 0; transition: opacity ${FADE_MS}ms ease;
   }
   .pill.on { opacity: 1; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #8fb8ee; }
+  .pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot {
+    flex: none;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--indicator-accent);
+  }
   .dot.busy { animation: blink 1s ease-in-out infinite; }
   @keyframes blink { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
   .stop {
@@ -70,22 +93,28 @@ const STYLE = `
   .cursor {
     position: fixed; left: 0; top: 0; width: 22px; height: 28px; margin: -1px 0 0 -2px;
     pointer-events: none; opacity: 0;
-    transition: transform 320ms cubic-bezier(.22,.8,.24,1), opacity 200ms ease;
+    transition: transform ${INDICATOR_MOVE_MS}ms cubic-bezier(.22,.8,.24,1), opacity 200ms ease;
     will-change: transform;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.35));
   }
   .cursor.on { opacity: 1; }
   .cursor.snap { transition: opacity 200ms ease; }
   .cursor svg { display: block; transform-origin: 2px 2px; transition: transform ${PRESS_MS / 2}ms ease-out; }
+  .cursor path { fill: var(--indicator-accent); stroke: #faf9f5; stroke-width: 1.5; stroke-linejoin: round; }
   .cursor.press svg { transform: scale(.78); }
   .ripple {
     position: fixed; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px;
     border-radius: 50%; pointer-events: none;
-    border: 2px solid #8fb8ee; background: rgba(143,184,238,.22);
+    border: 2px solid var(--indicator-accent);
+    background: rgba(var(--indicator-accent-rgb), .22);
     animation: ripple ${RIPPLE_MS}ms ease-out forwards;
   }
   @keyframes ripple { from { transform: translate3d(var(--x), var(--y), 0) scale(.2); opacity: .95; }
                       to   { transform: translate3d(var(--x), var(--y), 0) scale(1.5); opacity: 0; } }
+
+  /* Animação pausada quando a aba não está visível: menos CPU/GPU sem mudar o visual. */
+  .frame.paused .ring::before,
+  .frame.paused .glow { animation-play-state: paused; }
 
   @media (prefers-reduced-motion: reduce) {
     .ring::before { animation: none; }
@@ -100,6 +129,40 @@ function cancelFade(): void {
   fadeTimer = null
 }
 
+function cancelCursorTimer(): void {
+  if (cursorTimer) clearTimeout(cursorTimer)
+  cursorTimer = null
+}
+
+/** Mantém o cursor visível por alguns segundos após a última ação de mouse. */
+function showCursor(element: HTMLDivElement): void {
+  element.classList.add("on")
+  cancelCursorTimer()
+  cursorTimer = setTimeout(() => {
+    cursorTimer = null
+    cursor?.classList.remove("on")
+  }, INDICATOR_CURSOR_IDLE_MS)
+}
+
+function disarmWatchdog(): void {
+  if (watchdogTimer) clearTimeout(watchdogTimer)
+  watchdogTimer = null
+}
+
+/** Rede de segurança: sem mensagens do service worker, o overlay se apaga. */
+function armWatchdog(): void {
+  disarmWatchdog()
+  watchdogTimer = setTimeout(() => {
+    watchdogTimer = null
+    hide()
+  }, INDICATOR_WATCHDOG_MS)
+}
+
+/** Pausa o anel/brilho quando a aba não está visível. */
+function syncPaused(): void {
+  frame?.classList.toggle("paused", document.visibilityState === "hidden")
+}
+
 function mount(): void {
   if (window.top !== window) return
   cancelFade()
@@ -107,7 +170,7 @@ function mount(): void {
     // Voltou durante o fade-out: só reacende.
     frame?.classList.add("on")
     pill?.classList.add("on")
-    if (cursorPlaced) cursor?.classList.add("on")
+    if (cursorPlaced && cursor) showCursor(cursor)
     return
   }
   // Sobra de um content script órfão (extensão recarregada): sem dono, nunca seria apagada.
@@ -129,6 +192,7 @@ function mount(): void {
   glow.className = "glow"
   frame.append(glow, ring)
   root.appendChild(frame)
+  syncPaused()
 
   pill = document.createElement("div")
   pill.className = "pill"
@@ -136,10 +200,15 @@ function mount(): void {
   dot.className = "dot"
   dot.dataset.role = "dot"
   label = document.createElement("span")
-  label.textContent = "OpenCode está nesta aba"
+  label.textContent = INDICATOR_DEFAULT_STATUS
+  label.setAttribute("role", "status")
+  label.setAttribute("aria-live", "polite")
   const stop = document.createElement("button")
+  stop.type = "button"
   stop.className = "stop"
   stop.textContent = "Parar"
+  stop.setAttribute("aria-label", "Parar o agente nesta aba")
+  dot.setAttribute("aria-hidden", "true")
   stop.addEventListener("click", () => {
     void chrome.runtime.sendMessage({ type: "browser:stop" })
   })
@@ -163,17 +232,21 @@ function unmount(): void {
   cursor = null
   cursorPlaced = false
   cancelFade()
+  cancelCursorTimer()
+  disarmWatchdog()
   if (pressTimer) clearTimeout(pressTimer)
   pressTimer = null
 }
 
 /** Apaga com fade e só então remove do DOM. */
 function hide(): void {
+  cancelFade()
+  cancelCursorTimer()
+  disarmWatchdog()
   if (!host) return
   frame?.classList.remove("on")
   pill?.classList.remove("on")
   cursor?.classList.remove("on")
-  cancelFade()
   fadeTimer = setTimeout(unmount, FADE_MS)
 }
 
@@ -184,8 +257,7 @@ function ensureCursor(): HTMLDivElement | null {
   cursor.className = "cursor snap"
   cursor.innerHTML = `
     <svg width="22" height="28" viewBox="0 0 18 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 1 L1 18 L5 14.5 L7.5 22 L11 20.5 L8.5 13 L14 13 Z"
-        fill="#8fb8ee" stroke="#faf9f5" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M1 1 L1 18 L5 14.5 L7.5 22 L11 20.5 L8.5 13 L14 13 Z"/>
     </svg>`
   root.appendChild(cursor)
   cursorPlaced = false
@@ -203,7 +275,7 @@ function moveCursor(x: number, y: number): HTMLDivElement | null {
     void element.offsetWidth
     element.classList.remove("snap")
   }
-  element.classList.add("on")
+  showCursor(element)
   return element
 }
 
@@ -228,29 +300,47 @@ export function installIndicator(): void {
   if ((window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled) return
   ;(window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled = true
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "indicator:show") {
-      mount()
-      return
-    }
     if (message?.type === "indicator:hide") {
       hide()
       return
     }
+    if (message?.type === "indicator:show") {
+      armWatchdog()
+      mount()
+      return
+    }
     if (message?.type === "indicator:status") {
+      armWatchdog()
       if (label && typeof message.text === "string") label.textContent = message.text
       const dot = root?.querySelector<HTMLElement>('[data-role="dot"]')
       if (dot) dot.classList.toggle("busy", Boolean(message.busy))
       return
     }
     if (message?.type === "indicator:cursor") {
+      armWatchdog()
       // O cursor sozinho já acende a borda: não depende da ordem das mensagens.
       if (!root) mount()
       moveCursor(message.x, message.y)
       return
     }
     if (message?.type === "indicator:click") {
+      armWatchdog()
       if (!root) mount()
       clickAt(message.x, message.y)
     }
   })
+
+  if (typeof window.matchMedia === "function") {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const report = () => {
+      const sent = chrome.runtime.sendMessage({
+        type: "indicator:prefers-reduced-motion",
+        value: media.matches,
+      })
+      void Promise.resolve(sent).catch(() => undefined)
+    }
+    report()
+    media.addEventListener?.("change", report)
+  }
+  document.addEventListener("visibilitychange", syncPaused)
 }

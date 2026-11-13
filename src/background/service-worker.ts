@@ -1151,6 +1151,8 @@ async function interrupt(sessionID?: string | null): Promise<void> {
     if (client) {
       await client.interrupt(target).catch(() => undefined);
     }
+    // A presença precisa sair mesmo que a sessão ainda não tenha estado carregado.
+    void presence.hideSession(target);
     const state = sessionStates.peek(target);
     if (!state) continue;
     state.busy = false;
@@ -1158,10 +1160,10 @@ async function interrupt(sessionID?: string | null): Promise<void> {
     for (const message of state.messages) {
       if (message.kind === "assistant") message.streaming = false;
     }
-    void presence.hideSession(target);
     notifySession(target);
   }
   if (stopAll) {
+    void presence.hideAll();
     resetStreaming();
     broadcastNow();
   }
@@ -1759,6 +1761,9 @@ function contentText(content: unknown): string | undefined {
   return text || undefined;
 }
 
+/** Abas que pediram `prefers-reduced-motion` ao content script. */
+const reducedMotionTabs = new Set<number>();
+
 /** Borda animada + mouse virtual nas abas em uso pelo agente. */
 const presence = new Presence({
   send: async (tabId, message) => {
@@ -1774,6 +1779,7 @@ const presence = new Presence({
     return deliver();
   },
   isBusy: (sessionID) => sessionStates.peek(sessionID)?.busy ?? false,
+  isReducedMotion: (tabId) => reducedMotionTabs.has(tabId),
 });
 
 async function executeRelayTool(
@@ -1782,6 +1788,7 @@ async function executeRelayTool(
   const sessionID = request.sessionID || activeSessionID || "relay";
   const controller = new AbortController();
   toolAborts.set(request.id, { sessionID, controller });
+  const touchedTabs = new Set<number>();
   const context: ToolContext = {
     sessionID,
     signal: controller.signal,
@@ -1792,12 +1799,15 @@ async function executeRelayTool(
       relay.send({ type: "progress", id: request.id, phase, detail });
     },
     indicator: async (tabId, status, busy = true) => {
+      touchedTabs.add(tabId);
       await presence.show(tabId, status, busy, sessionID);
     },
     hideIndicator: async (tabId) => {
+      touchedTabs.add(tabId);
       presence.release(tabId);
     },
     cursor: async (tabId, x, y, options) => {
+      touchedTabs.add(tabId);
       await presence.cursor(tabId, x, y, sessionID, options?.click === true);
     },
     rank: async (query, candidates) => {
@@ -1837,6 +1847,7 @@ async function executeRelayTool(
     ask: async (input) => (await permissions.check(input, sessionID)).allowed,
   };
 
+  let failed = false;
   try {
     relay.send({
       type: "progress",
@@ -1873,6 +1884,7 @@ async function executeRelayTool(
     }
     notifySession(sessionID);
   } catch (error) {
+    failed = true;
     const message = errorMessage(error);
     relay.send({
       type: "tool_result",
@@ -1888,6 +1900,11 @@ async function executeRelayTool(
       notifySession(sessionID);
     }
   } finally {
+    // Nenhuma tool pode deixar a borda presa, mesmo quando falha no meio.
+    for (const tabId of touchedTabs) {
+      if (failed) await presence.hide(tabId).catch(() => undefined);
+      else presence.release(tabId);
+    }
     toolAborts.delete(request.id);
   }
 }
@@ -2010,6 +2027,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true });
     return;
   }
+  if (message?.type === "indicator:prefers-reduced-motion") {
+    const tabId = sender.tab?.id;
+    if (tabId !== undefined) {
+      if (message.value === true) reducedMotionTabs.add(tabId);
+      else reducedMotionTabs.delete(tabId);
+    }
+    sendResponse({ ok: true });
+    return;
+  }
   if (message?.type === "browser:stop") {
     handleStop(sender);
     sendResponse({ ok: true });
@@ -2117,6 +2143,7 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  reducedMotionTabs.delete(tabId);
   presence.forget(tabId);
 });
 

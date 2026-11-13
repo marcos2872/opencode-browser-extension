@@ -8,6 +8,7 @@ import {
   generateTree,
   generateTreeFrames,
   hoverRef,
+  injectContentScript,
   isMainFrameRef,
   listElements,
   listElementsFrames,
@@ -42,6 +43,23 @@ const toolCalls = () => calls.filter((call) => call.args !== undefined)
 const toolCall = () => toolCalls().at(-1) as ScriptCall
 const probeCalls = () => calls.filter((call) => call.args === undefined && call.files === undefined)
 const injectCall = () => calls.find((call) => call.files !== undefined)
+
+describe("a11y — injeção do content script", () => {
+  it("injeta no frame principal e confirma", async () => {
+    await expect(injectContentScript(TAB_ID)).resolves.toBe(true)
+
+    expect(injectCall()).toEqual({
+      target: { tabId: TAB_ID, frameIds: [0] },
+      files: ["assets/content.js"],
+    })
+  })
+
+  it("devolve false quando a injeção falha", async () => {
+    chrome.scripting.executeScript.mockRejectedValueOnce(new Error("página restrita"))
+
+    await expect(injectContentScript(TAB_ID)).resolves.toBe(false)
+  })
+})
 
 beforeEach(() => {
   calls = []
