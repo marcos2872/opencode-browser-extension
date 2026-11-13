@@ -115,6 +115,7 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `indicator:status` | SW → página | `text`, `busy` | Atualiza rótulo e animação             |
 | `indicator:cursor` | SW → página | `x`, `y`       | Move o mouse virtual (monta o overlay se preciso) |
 | `indicator:click`  | SW → página | `x`, `y`       | Mouse afunda e solta uma onda no ponto |
+| `indicator:prefers-reduced-motion` | página → SW | `value` | Informa se a aba prefere menos movimento; o clique não espera a viagem |
 | `browser:stop`     | página → SW | —              | Aborta execuções e interrompe a sessão |
 
 ## Alarmes
