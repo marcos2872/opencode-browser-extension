@@ -76,6 +76,16 @@ export async function assertScriptable(tabId: number): Promise<void> {
   }
 }
 
+/** Injeta o content script no frame principal (abas abertas antes de a extensão ser instalada/recarregada). */
+export async function injectContentScript(tabId: number): Promise<boolean> {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: [CONTENT_SCRIPT] })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function ensureBridge(tabId: number, frameId = 0): Promise<void> {
   if (frameId === 0) await assertScriptable(tabId)
   if (await hasBridge(tabId, frameId)) return

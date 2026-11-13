@@ -202,7 +202,7 @@ upload de arquivos.
 ### `indicator`
 
 **Arquivo:** `src/content/indicator.ts`
-**Descrição:** Moldura, status, cursor fantasma e botão Parar em shadow DOM.
+**Descrição:** Borda animada, status, mouse virtual (com onda de clique) e botão Parar em shadow DOM. O ciclo de vida é controlado por `src/background/presence.ts`.
 
 ## Offscreen
 

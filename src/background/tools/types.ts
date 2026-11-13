@@ -19,7 +19,8 @@ export interface ToolContext {
   progress: (phase: string, detail?: string) => void
   indicator: (tabId: number, status: string, busy?: boolean) => Promise<void>
   hideIndicator: (tabId: number) => Promise<void>
-  cursor: (tabId: number, x: number, y: number) => Promise<void>
+  /** Move o mouse virtual; com `click`, espera a viagem e anima o clique. */
+  cursor: (tabId: number, x: number, y: number, options?: { click?: boolean }) => Promise<void>
   rank?: (
     query: string,
     candidates: Array<{ ref: string; role: string; name: string; type?: string }>,

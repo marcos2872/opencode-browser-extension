@@ -1671,6 +1671,23 @@ describe("service-worker: relay e ferramentas", () => {
     return socket;
   }
 
+  async function toolRequest(
+    socket: FakeWebSocket,
+    id: string,
+    tool: string,
+    args: Record<string, unknown>,
+  ): Promise<any> {
+    socket.message({ type: "tool_request", id, tool, args, sessionID: "ses_relay" });
+    await flush(20);
+    return socket
+      .sentJson()
+      .find((message) => message.type === "tool_result" && message.id === id);
+  }
+
+  function currentTabId(result: any): number {
+    return JSON.parse(result.content).currentTabId as number;
+  }
+
   it("responde hello ao abrir o socket", async () => {
     const socket = await withSocket();
     expect(socket.sentJson()[0]).toMatchObject({
@@ -1769,6 +1786,127 @@ describe("service-worker: relay e ferramentas", () => {
     await flush();
     expect(response.ok).toBe(true);
     expect(FakeWebSocket.instances.length).toBeGreaterThan(1);
+  });
+
+  it("mantém a presença ao navegar e a esquece quando a aba fecha", async () => {
+    const socket = await withSocket();
+    const context = await toolRequest(socket, "ctx", "tabs_context", { createIfEmpty: true });
+    const tabId = currentTabId(context);
+
+    chrome.tabs.sendMessage.mockClear();
+    await toolRequest(socket, "wait", "computer", {
+      action: "wait",
+      duration: 0.1,
+      tabId,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(tabId, {
+      type: "indicator:show",
+    });
+
+    chrome.tabs.sendMessage.mockClear();
+    chrome.tabs.onUpdated.emit(tabId, { status: "complete" });
+    await flush();
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(tabId, {
+      type: "indicator:show",
+    });
+
+    chrome.tabs.sendMessage.mockClear();
+    chrome.tabs.onRemoved.emit(tabId, {});
+    chrome.tabs.onUpdated.emit(tabId, { status: "complete" });
+    await flush();
+    expect(chrome.tabs.sendMessage).not.toHaveBeenCalledWith(tabId, {
+      type: "indicator:show",
+    });
+  });
+
+  it("injeta o content script quando a aba ainda não tem receptor", async () => {
+    const socket = await withSocket();
+    const context = await toolRequest(socket, "ctx", "tabs_context", { createIfEmpty: true });
+    const tabId = currentTabId(context);
+
+    chrome.tabs.sendMessage.mockClear();
+    chrome.scripting.executeScript.mockClear();
+    chrome.tabs.sendMessage.mockRejectedValueOnce(new Error("sem receptor"));
+
+    await toolRequest(socket, "wait", "computer", {
+      action: "wait",
+      duration: 0.1,
+      tabId,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
+      target: { tabId, frameIds: [0] },
+      files: ["assets/content.js"],
+    });
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(tabId, {
+      type: "indicator:show",
+    });
+  });
+
+  it("esconde a presença das outras abas da sessão ao parar", async () => {
+    const socket = await withSocket();
+    const context = await toolRequest(socket, "ctx", "tabs_context", { createIfEmpty: true });
+    const tabA = currentTabId(context);
+    const created = await toolRequest(socket, "create", "tabs_create", {
+      url: "https://outra.example",
+    });
+    const tabB = Number(/Tab ID: (\d+)/.exec(created.content)?.[1]);
+    expect(tabB).toBeGreaterThan(0);
+
+    await toolRequest(socket, "wait", "computer", {
+      action: "wait",
+      duration: 0.1,
+      tabId: tabA,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    chrome.tabs.sendMessage.mockClear();
+
+    const response = await callWorker({ type: "browser:stop" }, { tab: { id: tabB } });
+    await flush(20);
+
+    expect(response).toEqual({ ok: true });
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(tabA, {
+      type: "indicator:hide",
+    });
+  });
+
+  it("esconde a presença quando a tool falha depois de mostrá-la", async () => {
+    const socket = await withSocket();
+    const context = await toolRequest(socket, "ctx", "tabs_context", { createIfEmpty: true });
+    const tabId = currentTabId(context);
+
+    chrome.tabs.sendMessage.mockClear();
+    chrome.debugger.sendCommand.mockImplementation(
+      (_target: unknown, method: string, _params: unknown, callback?: (result: unknown) => void) => {
+        chrome.runtime.lastError =
+          method === "Input.insertText" ? { message: "aba sumiu" } : undefined;
+        callback?.(undefined);
+      },
+    );
+
+    const result = await toolRequest(socket, "type", "computer", {
+      action: "type",
+      text: "abc",
+      tabId,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(result.ok).toBe(false);
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(tabId, {
+      type: "indicator:hide",
+    });
+  });
+
+  it("aceita a preferência de reduced motion da aba", async () => {
+    await withSocket();
+    const response = await callWorker(
+      { type: "indicator:prefers-reduced-motion", value: true },
+      { tab: { id: 1 } },
+    );
+
+    expect(response).toEqual({ ok: true });
   });
 });
 

@@ -303,9 +303,10 @@ nascem em segundo plano, e a janela em que você está trabalhando continua onde
 está. Se você preferir ver as abas surgindo, ligue **“Permitir que abas abertas
 ou anexadas pelo agente venham para frente”** nas configurações.
 
-Na página em que o agente está agindo aparece uma moldura laranja com o aviso
-**“OpenCode está nesta aba”**, um **Parar** e um cursor animado mostrando onde
-ele clica.
+Na página em que o agente está agindo aparece uma borda azul pastel animada com o aviso
+**“OpenCode está nesta aba”**, um **Parar** e um mouse virtual que desliza até
+o alvo e mostra uma onda a cada clique. A borda fica acesa enquanto o agente
+trabalha e some sozinha pouco depois que ele termina.
 
 ### Conectar uma aba sua ao agente
 
@@ -572,7 +573,7 @@ alterações; o aviso **“Permissões salvas.”** confirma.
 | **Ponto verde/vermelho/âmbar** no cabeçalho | API online, offline ou conectando |
 | **Banner de conexão** | Explica a falha e oferece **Tentar novamente**, **Reconectar** ou **Abrir configurações** |
 | **Faixa de status** abaixo do chat | Tentativas de reconexão e mensagens do backend |
-| **Moldura laranja na página** | O agente está agindo naquela aba; tem botão **Parar** |
+| **Borda azul na página** | O agente está agindo naquela aba; tem botão **Parar** |
 | **“ferramentas conectadas” / “ferramentas offline”** | Estado do plugin no rodapé do composer |
 | **Som + notificação** | Algo aconteceu com o painel fechado (fim de execução, permissão, pergunta) |
 | **Aviso temporário no rodapé** | Confirmação ou erro de uma ação sua |
