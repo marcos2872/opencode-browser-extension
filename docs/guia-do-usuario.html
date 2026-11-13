@@ -523,7 +523,7 @@ opencode service restart</code></pre>
 <p>Remover uma aba do contexto <strong>não fecha</strong> a aba: apenas a tira do grupo, e ela volta a ser uma aba normal sua.</p>
 <blockquote><p>Abas de <strong>outra janela</strong> não podem ser anexadas. A extensão responde: “A aba está em outra janela. Abra uma aba nova pela sessão ou mova a aba para a janela do grupo antes de anexá-la.”</p></blockquote>
 <h3 id="o-grupo-nasce-quando-e-preciso">O grupo nasce quando é preciso</h3>
-<p>Se a opção de criar grupo ao iniciar conversa estiver desligada (padrão), o grupo aparece no primeiro uso do navegador pelo agente — ou quando você conecta uma aba. É o fluxo mais econômico: nenhuma aba em branco acumulada.</p>
+<p>Se a opção de criar grupo ao iniciar conversa estiver desligada (padrão), o grupo nasce quando o agente abre uma aba nova (<code>browser_tabs_create</code>) ou quando você conecta uma aba. Tools de leitura e interação não abrem aba sozinhas: sem aba, elas falham com uma orientação. É o fluxo mais econômico: nenhuma aba em branco acumulada.</p>
 <hr />
 <h2 id="9-varias-conversas-ao-mesmo-tempo">9. Várias conversas ao mesmo tempo</h2>
 <p>Este é o ponto forte da extensão: cada conversa corre sozinha, no seu grupo de abas, e você alterna entre elas sem parar nada.</p>
@@ -542,7 +542,7 @@ opencode service restart</code></pre>
 <p>Criar ou selecionar uma conversa manualmente cancela essa troca automática — o painel não vai “voltar sozinho” para outra conversa logo depois do seu clique.</p>
 <h3 id="criar-o-grupo-junto-com-a-conversa-opcional">Criar o grupo junto com a conversa (opcional)</h3>
 <p>Ligando <strong>“Criar um grupo de abas ao iniciar uma nova conversa”</strong>, o <strong>+</strong> já abre uma aba em branco (em segundo plano, na janela do painel) e o grupo com o nome da conversa. É útil quando você quer ver a “âncora” de cada conversa na barra de abas desde o começo; o custo é uma aba em branco por conversa.</p>
-<p>Desligado (padrão), o grupo nasce no primeiro uso do navegador ou no anexo de uma aba.</p>
+<p>Desligado (padrão), o grupo nasce quando o agente abre uma aba nova ou no anexo de uma aba.</p>
 <h3 id="excluir-uma-conversa">Excluir uma conversa</h3>
 <p>Use a lixeira (<strong>Excluir sessão</strong>). A confirmação diz: “Excluir esta sessão? O histórico será removido do OpenCode.”</p>
 <p>Ao excluir:</p>
