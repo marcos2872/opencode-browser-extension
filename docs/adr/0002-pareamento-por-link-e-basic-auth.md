@@ -26,4 +26,4 @@ minutos) por um token de sessão via `GET /auth/connect/{code}` com
 - (+) O token pode ser revogado trocando o pareamento.
 - (−) O usuário precisa copiar um link a cada nova conexão.
 - (−) O token fica no `chrome.storage.local`; o modelo de ameaça assume a conta
-  do usuário como confiável (ver [security.md](../security.md)).
+  do usuário como confiável (ver [security.md](../referencia/security.md)).

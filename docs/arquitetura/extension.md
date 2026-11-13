@@ -88,7 +88,7 @@ eventos de sessões que não estão no painel continuam sendo aplicados e só
 publicam `busy`/`unread` (`sessions:meta`). Quando o usuário troca de grupo de
 abas, `tabs.onActivated` resolve a sessão dona e o painel passa a exibir aquela
 conversa sem apagar o estado das outras. A lista completa está em
-[events.md](events.md).
+[events.md](../referencia/events.md).
 
 ### Execução de ferramentas
 
@@ -225,7 +225,7 @@ porque o overlay some quando a página navega:
 
 O side panel conversa com o service worker por um `Port` (`opencode-browser-ui`)
 e reconecta sozinho se o worker reiniciar. As mensagens estão em
-[events.md](events.md).
+[events.md](../referencia/events.md).
 
 ## Fluxos principais
 

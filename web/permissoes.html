@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Configure modos de permissão e entenda os pedidos de aprovação." />
+<title>Permissões — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="assets/logo-app.png" />
+<link rel="stylesheet" href="assets/guia.css" />
+<script src="assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Páginas</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Páginas do guia">
+      <a href="index.html">Apresentação</a>
+      <a href="instalacao.html">Instalação e conexão</a>
+      <a href="conversas.html">Conversas e perguntas</a>
+      <a href="ferramentas.html">Ferramentas do navegador</a>
+      <a href="abas-e-sessoes.html">Abas e sessões</a>
+      <a href="permissoes.html" aria-current="page">Permissões</a>
+      <a href="configuracoes.html">Configurações</a>
+      <a href="ajuda-e-referencia.html">Ajuda e referência</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../docs/guias/guia-do-usuario.md">Markdown</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Tema: sistema" title="Tema: sistema">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">sistema</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Navegação da página">
+  <div class="grupo">Nesta página</div>
+  <a class="n2" href="#10-permissoes">10. Permissões</a><a class="n3" href="#modos">Modos</a><a class="n3" href="#o-que-nunca-pede-permissao">O que nunca pede permissão</a><a class="n3" href="#o-card-de-permissao">O card de permissão</a><a class="n3" href="#tempo-para-responder">Tempo para responder</a><a class="n3" href="#com-o-painel-fechado">Com o painel fechado</a><a class="n3" href="#varias-conversas-pedindo-ao-mesmo-tempo">Várias conversas pedindo ao mesmo tempo</a><a class="n3" href="#listas-de-permitidos-e-bloqueados">Listas de permitidos e bloqueados</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Permissões</h1>
+  <h2 id="10-permissoes">10. Permissões</h2>
+<h3 id="modos">Modos</h3>
+<p>Em <strong>Configurações → Permissões</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Modo</th><th style="text-align:left">Comportamento</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Perguntar a cada site</strong></td><td style="text-align:left">Pede na primeira ação em cada domínio</td></tr>
+<tr><td style="text-align:left"><strong>Permitir ações automaticamente (recomendado)</strong> (<em>padrão</em>)</td><td style="text-align:left">Não pergunta; respeita a lista de bloqueio</td></tr>
+<tr><td style="text-align:left"><strong>Bloquear ações</strong></td><td style="text-align:left">Só leitura; nenhuma interação é executada</td></tr></tbody></table></div>
+<h3 id="o-que-nunca-pede-permissao">O que nunca pede permissão</h3>
+<p>Leitura e coisas de bastidor: listar abas, abrir aba, ler a página, buscar elemento, extrair texto, ler console, ler rede, redimensionar janela e gravar quadros do GIF. Também não pedem: iniciar e parar a gravação de GIF.</p>
+<h3 id="o-card-de-permissao">O card de permissão</h3>
+<p>Quando uma ação precisa de aprovação, o card aparece <strong>sobre o painel</strong> e mostra:</p>
+<ul>
+<li>o host em destaque, com um ponto de alerta;</li>
+<li>o que será feito (“Navegar de a.com para b.com”, “Clicar na página”, “Preencher campo ref_3”, “Executar JavaScript na página”…);</li>
+<li>detalhes: título da aba, URL de destino, valor que será digitado (até 2.000 caracteres), nomes dos arquivos;</li>
+<li>uma prévia (screenshot) quando existir;</li>
+<li>o nome da conversa, se o pedido for de <strong>outra</strong> conversa (“Sessão: …”).</li>
+</ul>
+<p>As opções:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Botão</th><th style="text-align:left">Efeito</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Permitir uma vez</strong> (Enter)</td><td style="text-align:left">Só esta ação</td></tr>
+<tr><td style="text-align:left"><strong>Permitir nesta sessão</strong></td><td style="text-align:left">Libera o host enquanto essa conversa existir (guardado só em memória)</td></tr>
+<tr><td style="text-align:left"><strong>Permitir sempre para exemplo.com</strong></td><td style="text-align:left">Grava o host na lista de permitidos</td></tr>
+<tr><td style="text-align:left"><strong>Negar</strong> (Esc)</td><td style="text-align:left">Recusa a ação</td></tr></tbody></table></div>
+<p>Pedidos de navegação entre domínios e de plano têm botões próprios: <strong>Permitir</strong> / <strong>Permitir sempre para …</strong> / <strong>Recusar</strong> e <strong>Aprovar plano</strong> / <strong>Recusar</strong>.</p>
+<p>O rodapé do card lembra: “Você pode revogar permissões em Configurações. O agente nunca deve comprar, criar contas ou burlar captchas sem sua confirmação.”</p>
+<h3 id="tempo-para-responder">Tempo para responder</h3>
+<p>O padrão é <strong>60 segundos</strong>. Se você não responder, a ação é <strong>negada</strong>. O tempo pode ser mudado em Configurações (30 s, 1 min, 2 min, 5 min).</p>
+<h3 id="com-o-painel-fechado">Com o painel fechado</h3>
+<p>O pedido vira <strong>notificação do sistema</strong> (“OpenCode Browser: aprovação pendente”) e toca um aviso sonoro. Clicar na notificação abre o painel já com o pedido na tela.</p>
+<h3 id="varias-conversas-pedindo-ao-mesmo-tempo">Várias conversas pedindo ao mesmo tempo</h3>
+<p>Os pedidos entram numa <strong>fila</strong>: o da conversa que você está vendo aparece primeiro; ao responder, o próximo entra — com o nome da conversa de origem. Nada é perdido nem expira escondido, e ao reabrir o painel todos os pendentes reaparecem.</p>
+<blockquote><p>Enquanto um card está aberto ele cobre o painel, inclusive se for de outra conversa. Para liberar rápido, use <strong>Esc</strong> (nega) ou responda.</p></blockquote>
+<h3 id="listas-de-permitidos-e-bloqueados">Listas de permitidos e bloqueados</h3>
+<p>Em <strong>Configurações → Permissões</strong>:</p>
+<ul>
+<li><strong>Sites sempre permitidos (um por linha)</strong></li>
+<li><strong>Sites sempre bloqueados (um por linha)</strong></li>
+</ul>
+<p>O bloqueio é avaliado <strong>antes</strong> de tudo: se o host está na lista de bloqueados, nem o modo “permitir automaticamente” libera.</p>
+<p><strong>O formato é só o host, minúsculo, exatamente como aparece na barra de endereços</strong> — sem <code>https://</code>, sem caminho, sem porta e sem curinga:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Entrada</th><th style="text-align:left">Funciona?</th><th style="text-align:left">Por quê</th></tr></thead><tbody><tr><td style="text-align:left"><code>github.com</code></td><td style="text-align:left">Sim</td><td style="text-align:left">É o host</td></tr>
+<tr><td style="text-align:left"><code>docs.github.com</code></td><td style="text-align:left">Sim</td><td style="text-align:left">Subdomínio é outro host (precisa de linha própria)</td></tr>
+<tr><td style="text-align:left"><code>localhost</code></td><td style="text-align:left">Sim</td><td style="text-align:left">Host sem porta</td></tr>
+<tr><td style="text-align:left"><code>https://github.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">O esquema não faz parte do host</td></tr>
+<tr><td style="text-align:left"><code>github.com/repo</code></td><td style="text-align:left">Não</td><td style="text-align:left">Caminho não faz parte do host</td></tr>
+<tr><td style="text-align:left"><code>*.github.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">Não existe curinga</td></tr>
+<tr><td style="text-align:left"><code>GitHub.com</code></td><td style="text-align:left">Não</td><td style="text-align:left">A comparação diferencia maiúsculas</td></tr></tbody></table></div>
+<p>Cada linha é comparada por igualdade. Digitar <code>https://…</code> não dá erro na tela, mas <strong>não tem efeito</strong> — vale a pena conferir depois de salvar.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Software livre sob licença <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="Repositório OpenCode Browser no GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repositório no GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

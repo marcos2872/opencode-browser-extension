@@ -38,7 +38,7 @@ Demais eventos (`session.inbox.*`,
 
 ## Protocolo do relay (extensão ↔ plugin)
 
-Detalhes de implementação em [plugin.md](plugin.md).
+Detalhes de implementação em [plugin.md](../arquitetura/plugin.md).
 
 | Direção           | Mensagem       | Campos                                                   |
 | ----------------- | -------------- | -------------------------------------------------------- |

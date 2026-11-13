@@ -4,7 +4,7 @@
 [![Qualidade de código](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 
-<img src="assets/screenshots/05-resumo-hacker-news.jpg" alt="Chrome com o painel do OpenCode Browser aberto ao lado do Hacker News: o agente leu a página e resumiu as cinco notícias do dia" width="100%" />
+<p><a href="web/index.html">Veja a apresentação e os vídeos de demonstração →</a></p>
 
 > Extensão MV3 que conecta o Chrome ao OpenCode instalado na sua máquina: usa os
 > modelos locais para conversar e dá ao agente um grupo de abas isolado para
@@ -20,15 +20,10 @@ O projeto tem duas partes que trabalham juntas:
 Nada sai da sua máquina: a extensão fala apenas com o servidor local do OpenCode
 (`127.0.0.1`) e o plugin escuta apenas em loopback.
 
-## Como é
+## Demonstrações
 
-| Painel | O agente pergunta | Configurações |
-|:--:|:--:|:--:|
-| ![Painel novo, com as sugestões de partida](assets/screenshots/01-painel-vazio.png) | ![Card de pergunta do agente, com opções e campo de resposta livre](assets/screenshots/06-pergunta-do-agente.jpg) | ![Tela de configurações: conexão, modelo padrão e agente](assets/screenshots/02-configuracoes-conexao.png) |
-| Conversas em execução continuam rodando; o painel mostra a que você escolher | Quando precisa de uma decisão, o agente pergunta no próprio chat | Modelo, agente, permissões e avisos em um só lugar |
-
-Mais capturas — execução em andamento, detalhe de notícia e configurações de
-permissões — em [`assets/screenshots/`](assets/screenshots).
+A apresentação do guia reúne vídeos de fluxos com formulários, leitura de páginas
+e uso via CLI: [abrir demonstrações](web/index.html#demonstracoes).
 
 ## Stack
 
@@ -100,20 +95,20 @@ então o reload é obrigatório.
 | Documento | Conteúdo |
 |---|---|
 | [docs/index.md](docs/index.md) | Índice geral da documentação |
-| [docs/guia-do-usuario.md](docs/guia-do-usuario.md) | Guia do usuário final (também em [HTML](docs/guia-do-usuario.html)) |
-| [docs/architecture.md](docs/architecture.md) | Visão de arquitetura e componentes |
-| [docs/extension.md](docs/extension.md) | Como a extensão funciona (service worker, content scripts, UI) |
-| [docs/plugin.md](docs/plugin.md) | Plugin do OpenCode, relay, protocolo e portas |
-| [docs/tools.md](docs/tools.md) | As 18 ferramentas `browser_*` |
-| [docs/api.md](docs/api.md) | Endpoints da API v2 do OpenCode usados |
-| [docs/security.md](docs/security.md) | Pareamento, tokens, permissões e riscos |
+| [docs/guias/guia-do-usuario.md](docs/guias/guia-do-usuario.md) | Guia do usuário final (também em [HTML](web/index.html)) |
+| [docs/arquitetura/architecture.md](docs/arquitetura/architecture.md) | Visão de arquitetura e componentes |
+| [docs/arquitetura/extension.md](docs/arquitetura/extension.md) | Como a extensão funciona (service worker, content scripts, UI) |
+| [docs/arquitetura/plugin.md](docs/arquitetura/plugin.md) | Plugin do OpenCode, relay, protocolo e portas |
+| [docs/referencia/tools.md](docs/referencia/tools.md) | As 18 ferramentas `browser_*` |
+| [docs/referencia/api.md](docs/referencia/api.md) | Endpoints da API v2 do OpenCode usados |
+| [docs/referencia/security.md](docs/referencia/security.md) | Pareamento, tokens, permissões e riscos |
 | [docs/development.md](docs/development.md) | Build, testes automatizados, CI e fluxo de trabalho |
 
 ## Segurança em uma linha
 
 Automação de navegador é poderosa: revise os pedidos de permissão, mantenha a
 lista de sites bloqueados e evite o modo "permitir automaticamente" em sites
-sensíveis. Detalhes em [docs/security.md](docs/security.md).
+sensíveis. Detalhes em [docs/referencia/security.md](docs/referencia/security.md).
 
 ## Licença
 
