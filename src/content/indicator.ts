@@ -32,14 +32,14 @@ const STYLE = `
     content: ""; position: absolute; left: 50%; top: 50%;
     width: 200vmax; height: 200vmax; margin: -100vmax 0 0 -100vmax;
     background: conic-gradient(from 0deg,
-      #d97757 0%, #f4b896 12%, #d97757 28%,
-      rgba(217,119,87,.18) 50%,
-      #d97757 72%, #f4b896 88%, #d97757 100%);
+      #8fb8ee 0%, #c5dcf7 12%, #8fb8ee 28%,
+      rgba(143,184,238,.18) 50%,
+      #8fb8ee 72%, #c5dcf7 88%, #8fb8ee 100%);
     animation: spin 3.4s linear infinite;
   }
   .glow {
     position: absolute; inset: 0;
-    box-shadow: inset 0 0 40px 4px rgba(217,119,87,.30), inset 0 0 120px rgba(217,119,87,.10);
+    box-shadow: inset 0 0 40px 4px rgba(143,184,238,.30), inset 0 0 120px rgba(143,184,238,.10);
     animation: pulse 2.6s ease-in-out infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -57,7 +57,7 @@ const STYLE = `
     opacity: 0; transition: opacity ${FADE_MS}ms ease;
   }
   .pill.on { opacity: 1; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #d97757; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #8fb8ee; }
   .dot.busy { animation: blink 1s ease-in-out infinite; }
   @keyframes blink { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
   .stop {
@@ -81,7 +81,7 @@ const STYLE = `
   .ripple {
     position: fixed; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px;
     border-radius: 50%; pointer-events: none;
-    border: 2px solid #d97757; background: rgba(217,119,87,.22);
+    border: 2px solid #8fb8ee; background: rgba(143,184,238,.22);
     animation: ripple ${RIPPLE_MS}ms ease-out forwards;
   }
   @keyframes ripple { from { transform: translate3d(var(--x), var(--y), 0) scale(.2); opacity: .95; }
@@ -185,7 +185,7 @@ function ensureCursor(): HTMLDivElement | null {
   cursor.innerHTML = `
     <svg width="22" height="28" viewBox="0 0 18 24" xmlns="http://www.w3.org/2000/svg">
       <path d="M1 1 L1 18 L5 14.5 L7.5 22 L11 20.5 L8.5 13 L14 13 Z"
-        fill="#d97757" stroke="#faf9f5" stroke-width="1.5" stroke-linejoin="round"/>
+        fill="#8fb8ee" stroke="#faf9f5" stroke-width="1.5" stroke-linejoin="round"/>
     </svg>`
   root.appendChild(cursor)
   cursorPlaced = false
