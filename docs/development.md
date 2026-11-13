@@ -66,8 +66,15 @@ Os helpers de teste ficam em `tests/helpers/`:
 |---|---|---|
 | Testes | `.github/workflows/test.yml` | `npm run test:coverage`, resumo da cobertura no job e comentário na PR, artefato `coverage-report` |
 | Qualidade de código | `.github/workflows/quality.yml` | `npm run lint`, `npm run typecheck`, `npm run build` e verificação dos artefatos |
+| GitHub Pages | `.github/workflows/pages.yml` | Publica o guia e os vídeos em mudanças na `main` que afetam `web/`, `assets/videos/` ou a fonte do guia; também aceita execução manual |
+| Release | `.github/workflows/release.yml` | Em tags `v*`, compila a extensão, empacota extensão + plugin + instalador em ZIP e cria a release |
 
-Ambos rodam em toda `pull_request` para `main` e em `push` para `main`.
+Os workflows de Testes e Qualidade rodam em toda `pull_request` para `main` e
+em `push` para `main`.
+
+O primeiro deploy do Pages pode exigir que a origem em **Settings → Pages** seja
+configurada como **GitHub Actions**. O pacote de release é baixado pelo guia do
+usuário e instala o plugin com `node scripts/install-plugin.mjs`.
 
 A branch `main` é protegida por um ruleset do GitHub:
 

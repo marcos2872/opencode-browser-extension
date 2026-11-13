@@ -41,7 +41,7 @@
 <div class="layout">
   <aside aria-label="Navegação da página">
   <div class="grupo">Nesta página</div>
-  <a class="n2" href="#1-o-que-voce-precisa">1. O que você precisa</a><a class="n2" href="#2-instalar-a-extensao">2. Instalar a extensão</a><a class="n3" href="#2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</a><a class="n3" href="#2-2-manual">2.2 Manual</a><a class="n3" href="#2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</a><a class="n2" href="#3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</a><a class="n3" href="#se-o-pareamento-falhar">Se o pareamento falhar</a><a class="n2" href="#4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</a><a class="n3" href="#se-o-plugin-nao-conectar">Se o plugin não conectar</a>
+  <a class="n2" href="#1-o-que-voce-precisa">1. O que você precisa</a><a class="n2" href="#2-instalar-a-extensao">2. Instalar a extensão</a><a class="n3" href="#2-1-pelo-pacote-pronto">2.1 Pelo pacote pronto (recomendado)</a><a class="n3" href="#2-2-pelo-script-do-projeto">2.2 Pelo script do projeto</a><a class="n3" href="#2-3-manual">2.3 Manual</a><a class="n3" href="#2-4-depois-de-atualizar-o-codigo">2.4 Depois de atualizar o código</a><a class="n2" href="#3-conectar-a-extensao-ao-opencode-pareamento">3. Conectar a extensão ao OpenCode (pareamento)</a><a class="n3" href="#se-o-pareamento-falhar">Se o pareamento falhar</a><a class="n2" href="#4-instalar-o-plugin-de-ferramentas">4. Instalar o plugin de ferramentas</a><a class="n3" href="#se-o-plugin-nao-conectar">Se o plugin não conectar</a>
 </aside>
   <main id="conteudo" class="pagina pagina-topico">
   <h1 class="titulo-pagina">Instalação e conexão</h1>
@@ -53,7 +53,19 @@
 <p>Os modelos são os mesmos que você já usa no OpenCode: se o seu OpenCode funciona no terminal, a extensão funciona.</p>
 <hr />
 <h2 id="2-instalar-a-extensao">2. Instalar a extensão</h2>
-<h3 id="2-1-pelo-script-recomendado">2.1 Pelo script (recomendado)</h3>
+<h3 id="2-1-pelo-pacote-pronto">2.1 Pelo pacote pronto (recomendado)</h3>
+<p>Baixe o <a href="https://github.com/marcos2872/opencode-browser-extension/releases/latest/download/opencode-browser-extension.zip" target="_blank" rel="noopener noreferrer">ZIP da última release</a> e extraia os arquivos. O pacote inclui a extensão compilada, o plugin e o instalador do plugin; não é necessário rodar <code>npm install</code> ou compilar o projeto.</p>
+<ol>
+<li>Abra <code>chrome://extensions</code> e ative o <strong>modo desenvolvedor</strong>;</li>
+<li>clique em <strong>Carregar sem compactação</strong> e selecione a pasta <code>extension/</code> que veio no ZIP;</li>
+<li>no terminal, dentro da pasta extraída do pacote, execute:</li>
+</ol>
+<pre data-linguagem="bash"><code>node scripts/install-plugin.mjs
+opencode service restart</code></pre>
+<ol start="4">
+<li>abra o side panel e clique em <strong>Conectar</strong>; rode <code>opencode pair</code> no terminal e cole o link exibido no painel.</li>
+</ol>
+<h3 id="2-2-pelo-script-do-projeto">2.2 Pelo script do projeto</h3>
 <p>Na pasta do projeto:</p>
 <pre data-linguagem="bash"><code>./scripts/install.sh        # Linux e macOS</code></pre>
 <pre data-linguagem="powershell"><code>.\scripts\install.ps1       # Windows (PowerShell 5.1+)</code></pre>
@@ -68,7 +80,7 @@
 </ol>
 <p>Se o passo 6 falhar, o próprio script avisa: abra o painel da extensão e verifique.</p>
 <blockquote><p>O <code>install.sh</code> reinicia o serviço do OpenCode. Se você estiver usando o OpenCode em um terminal, a sessão atual cai por alguns segundos e reconecta — não é erro.</p></blockquote>
-<h3 id="2-2-manual">2.2 Manual</h3>
+<h3 id="2-3-manual">2.3 Manual</h3>
 <pre data-linguagem="bash"><code>npm install
 npm run build
 npm run install:plugin
@@ -80,7 +92,7 @@ opencode service restart</code></pre>
 <li>clique em <strong>Carregar sem compactação</strong> e escolha a pasta <strong><code>dist/</code></strong> do projeto (não a raiz);</li>
 <li>o ícone do OpenCode Browser aparece na barra.</li>
 </ol>
-<h3 id="2-3-depois-de-atualizar-o-codigo">2.3 Depois de atualizar o código</h3>
+<h3 id="2-4-depois-de-atualizar-o-codigo">2.4 Depois de atualizar o código</h3>
 <p>O Chrome mantém o service worker em cache. Sempre que você rodar <code>npm run build</code> de novo:</p>
 <ol>
 <li>abra <code>chrome://extensions</code>;</li>

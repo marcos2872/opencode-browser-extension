@@ -1,0 +1,76 @@
+name: Publicar GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "assets/videos/**"
+      - "docs/guias/guia-do-usuario.md"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Preparar site estático
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v7
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Montar o artefato do site
+        run: |
+          set -euo pipefail
+          mkdir -p _site/web _site/assets/videos _site/docs/guias
+          cp -R web/. _site/web/
+          cp -R assets/videos/. _site/assets/videos/
+          cp docs/guias/guia-do-usuario.md _site/docs/guias/
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="pt-BR">
+          <head>
+            <meta charset="utf-8" />
+            <meta http-equiv="refresh" content="0; url=web/index.html" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>OpenCode Browser — Guia</title>
+          </head>
+          <body>
+            <p><a href="web/index.html">Abrir o guia do OpenCode Browser</a></p>
+          </body>
+          </html>
+          HTML
+
+      - name: Enviar artefato do Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    name: Publicar site
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar artefato
+        id: deployment
+        uses: actions/deploy-pages@v4

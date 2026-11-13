@@ -1,0 +1,86 @@
+name: Criar release instalável
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Empacotar extensão e plugin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar extensão
+        run: npm run build
+
+      - name: Montar ZIP instalável
+        run: |
+          set -euo pipefail
+          staging="$(mktemp -d)"
+          trap 'rm -rf "$staging"' EXIT
+          bundle="$staging/opencode-browser"
+          mkdir -p "$bundle/extension" "$bundle/plugin" "$bundle/scripts/lib"
+          cp -R dist/. "$bundle/extension/"
+          cp plugin/browser-relay.ts plugin/opencode-browser.agent.md "$bundle/plugin/"
+          cp scripts/install-plugin.mjs "$bundle/scripts/"
+          cp scripts/lib/opencode-paths.mjs "$bundle/scripts/lib/"
+          cat > "$bundle/INSTALAR.txt" <<'INSTALL'
+          OpenCode Browser — instalação pelo pacote de release
+
+          Requisitos: Chrome/Chromium 116+, Node.js 20+ e OpenCode v2+.
+
+          1. Extraia o ZIP.
+          2. No Chrome, abra chrome://extensions e ative o modo desenvolvedor.
+          3. Clique em "Carregar sem compactação" e selecione a pasta extension/.
+          4. No terminal, dentro desta pasta do pacote, execute:
+               node scripts/install-plugin.mjs
+               opencode service restart
+          5. Abra a extensão, execute `opencode pair` no terminal e cole o link
+             exibido no painel para parear.
+          INSTALL
+          (
+            cd "$staging"
+            zip -qr "$GITHUB_WORKSPACE/opencode-browser-extension.zip" opencode-browser
+          )
+          unzip -t "$GITHUB_WORKSPACE/opencode-browser-extension.zip"
+
+      - name: Criar release e anexar pacote
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          asset="opencode-browser-extension.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if gh release view "$tag" --json assets --jq '.assets[].name' | grep -Fxq "$asset"; then
+              echo "O pacote já está anexado à release $tag."
+            else
+              gh release upload "$tag" "$asset"
+            fi
+          else
+            gh release create "$tag" "$asset" \
+              --title "$tag" \
+              --generate-notes \
+              --verify-tag
+          fi
