@@ -921,7 +921,7 @@ const tools: ToolSpec[] = [
     name: "batch",
     wire: "browser_batch",
     description:
-      "Executa até 20 ações independentes em sequência para reduzir idas e voltas. Cada item é {name, input}, com o nome da ferramenta (ex.: read_page). Não use quando uma ação depende do resultado da anterior.",
+      "Executa até 20 ações de navegador independentes em sequência para reduzir idas e voltas. Cada item é {name, input}, com o nome de uma ferramenta de navegador (ex.: read_page); ferramentas de código (read, glob, grep) não pertencem a este lote. Não use quando uma ação depende do resultado da anterior.",
     input: {
       type: "object",
       properties: {

@@ -222,6 +222,34 @@ describe("background/tabGroups", () => {
       chromeMock.tabs.query.mockResolvedValue([])
       await expect(groups.resolveTab("ses_1")).rejects.toThrow("O grupo desta sessão não tem abas.")
     })
+
+    it("não cria grupo quando a sessão ainda não tem aba", async () => {
+      await expect(groups.resolveTab("ses_nova")).rejects.toThrow(
+        "Esta sessão não tem aba no navegador.",
+      )
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
+      expect(chromeMock.tabs.group).not.toHaveBeenCalled()
+    })
+
+    it("orienta criar ou anexar aba quando o tabId vem de outra sessão", async () => {
+      const outsider = chromeMock.__state.addTab({ groupId: -1 })
+
+      await expect(groups.resolveTab("ses_nova", outsider.id)).rejects.toThrow(
+        `A aba ${outsider.id} não pertence a esta sessão.`,
+      )
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
+    })
+
+    it("não recria o grupo quando ele sumiu", async () => {
+      const record = await groups.ensure("ses_1")
+      chromeMock.__state.groups.delete(record.groupId)
+      chromeMock.tabs.create.mockClear()
+
+      await expect(groups.resolveTab("ses_1")).rejects.toThrow(
+        "Esta sessão não tem aba no navegador.",
+      )
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
+    })
   })
 
   describe("addTab/createTab/closeTab", () => {
@@ -469,6 +497,27 @@ describe("background/tabGroups", () => {
       )
       expect(chromeMock.tabs.remove).not.toHaveBeenCalled()
       expect(chromeMock.__state.tabs.has(outsider.id)).toBe(true)
+    })
+
+    it("closeTab não cria grupo para sessão sem aba", async () => {
+      const outsider = chromeMock.__state.addTab({ groupId: -1 })
+
+      await expect(groups.closeTab("ses_nova", outsider.id)).rejects.toThrow(
+        "Esta sessão não tem aba no navegador.",
+      )
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
+      expect(chromeMock.tabs.group).not.toHaveBeenCalled()
+    })
+
+    it("closeTab orienta quando o grupo sumiu", async () => {
+      const record = await groups.ensure("ses_1")
+      chromeMock.__state.groups.delete(record.groupId)
+      chromeMock.tabs.create.mockClear()
+
+      await expect(groups.closeTab("ses_1", 123)).rejects.toThrow(
+        "Esta sessão não tem aba no navegador.",
+      )
+      expect(chromeMock.tabs.create).not.toHaveBeenCalled()
     })
   })
 

@@ -124,10 +124,15 @@ OpenCode, não só nas conversas da extensão.
 
 ### Grupos de abas
 
-Cada sessão do OpenCode ganha um grupo do Chrome com o título `OpenCode`, uma aba
-principal e as demais abas usadas pelo agente. Ferramentas só enxergam abas do
-grupo. Ao iniciar, grupos sem sessão correspondente são desfeitos (abas reais são
-desagrupadas; abas em branco são fechadas, exceto a que o usuário está usando).
+Cada sessão do OpenCode pode ter um grupo do Chrome com o título `OpenCode`, uma
+aba principal e as demais abas usadas pelo agente. Ferramentas só enxergam abas
+do grupo. O grupo nasce apenas por ação explícita — `browser_tabs_create`,
+`browser_tabs_attach` ou `browser_tabs_context` com `createIfEmpty`. As demais
+tools falham com uma orientação quando a sessão ainda não tem aba, para que uma
+sessão-filha (subagente), que tem `sessionID` próprio, não abra um grupo em
+branco sem querer. Ao iniciar, grupos sem sessão correspondente são desfeitos
+(abas reais são desagrupadas; abas em branco são fechadas, exceto a que o usuário
+está usando).
 
 Nada disso traz abas para frente: criar o grupo, abrir ou anexar abas trabalha em
 segundo plano, e as ações de `computer` usam emulação de foco via CDP
