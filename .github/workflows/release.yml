@@ -34,6 +34,21 @@ jobs:
       - name: Compilar extensão
         run: npm run build
 
+      - name: Conferir a versão publicada
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          manifest="$(node -p "require('./dist/manifest.json').version")"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::package.json está em $pkg, mas a tag é $GITHUB_REF_NAME."
+            exit 1
+          fi
+          if [ "$manifest" != "$tag" ]; then
+            echo "::error::O manifest compilado está em $manifest, mas a tag é $GITHUB_REF_NAME. Atualize public/manifest.json."
+            exit 1
+          fi
+
       - name: Montar ZIP instalável
         run: |
           set -euo pipefail

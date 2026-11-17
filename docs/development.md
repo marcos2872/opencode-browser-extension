@@ -67,7 +67,7 @@ Os helpers de teste ficam em `tests/helpers/`:
 | Testes | `.github/workflows/test.yml` | `npm run test:coverage`, resumo da cobertura no job e comentário na PR, artefato `coverage-report` |
 | Qualidade de código | `.github/workflows/quality.yml` | `npm run lint`, `npm run typecheck`, `npm run build` e verificação dos artefatos |
 | GitHub Pages | `.github/workflows/pages.yml` | Publica o guia e os vídeos em mudanças na `main` que afetam `web/`, `assets/videos/` ou a fonte do guia; também aceita execução manual |
-| Release | `.github/workflows/release.yml` | Em tags `v*`, compila a extensão, empacota extensão + plugin + instalador em ZIP e cria a release |
+| Release | `.github/workflows/release.yml` | Em tags `v*`, confere se `package.json` e `public/manifest.json` têm a versão da tag, compila a extensão, empacota extensão + plugin + instalador em ZIP e cria a release |
 
 Os workflows de Testes e Qualidade rodam em toda `pull_request` para `main` e
 em `push` para `main`.
@@ -81,6 +81,25 @@ A branch `main` é protegida por um ruleset do GitHub:
 - PR obrigatória antes do merge (sem aprovações obrigatórias, para uso solo).
 - Checks obrigatórios: **Testes e cobertura** e **Lint, tipos e build**.
 - Sem push direto, sem force-push e sem exclusão da branch.
+
+## Release
+
+A versão vive em três lugares e precisa ser a mesma nos três: `package.json`,
+`package-lock.json` e `public/manifest.json`. O teste `tests/versions.test.ts`
+cobre essa igualdade e o workflow de release recusa a tag se ela não bater.
+
+```bash
+npm version 0.1.2 --no-git-tag-version   # package.json e package-lock.json
+# edite "version" em public/manifest.json para 0.1.2
+npm run verify && npm test
+git commit -am "chore(release): v0.1.2"
+git tag -a v0.1.2 -m "v0.1.2"
+git push origin main --follow-tags       # o push da tag dispara a release
+```
+
+Sem alterar o manifest o Chrome continua exibindo a versão antiga em
+`chrome://extensions` e nas atualizações do pacote; foi o que aconteceu na
+v0.1.1, que saiu com o manifest em `0.1.0`.
 
 ## Checklist de testes manuais
 
