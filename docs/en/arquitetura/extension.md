@@ -116,7 +116,7 @@ ensures the `opencode-browser` agent from the
 `plugin/opencode-browser.agent.md` template. The file is updated by version
 (`<!-- opencode-browser-agent vN -->`): an older version is replaced with a
 `.bak-vN` backup; a file without the marker or already at the current version is
-preserved. The current template is **v4** (security, extension environment,
+preserved. The current template is **v5** (security, extension environment,
 tabs by origin and context economy). When the server lists that agent, new
 sessions start using it (`browserAgentDefault`, on by default; turning it off in
 the options goes back to using the chosen default agent). It restricts tools to

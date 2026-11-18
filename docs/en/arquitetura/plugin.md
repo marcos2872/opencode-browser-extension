@@ -46,7 +46,7 @@ installed alongside the plugin. The file is updated **by version**:
 - has no marker (the user removed it) or is already at the template version →
   it is preserved, including manual edits.
 
-The current template is **v4** and includes security rules (prompt injection),
+The current template is **v5**, written in English, and includes security rules (prompt injection),
 extension environment limitations, tabs by origin, context economy and the
 correct tool names. To customize, edit
 `~/.config/opencode/agents/opencode-browser.md`; to return to the default,
@@ -87,7 +87,7 @@ permissions:
 
 In practice, the agent only sees the browser tools and `question`: `read`,
 `edit`, `shell`, `glob`, `grep`, `webfetch` and the like are blocked, so it
-cannot touch files or machine data outside the pages. The Markdown body (v4)
+cannot touch files or machine data outside the pages. The Markdown body (v5)
 covers security/prompt injection, extension environment limitations, tabs by
 origin, context economy and confirmation before destructive actions.
 

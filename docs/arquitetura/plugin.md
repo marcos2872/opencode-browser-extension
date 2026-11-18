@@ -45,7 +45,7 @@ instalado ao lado do plugin. O arquivo é atualizado **por versão**:
 - não tem marcador (o usuário o removeu) ou já está na versão do template → é
   preservado, inclusive edições manuais.
 
-O template atual é **v4** e inclui regras de segurança (prompt injection),
+O template atual é **v5**, escrito em inglês, e inclui regras de segurança (prompt injection),
 limitações do ambiente da extensão, abas por origem, economia de contexto e o
 nome correto das ferramentas. Para personalizar, edite
 `~/.config/opencode/agents/opencode-browser.md`; para voltar ao padrão, apague o
@@ -86,7 +86,7 @@ permissions:
 Na prática, o agente só enxerga as ferramentas do navegador e `question`:
 `read`, `edit`, `shell`, `glob`, `grep`, `webfetch` e afins ficam bloqueados,
 então ele não consegue mexer em arquivos ou dados da máquina fora das páginas.
-O corpo do Markdown (v4) traz segurança/prompt injection, limitações do
+O corpo do Markdown (v5) traz segurança/prompt injection, limitações do
 ambiente da extensão, abas por origem, economia de contexto e confirmação antes
 de ações destrutivas.
 

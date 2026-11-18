@@ -117,7 +117,7 @@ which shipped with the manifest still on `0.1.0`.
 | 10 | Switch model and agent | The session starts using the new choice |
 | 11 | Close the panel and request an action | Permission popup opens |
 | 12 | `npm run build` + reload | No errors in the service worker console |
-| 13 | `npm run install:plugin` + `opencode service restart` | Agent v4 and relay version 6 loaded |
+| 13 | `npm run install:plugin` + `opencode service restart` | Agent v5 and relay version 6 loaded |
 | 14 | Ask to close a tab | `browser_tabs_close_tab` tool (wire `tabs_close`) asks for permission and closes |
 
 ## Diagnostics
@@ -127,7 +127,7 @@ which shipped with the manifest still on `0.1.0`.
 | Service worker console | `chrome://extensions` → Details → "service worker" |
 | Relay status | `curl http://127.0.0.1:8799/health` (version 6) |
 | Token and port | `cat "${XDG_RUNTIME_DIR:-$HOME/.cache}/opencode-browser/relay.json"` |
-| Installed agent | `grep opencode-browser-agent ~/.config/opencode/agents/opencode-browser.md` (v4) |
+| Installed agent | `grep opencode-browser-agent ~/.config/opencode/agents/opencode-browser.md` (v5) |
 | OpenCode log | `~/.local/share/opencode/log/opencode.log` (Windows: `%USERPROFILE%\.local\share\opencode\log`); look for `browser-relay` |
 | OpenCode plugins | `~/.config/opencode/plugins` (Windows: `%USERPROFILE%\.config\opencode\plugins`) |
 | Conversations folder | `~/.opencode-browser-extensions` (created by the plugin) |
