@@ -34,7 +34,7 @@ src/
 ├── sidepanel/                   # chat (App, Chat, Composer, ModelPicker, SessionBar...)
 ├── options/                     # configurações
 ├── components/                  # Markdown, ícones, card de permissão
-├── shared/                      # types.ts, protocol.ts, storage.ts
+├── shared/                      # types.ts, protocol.ts, storage.ts, i18n/
 ├── styles/app.css               # tema claro/escuro, layout e scrollbars
 ├── offscreen.ts                 # keepalive, beep e encoder de GIF
 └── types/gifenc.d.ts            # tipos do encoder
@@ -114,7 +114,7 @@ garante o agente `opencode-browser` a partir do template
 `plugin/opencode-browser.agent.md`. O arquivo é atualizado por versão
 (`<!-- opencode-browser-agent vN -->`): uma versão antiga é substituída com
 backup `.bak-vN`; um arquivo sem marcador ou já na versão atual é preservado.
-O template atual é **v4** (segurança, ambiente da extensão, abas por origem e
+O template atual é **v5** (segurança, ambiente da extensão, abas por origem e
 economia de contexto). Quando o servidor lista esse agente, as novas sessões
 passam a usá-lo (`browserAgentDefault`, ligado por padrão; desligar nas opções
 volta a usar o agente padrão escolhido). Ele restringe as ferramentas a

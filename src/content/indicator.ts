@@ -1,9 +1,9 @@
 import {
   INDICATOR_CURSOR_IDLE_MS,
-  INDICATOR_DEFAULT_STATUS,
   INDICATOR_MOVE_MS,
   INDICATOR_WATCHDOG_MS,
 } from "../shared/indicator"
+import { loadLocale, t } from "../shared/i18n/runtime"
 
 const HOST_ID = "opencode-browser-indicator"
 const FADE_MS = 350
@@ -200,14 +200,14 @@ function mount(): void {
   dot.className = "dot"
   dot.dataset.role = "dot"
   label = document.createElement("span")
-  label.textContent = INDICATOR_DEFAULT_STATUS
+  label.textContent = t("indicator.defaultStatus")
   label.setAttribute("role", "status")
   label.setAttribute("aria-live", "polite")
   const stop = document.createElement("button")
   stop.type = "button"
   stop.className = "stop"
-  stop.textContent = "Parar"
-  stop.setAttribute("aria-label", "Parar o agente nesta aba")
+  stop.textContent = t("indicator.stop")
+  stop.setAttribute("aria-label", t("indicator.stopAria"))
   dot.setAttribute("aria-hidden", "true")
   stop.addEventListener("click", () => {
     void chrome.runtime.sendMessage({ type: "browser:stop" })
@@ -297,6 +297,10 @@ function clickAt(x: number, y: number): void {
 
 export function installIndicator(): void {
   if (window.top !== window) return
+  // O overlay é montado no content script, longe do painel: resolve o idioma
+  // aqui também. `t()` já funciona antes desta promessa; ela só corrige o
+  // texto para a preferência salva.
+  void loadLocale().catch(() => undefined)
   if ((window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled) return
   ;(window as unknown as { __opencodeIndicatorInstalled?: boolean }).__opencodeIndicatorInstalled = true
   chrome.runtime.onMessage.addListener((message) => {

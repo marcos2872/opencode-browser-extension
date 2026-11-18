@@ -1,4 +1,5 @@
 import type { ModelInfo, ModelRef } from "../shared/types"
+import { useI18n } from "../shared/i18n/react"
 
 interface Props {
   models: ModelInfo[]
@@ -11,6 +12,7 @@ interface Props {
 const keyOf = (model: { providerID: string; id: string }) => `${model.providerID}/${model.id}`
 
 export function ModelPicker({ models, value, disabled, compact, onChange }: Props) {
+  const { t } = useI18n()
   const selected = value ? keyOf(value) : ""
   const groups = new Map<string, ModelInfo[]>()
   for (const model of models) {
@@ -40,18 +42,20 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
           const variant = model?.variants?.[0]?.id
           onChange({ id, providerID, ...(variant ? { variant } : {}) })
         }}
-        title="Modelo do OpenCode"
+        title={t("model.title")}
       >
-        {models.length === 0 && !missing ? <option value="">Sem modelos</option> : null}
+        {models.length === 0 && !missing ? <option value="">{t("model.empty")}</option> : null}
         {missing && value ? (
-          <option value={selected}>{`${value.providerID}/${value.id}`} (indisponível)</option>
+          <option value={selected}>
+            {t("common.unavailable", { value: `${value.providerID}/${value.id}` })}
+          </option>
         ) : null}
         {[...groups.entries()].map(([provider, list]) => (
           <optgroup key={provider} label={provider}>
             {list.map((model) => (
               <option key={keyOf(model)} value={keyOf(model)}>
                 {model.name ?? model.id}
-                {model.capabilities?.tools === false ? " (sem tools)" : ""}
+                {model.capabilities?.tools === false ? t("model.noTools") : ""}
               </option>
             ))}
           </optgroup>
@@ -66,10 +70,12 @@ export function ModelPicker({ models, value, disabled, compact, onChange }: Prop
             if (!value) return
             onChange({ ...value, variant: event.target.value })
           }}
-          title="Variante do modelo"
+          title={t("model.variantTitle")}
         >
           {missingVariant && value?.variant ? (
-            <option value={value.variant}>{value.variant} (indisponível)</option>
+            <option value={value.variant}>
+              {t("common.unavailable", { value: value.variant })}
+            </option>
           ) : null}
           {variants.map((variant) => (
             <option key={variant.id} value={variant.id}>

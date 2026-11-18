@@ -281,7 +281,7 @@ describe("content/a11y — generate", () => {
 
     const result = api.generate({ refId: "ref_404" })
 
-    expect(result).toMatchObject({ pageContent: "Ref ref_404 não encontrada.", count: 0 })
+    expect(result).toMatchObject({ pageContent: "Ref ref_404 not found.", count: 0 })
     expect(result.url).toBe(location.href)
     expect(result.viewport).toEqual({ width: window.innerWidth, height: window.innerHeight })
   })
@@ -714,7 +714,7 @@ describe("content/a11y — setValue", () => {
     expect(api.setValue(ref, "São Paulo")).toEqual({ ok: true })
     expect(select.value).toBe("sp")
     expect(events).toEqual(["input", "change", "input", "change"])
-    expect(api.setValue(ref, "inexistente")).toEqual({ ok: false, error: "Opção não encontrada no select." })
+    expect(api.setValue(ref, "inexistente")).toEqual({ ok: false, error: "Option not found in the select." })
   })
 
   it("marca checkbox e radio apenas quando o estado diverge", () => {
@@ -778,11 +778,11 @@ describe("content/a11y — setValue", () => {
     expect(linkClick).toHaveBeenCalledTimes(1)
     expect(api.setValue(refFor("Ok"), "qualquer")).toEqual({ ok: true })
     expect(buttonClick).toHaveBeenCalledTimes(1)
-    expect(api.setValue(refFor("Caixa"), "x")).toEqual({ ok: false, error: "Elemento <div> não aceita valor." })
+    expect(api.setValue(refFor("Caixa"), "x")).toEqual({ ok: false, error: "Element <div> does not accept a value." })
   })
 
   it("devolve erro para ref inexistente", () => {
-    expect(api.setValue("ref_404", "x")).toEqual({ ok: false, error: "Ref ref_404 não encontrada." })
+    expect(api.setValue("ref_404", "x")).toEqual({ ok: false, error: "Ref ref_404 not found." })
   })
 })
 
@@ -847,7 +847,7 @@ describe("content/a11y — clickRef/hoverRef/scrollRef/focusRef", () => {
 
   it("devolve erro para ref inexistente em todos os comandos", () => {
     for (const command of [api.clickRef, api.hoverRef, api.scrollRef, api.focusRef]) {
-      expect(command("ref_404")).toEqual({ ok: false, error: "Ref ref_404 não encontrada." })
+      expect(command("ref_404")).toEqual({ ok: false, error: "Ref ref_404 not found." })
     }
     expect(scrollIntoView).not.toHaveBeenCalled()
   })
@@ -941,7 +941,7 @@ describe("content/a11y — uploadFiles", () => {
 
     expect(api.uploadFiles("ref_404", [{ data: btoa("x"), name: "x.txt" }])).toEqual({
       ok: false,
-      error: "Ref ref_404 não encontrada.",
+      error: "Ref ref_404 not found.",
     })
   })
 })

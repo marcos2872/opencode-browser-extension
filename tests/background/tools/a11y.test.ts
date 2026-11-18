@@ -119,17 +119,17 @@ describe("background/tools/a11y", () => {
     it("recusa about:blank com mensagem explicativa", async () => {
       const tab = chrome.__state.addTab({ url: "about:blank" })
       await expect(assertScriptable(tab.id)).rejects.toThrow(
-        'A aba está em "about:blank". Use a ferramenta navigate para abrir uma página http(s) antes de ler ou interagir com o conteúdo.',
+        'The tab is at "about:blank". Use the navigate tool to open an http(s) page before reading or interacting with the content.',
       )
     })
 
     it("recusa páginas chrome://", async () => {
       const tab = chrome.__state.addTab({ url: "chrome://settings" })
-      await expect(assertScriptable(tab.id)).rejects.toThrow('A aba está em "chrome://settings".')
+      await expect(assertScriptable(tab.id)).rejects.toThrow('The tab is at "chrome://settings".')
     })
 
     it("recusa aba sem URL (aba inexistente)", async () => {
-      await expect(assertScriptable(999)).rejects.toThrow('A aba está em "sem URL".')
+      await expect(assertScriptable(999)).rejects.toThrow('The tab is at "no URL".')
     })
   })
 
@@ -153,7 +153,7 @@ describe("background/tools/a11y", () => {
       bridgePresent = false
       injectionRestoresBridge = false
       await expect(ensureBridge(TAB_ID, 0)).rejects.toThrow(
-        "Não foi possível preparar a página. Recarregue a aba e tente novamente (páginas chrome:// e a Chrome Web Store são bloqueadas).",
+        "Could not prepare the page. Reload the tab and try again (chrome:// pages and the Chrome Web Store are blocked).",
       )
       expect(injectCall()).toBeDefined()
     })
@@ -161,7 +161,7 @@ describe("background/tools/a11y", () => {
     it("lança erro específico do frame quando a injeção falha em iframe", async () => {
       bridgePresent = false
       injectionRestoresBridge = false
-      await expect(ensureBridge(TAB_ID, 3)).rejects.toThrow("Não foi possível preparar o frame 3.")
+      await expect(ensureBridge(TAB_ID, 3)).rejects.toThrow("Could not prepare frame 3.")
       expect(injectCall()?.target).toEqual({ tabId: TAB_ID, frameIds: [3] })
     })
 
@@ -171,13 +171,13 @@ describe("background/tools/a11y", () => {
         if (options.files) throw new Error("Cannot access contents of the page")
         return [{ result: false }]
       })
-      await expect(ensureBridge(TAB_ID, 0)).rejects.toThrow("Não foi possível preparar a página.")
+      await expect(ensureBridge(TAB_ID, 0)).rejects.toThrow("Could not prepare the page.")
     })
 
     it("não exige página http(s) para frames internos", async () => {
       bridgePresent = false
       injectionRestoresBridge = false
-      await expect(ensureBridge(TAB_ID, 2)).rejects.toThrow("Não foi possível preparar o frame 2.")
+      await expect(ensureBridge(TAB_ID, 2)).rejects.toThrow("Could not prepare frame 2.")
       expect(injectCall()).toBeDefined()
     })
 
@@ -188,7 +188,7 @@ describe("background/tools/a11y", () => {
         return []
       })
 
-      await expect(ensureBridge(TAB_ID, 2)).rejects.toThrow("Não foi possível preparar o frame 2.")
+      await expect(ensureBridge(TAB_ID, 2)).rejects.toThrow("Could not prepare frame 2.")
       expect(injectCall()).toBeDefined()
     })
   })
@@ -196,12 +196,12 @@ describe("background/tools/a11y", () => {
   describe("chamadas de ferramenta", () => {
     it("lança erro quando a página não devolve dados", async () => {
       scriptResults = []
-      await expect(generateTree(TAB_ID, 0, {})).rejects.toThrow("A página não retornou dados.")
+      await expect(generateTree(TAB_ID, 0, {})).rejects.toThrow("The page returned no data.")
     })
 
     it("lança erro quando result é undefined", async () => {
       scriptResults = [{ frameId: 0, result: undefined }]
-      await expect(listElements(TAB_ID, 0)).rejects.toThrow("A página não retornou dados.")
+      await expect(listElements(TAB_ID, 0)).rejects.toThrow("The page returned no data.")
     })
 
     it("generateTree envia a função generate com as opções", async () => {
@@ -240,7 +240,7 @@ describe("background/tools/a11y", () => {
 
     it("resolveRef de iframe rejeita com erro explicativo", async () => {
       await expect(resolveRef(TAB_ID, "f2_ref_1")).rejects.toThrow(
-        "A ref f2_ref_1 está dentro de um iframe e não tem coordenadas no frame principal. Use ações por ref (click, form_input, type) em vez de coordenadas.",
+        "Ref f2_ref_1 is inside an iframe and has no coordinates in the main frame. Use ref-based actions (click, form_input, type) instead of coordinates.",
       )
       expect(toolCalls()).toHaveLength(0)
     })
@@ -388,7 +388,7 @@ describe("background/tools/a11y", () => {
 
     it("lança erro quando não há resultados", async () => {
       scriptResults = []
-      await expect(pageTextFrames(TAB_ID, 1000)).rejects.toThrow("A página não tem texto legível.")
+      await expect(pageTextFrames(TAB_ID, 1000)).rejects.toThrow("The page has no readable text.")
     })
   })
 })

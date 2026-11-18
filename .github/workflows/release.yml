@@ -61,10 +61,11 @@ jobs:
           cp scripts/install-plugin.mjs "$bundle/scripts/"
           cp scripts/lib/opencode-paths.mjs "$bundle/scripts/lib/"
           cat > "$bundle/INSTALAR.txt" <<'INSTALL'
-          OpenCode Browser — instalação pelo pacote de release
+          OpenCode Browser — instalação pelo pacote de release / install from the release package
 
-          Requisitos: Chrome/Chromium 116+, Node.js 20+ e OpenCode v2+.
+          Requisitos / Requirements: Chrome/Chromium 116+, Node.js 20+ e OpenCode v2+.
 
+          [Português]
           1. Extraia o ZIP.
           2. No Chrome, abra chrome://extensions e ative o modo desenvolvedor.
           3. Clique em "Carregar sem compactação" e selecione a pasta extension/.
@@ -73,6 +74,16 @@ jobs:
                opencode service restart
           5. Abra a extensão, execute `opencode pair` no terminal e cole o link
              exibido no painel para parear.
+
+          [English]
+          1. Extract the ZIP.
+          2. In Chrome, open chrome://extensions and enable developer mode.
+          3. Click "Load unpacked" and select the extension/ folder.
+          4. In a terminal, inside this package folder, run:
+               node scripts/install-plugin.mjs
+               opencode service restart
+          5. Open the extension, run `opencode pair` in the terminal and paste the
+             link shown into the panel to pair.
           INSTALL
           (
             cd "$staging"

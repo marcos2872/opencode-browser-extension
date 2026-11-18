@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Understand tab groups, parallel conversations and switching between sessions." />
+<title>Tabs and sessions — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html">Conversations and questions</a>
+      <a href="ferramentas.html">Browser tools</a>
+      <a href="abas-e-sessoes.html" aria-current="page">Tabs and sessions</a>
+      <a href="permissoes.html">Permissions</a>
+      <a href="configuracoes.html">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../abas-e-sessoes.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">On this page</div>
+  <a class="n2" href="#8-abas-e-grupos-onde-o-agente-trabalha">8. Tabs and groups: where the agent works</a><a class="n3" href="#abas-em-segundo-plano">Background tabs</a><a class="n3" href="#conectar-uma-aba-sua-ao-agente">Connecting one of your tabs to the agent</a><a class="n3" href="#o-grupo-nasce-quando-e-preciso">The group is born when needed</a><a class="n2" href="#9-varias-conversas-ao-mesmo-tempo">9. Several conversations at once</a><a class="n3" href="#criar-uma-conversa">Creating a conversation</a><a class="n3" href="#trocar-de-conversa">Switching conversations</a><a class="n3" href="#seguir-o-grupo-de-abas-em-foco">Following the focused tab group</a><a class="n3" href="#criar-o-grupo-junto-com-a-conversa-opcional">Creating the group together with the conversation (optional)</a><a class="n3" href="#excluir-uma-conversa">Deleting a conversation</a><a class="n3" href="#limites">Limits</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Tabs and sessions</h1>
+  <h2 id="8-abas-e-grupos-onde-o-agente-trabalha">8. Tabs and groups: where the agent works</h2>
+<p>Each conversation has its own <strong>tab group</strong>, titled <strong>“OpenCode · conversation name”</strong> and with its own color. It is that agent's workspace — it does not touch your other tabs.</p>
+<h3 id="abas-em-segundo-plano">Background tabs</h3>
+<p>By default the extension <strong>does not steal focus</strong>: tabs created or attached by the agent open in the background, and the window you are working in stays where it is. If you prefer to see the tabs appearing, turn on <strong>“Allow tabs opened or attached by the agent to come to the front”</strong> in the settings.</p>
+<p>On the page where the agent is acting, an animated pastel blue border appears with the notice <strong>“OpenCode is on this tab”</strong>, a <strong>Stop</strong> button and a virtual mouse that slides to the target and shows a ripple on every click.</p>
+<h3 id="conectar-uma-aba-sua-ao-agente">Connecting one of your tabs to the agent</h3>
+<ul>
+<li><strong>Connect current tab</strong> (link icon in the conversation bar): brings the active tab into the conversation's group.</li>
+<li>With tabs connected, the same button opens the list: <strong>“Connect a new tab”</strong> and, on each tab, <strong>“Remove … from the context”</strong>.</li>
+</ul>
+<p>Removing a tab from the context <strong>does not close</strong> the tab: it just takes it out of the group, and it becomes a normal tab of yours again.</p>
+<blockquote><p>Tabs from <strong>another window</strong> cannot be attached. The extension replies: “The tab is in another window. Open a new tab from the session or move the tab to the group window before attaching it.”</p></blockquote>
+<h3 id="o-grupo-nasce-quando-e-preciso">The group is born when needed</h3>
+<p>If the option to create a group when starting a conversation is off (default), the group is born when the agent opens a new tab (<code>browser_tabs_create</code>) or when you connect a tab. Read and interaction tools do not open tabs on their own: without a tab, they fail with guidance. It is the most economical flow: no blank tabs piling up.</p>
+<hr />
+<h2 id="9-varias-conversas-ao-mesmo-tempo">9. Several conversations at once</h2>
+<p>This is the extension's strong point: each conversation runs on its own, in its tab group, and you switch between them without stopping anything.</p>
+<h3 id="criar-uma-conversa">Creating a conversation</h3>
+<p>Click <strong>+</strong> (New conversation). The button <strong>works even while the current conversation is running</strong> — it is only blocked during its own creation, so a double click does not create two conversations.</p>
+<p>The new conversation starts empty, with the model (and the agent) selected, and is already focused in the panel.</p>
+<h3 id="trocar-de-conversa">Switching conversations</h3>
+<p>Use the <strong>“OpenCode sessions”</strong> picker. Each item shows the conversation name and a suffix:</p>
+<ul>
+<li><strong>“ · running”</strong> — that conversation is running;</li>
+<li><strong>“ · new reply”</strong> — something new arrived while you were in another one.</li>
+</ul>
+<p>Choosing the conversation clears the news notice.</p>
+<h3 id="seguir-o-grupo-de-abas-em-foco">Following the focused tab group</h3>
+<p>With <strong>“Show the conversation of the focused tab group in the panel”</strong> on (default), just click a tab in a group: the panel switches to that group's conversation. The switch has a small delay (150 ms) so it does not flicker when you pass through several tabs.</p>
+<p>Creating or selecting a conversation manually cancels this automatic switch — the panel will not “go back on its own” to another conversation right after your click.</p>
+<h3 id="criar-o-grupo-junto-com-a-conversa-opcional">Creating the group together with the conversation (optional)</h3>
+<p>Turning on <strong>“Create a tab group when starting a new conversation”</strong>, the <strong>+</strong> already opens a blank tab (in the background, in the panel's window) and the group named after the conversation. It is useful when you want to see each conversation's “anchor” in the tab bar from the start; the cost is one blank tab per conversation.</p>
+<p>Off (default), the group is born when the agent opens a new tab or when a tab is attached.</p>
+<h3 id="excluir-uma-conversa">Deleting a conversation</h3>
+<p>Use the trash can (<strong>Delete session</strong>). The confirmation says: “Delete this session? The history will be removed from OpenCode.”</p>
+<p>When deleting:</p>
+<ul>
+<li>the history leaves OpenCode;</li>
+<li>the group is released: blank tabs are closed and real pages are only <strong>ungrouped</strong> (nothing of yours is closed);</li>
+<li>if it was the conversation on screen, the most recent one is shown instead.</li>
+</ul>
+<h3 id="limites">Limits</h3>
+<ul>
+<li>The panel keeps detailed state for up to <strong>4 conversations</strong>. The others still exist in OpenCode and reload when you open them.</li>
+<li>The conversation↔group bond lives in the browser session: <strong>closing Chrome completely</strong> breaks the bond (the tabs stay there, without an owner).</li>
+<li>The panel is a single view: two open windows show the same conversation.</li>
+</ul>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

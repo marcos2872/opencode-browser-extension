@@ -1,4 +1,5 @@
 import type { ToolContext, ToolMap, ToolResult } from "./types"
+import { t } from "../../shared/i18n/runtime"
 
 export async function tabContext(ctx: ToolContext, tabId: number): Promise<string> {
   const [tabs, groupId] = await Promise.all([ctx.tabs.list(ctx.sessionID), ctx.tabs.groupOf(ctx.sessionID)])
@@ -62,30 +63,30 @@ export const tabsTools: ToolMap = {
     const tabId = await ctx.tabs.createTab(ctx.sessionID, url, wantsActive)
     const tab = await chrome.tabs.get(tabId).catch(() => undefined)
     const note = tab?.active === false
-      ? "\n\nA aba ficou em segundo plano. Ative “Trazer abas para frente” nas configurações para vê-la em primeiro plano."
+      ? "\n\nThe tab stayed in the background. Enable “Bring tabs to front” in the settings to see it in the foreground."
       : ""
     return {
-      content: `Aba criada. Tab ID: ${tabId}${note}\n\n${await tabContext(ctx, tabId)}`,
+      content: `Tab created. Tab ID: ${tabId}${note}\n\n${await tabContext(ctx, tabId)}`,
       metadata: { tabId },
     }
   },
 
   async tabs_close(args, ctx) {
     const tabId = typeof args.tabId === "number" ? args.tabId : undefined
-    if (tabId === undefined) throw new Error("Parâmetro obrigatório ausente: tabId.")
+    if (tabId === undefined) throw new Error("Missing required parameter: tabId.")
     const tab = await chrome.tabs.get(tabId).catch(() => undefined)
     const allowed = await ctx.ask({
       kind: "action",
       tool: "tabs_close",
-      title: "Fechar aba",
-      detail: tab?.title ?? `Aba ${tabId}`,
+      title: t("permission.ask.closeTab"),
+      detail: tab?.title ?? t("permission.ask.tab", { id: tabId }),
       url: tab?.url,
     })
-    if (!allowed) return { content: "Ação negada pelo usuário. Nenhuma aba foi fechada." }
+    if (!allowed) return { content: "Action denied by the user. No tab was closed." }
     await ctx.tabs.closeTab(ctx.sessionID, tabId)
     const tabs = await ctx.tabs.list(ctx.sessionID)
     return {
-      content: `Aba ${tabId} fechada. ${tabs.length} aba(s) restante(s).\n\n${JSON.stringify(
+      content: `Tab ${tabId} closed. ${tabs.length} remaining tab(s).\n\n${JSON.stringify(
         { availableTabs: tabs.map((item) => ({ tabId: item.id, title: item.title, url: item.url })), tabCount: tabs.length },
         null,
         2,
@@ -99,25 +100,25 @@ export const tabsTools: ToolMap = {
       const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
       tabId = active?.id
     }
-    if (tabId === undefined) throw new Error("Nenhuma aba ativa encontrada para anexar.")
+    if (tabId === undefined) throw new Error("No active tab found to attach.")
     const tab = await chrome.tabs.get(tabId).catch(() => undefined)
-    if (!tab) throw new Error("Aba não encontrada.")
+    if (!tab) throw new Error("Tab not found.")
     if (!/^https?:/i.test(tab.url ?? "")) {
-      throw new Error("Só é possível anexar abas http(s).")
+      throw new Error("Only http(s) tabs can be attached.")
     }
     // Falha rápido: não pede permissão para uma anexação que será recusada.
     await ctx.tabs.assertAttachable(ctx.sessionID, tabId)
     const allowed = await ctx.ask({
       kind: "action",
       tool: "tabs_attach",
-      title: "Dar acesso a esta aba ao agente",
+      title: t("permission.ask.attachTab"),
       detail: tab.title,
       url: tab.url,
     })
-    if (!allowed) return { content: "Anexação negada pelo usuário." }
+    if (!allowed) return { content: "Attach denied by the user." }
     await ctx.tabs.addTab(ctx.sessionID, tabId, { makeMain: true, activate: true })
     return {
-      content: `Aba anexada ao grupo desta sessão.\n\n${await tabContext(ctx, tabId)}`,
+      content: `Tab attached to this session's group.\n\n${await tabContext(ctx, tabId)}`,
       metadata: { tabId },
     }
   },
@@ -130,20 +131,20 @@ export const tabsTools: ToolMap = {
       if (direction === "back") await chrome.tabs.goBack(tabId)
       else await chrome.tabs.goForward(tabId)
       await waitForLoad(tabId).catch(() => undefined)
-      return { content: `Navegou ${direction === "back" ? "para trás" : "para frente"} a partir de ${tab.url ?? ""}.` }
+      return { content: `Went ${direction === "back" ? "back" : "forward"} from ${tab.url ?? ""}.` }
     }
 
     let raw = typeof args.url === "string" ? args.url.trim() : ""
-    if (!raw) throw new Error("Informe `url` ou `direction` (back/forward).")
+    if (!raw) throw new Error("Provide `url` or `direction` (back/forward).")
     if (!/^[a-z][a-z0-9+.-]*:/i.test(raw)) raw = `https://${raw}`
     let url: URL
     try {
       url = new URL(raw)
     } catch {
-      throw new Error(`URL inválida: ${raw}`)
+      throw new Error(`Invalid URL: ${raw}`)
     }
     if (url.protocol !== "http:" && url.protocol !== "https:") {
-      throw new Error("Só é permitido navegar para http(s).")
+      throw new Error("Only http(s) navigation is allowed.")
     }
 
     const from = await currentHost(ctx, tabId)
@@ -151,19 +152,22 @@ export const tabsTools: ToolMap = {
     const allowed = await ctx.ask({
       kind: from && to && from !== to ? "domain" : "action",
       tool: "navigate",
-      title: from && to && from !== to ? `Navegar de ${from} para ${to}` : `Navegar para ${to}`,
+      title:
+        from && to && from !== to
+          ? t("permission.ask.navigateFromTo", { from, to })
+          : t("permission.ask.navigateTo", { to }),
       detail: url.toString(),
       url: url.toString(),
       fromDomain: from || undefined,
       toDomain: to,
     })
-    if (!allowed) return { content: "Navegação negada pelo usuário." }
+    if (!allowed) return { content: "Navigation denied by the user." }
 
     await chrome.tabs.update(tabId, { url: url.toString() })
     await waitForLoad(tabId).catch(() => undefined)
     const tab = await chrome.tabs.get(tabId).catch(() => undefined)
     return {
-      content: `Navegou para ${tab?.url ?? url.toString()}\n\n${await tabContext(ctx, tabId)}`,
+      content: `Navigated to ${tab?.url ?? url.toString()}\n\n${await tabContext(ctx, tabId)}`,
     }
   },
 
@@ -171,11 +175,11 @@ export const tabsTools: ToolMap = {
     const tabId = await resolve(ctx, args)
     const width = typeof args.width === "number" ? Math.round(args.width) : undefined
     const height = typeof args.height === "number" ? Math.round(args.height) : undefined
-    if (!width || !height) throw new Error("Informe width e height.")
+    if (!width || !height) throw new Error("Provide width and height.")
     const tab = await chrome.tabs.get(tabId)
-    if (!tab.windowId) throw new Error("Aba sem janela.")
+    if (!tab.windowId) throw new Error("Tab has no window.")
     await chrome.windows.update(tab.windowId, { width, height })
-    return { content: `Janela redimensionada para ${width}x${height}.` }
+    return { content: `Window resized to ${width}x${height}.` }
   },
 }
 
@@ -183,7 +187,7 @@ function waitForLoad(tabId: number, timeoutMs = 15_000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       chrome.tabs.onUpdated.removeListener(listener)
-      reject(new Error("Timeout aguardando o carregamento da página."))
+      reject(new Error("Timed out waiting for the page to load."))
     }, timeoutMs)
     const listener = (updatedId: number, info: { status?: string }) => {
       if (updatedId !== tabId || info.status !== "complete") return

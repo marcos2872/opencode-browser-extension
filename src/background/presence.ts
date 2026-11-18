@@ -8,10 +8,8 @@
  * atividade, ao terminar a sessão ou quando o usuário clica em Parar.
  */
 
-import {
-  INDICATOR_DEFAULT_STATUS,
-  INDICATOR_MOVE_MS,
-} from "../shared/indicator"
+import { INDICATOR_MOVE_MS } from "../shared/indicator"
+import { t } from "../shared/i18n/runtime"
 
 export type PresenceMessage =
   | { type: "indicator:show" }
@@ -52,7 +50,17 @@ interface Entry {
   lastPoint: CursorPoint | null
 }
 
-export const DEFAULT_STATUS = INDICATOR_DEFAULT_STATUS
+/** Rótulo inicial no idioma em uso (o overlay é montado sob demanda). */
+export function defaultStatus(): string {
+  return t("indicator.defaultStatus")
+}
+
+/**
+ * Rótulo usado quando a primeira mensagem chega antes do `loadLocale()`.
+ * Não use em código novo: chame `defaultStatus()` para respeitar a troca de
+ * idioma feita em Configurações.
+ */
+export const DEFAULT_STATUS = defaultStatus()
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -102,7 +110,7 @@ export class Presence {
     const known = this.entries.has(tabId)
     const entry = this.touch(tabId, sessionID)
     if (!known) {
-      entry.status = DEFAULT_STATUS
+      entry.status = defaultStatus()
       entry.busy = true
       await this.send(tabId, { type: "indicator:show" })
       await this.send(tabId, { type: "indicator:status", text: entry.status, busy: true })
@@ -170,7 +178,7 @@ export class Presence {
     if (!entry) {
       entry = {
         sessionID,
-        status: DEFAULT_STATUS,
+        status: defaultStatus(),
         busy: true,
         timer: null,
         lastPoint: null,

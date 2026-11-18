@@ -1,3 +1,5 @@
+import { t } from "../shared/i18n/runtime"
+
 export interface ConsoleEntry {
   type: string
   text: string
@@ -96,8 +98,8 @@ export class Cdp {
           reject(
             new Error(
               error.includes("Another debugger")
-                ? "O DevTools está aberto nesta aba. Feche o DevTools e tente novamente."
-                : `Não foi possível anexar o depurador: ${error}`,
+                ? t("cdp.devtoolsOpen")
+                : t("cdp.attachFailed", { error }),
             ),
           )
           return
@@ -205,7 +207,7 @@ export class Cdp {
         exception:
           result.exceptionDetails.exception?.description ??
           result.exceptionDetails.text ??
-          "Erro desconhecido ao executar JavaScript.",
+          t("cdp.jsUnknownError"),
       }
     }
     return { value: result.result?.value }
@@ -232,14 +234,14 @@ export class Cdp {
           fromSurface,
         })
         if (result?.data) return result.data
-        lastError = new Error("O Chrome não retornou a imagem.")
+        lastError = new Error(t("cdp.noImage"))
       } catch (error) {
         lastError = error
       }
     }
     throw lastError instanceof Error
       ? lastError
-      : new Error("Não foi possível capturar a imagem da aba.")
+      : new Error(t("cdp.noScreenshot"))
   }
 
   /** Aba dentro de grupo colapsado não é renderizada; expandir não muda o foco. */

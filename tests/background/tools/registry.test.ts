@@ -54,10 +54,10 @@ describe("background/tools/registry", () => {
       const { ctx } = makeToolContext()
 
       await expect(registry.run("nao_existe", {}, ctx)).rejects.toThrow(
-        "Ferramenta desconhecida: nao_existe.",
+        "Unknown tool: nao_existe.",
       )
       await expect(registry.run("browser_nao_existe", {}, ctx)).rejects.toThrow(
-        "Ferramenta desconhecida: browser_nao_existe.",
+        "Unknown tool: browser_nao_existe.",
       )
     })
 
@@ -68,7 +68,7 @@ describe("background/tools/registry", () => {
       controller.abort()
       const { ctx } = makeToolContext({ signal: controller.signal })
 
-      await expect(registry.run("alpha", {}, ctx)).rejects.toThrow("Execução interrompida pelo usuário.")
+      await expect(registry.run("alpha", {}, ctx)).rejects.toThrow("Execution interrupted by the user.")
       expect(alpha).not.toHaveBeenCalled()
     })
   })
@@ -78,12 +78,12 @@ describe("background/tools/registry", () => {
       const registry = new ToolRegistry([{ alpha: makeHandler() }])
       const { ctx } = makeToolContext()
 
-      await expect(registry.run("browser_batch", {}, ctx)).rejects.toThrow("browser_batch exige `actions`.")
+      await expect(registry.run("browser_batch", {}, ctx)).rejects.toThrow("browser_batch requires `actions`.")
       await expect(registry.run("browser_batch", { actions: [] }, ctx)).rejects.toThrow(
-        "browser_batch exige `actions`.",
+        "browser_batch requires `actions`.",
       )
       await expect(registry.run("browser_batch", { actions: "x" }, ctx)).rejects.toThrow(
-        "browser_batch exige `actions`.",
+        "browser_batch requires `actions`.",
       )
     })
 
@@ -94,7 +94,7 @@ describe("background/tools/registry", () => {
       const result = await registry.run("browser_batch", { actions: [{ name: "batch", input: {} }] }, ctx)
       const parsed = parse(result)
 
-      expect(parsed.results[0]).toMatchObject({ name: "batch", ok: false, error: "Nome de ação inválido." })
+      expect(parsed.results[0]).toMatchObject({ name: "batch", ok: false, error: "Invalid action name." })
     })
 
     it("rejeita mais de 20 ações", async () => {
@@ -103,7 +103,7 @@ describe("background/tools/registry", () => {
       const actions = Array.from({ length: 21 }, () => ({ name: "alpha", input: {} }))
 
       await expect(registry.run("browser_batch", { actions }, ctx)).rejects.toThrow(
-        "browser_batch aceita no máximo 20 ações.",
+        "browser_batch accepts at most 20 actions.",
       )
     })
 
@@ -135,9 +135,9 @@ describe("background/tools/registry", () => {
       const parsed = parse(result)
       expect(parsed.ok).toBe(false)
       expect(parsed.results).toEqual([
-        { index: 0, name: "?", ok: false, error: "Ação inválida." },
-        { index: 1, name: "?", ok: false, error: "Ação inválida." },
-        { index: 2, name: "?", ok: false, error: "Ação inválida." },
+        { index: 0, name: "?", ok: false, error: "Invalid action." },
+        { index: 1, name: "?", ok: false, error: "Invalid action." },
+        { index: 2, name: "?", ok: false, error: "Invalid action." },
       ])
     })
 
@@ -153,9 +153,9 @@ describe("background/tools/registry", () => {
       const parsed = parse(result)
       expect(parsed.ok).toBe(false)
       expect(parsed.results).toEqual([
-        { index: 0, name: "", ok: false, error: "Nome de ação inválido." },
-        { index: 1, name: "", ok: false, error: "Nome de ação inválido." },
-        { index: 2, name: "browser_batch", ok: false, error: "Nome de ação inválido." },
+        { index: 0, name: "", ok: false, error: "Invalid action name." },
+        { index: 1, name: "", ok: false, error: "Invalid action name." },
+        { index: 2, name: "browser_batch", ok: false, error: "Invalid action name." },
       ])
     })
 
@@ -190,7 +190,7 @@ describe("background/tools/registry", () => {
         index: 0,
         name: "ghost",
         ok: false,
-        error: "Ferramenta desconhecida: ghost.",
+        error: "Unknown tool: ghost.",
       })
     })
 
@@ -250,7 +250,7 @@ describe("background/tools/registry", () => {
       expect(parsed.ok).toBe(false)
       expect(parsed.results).toEqual([
         { index: 0, name: "stop", ok: true, output: "primeiro" },
-        { index: 1, name: "?", ok: false, error: "Interrompido pelo usuário." },
+        { index: 1, name: "?", ok: false, error: "Interrupted by the user." },
       ])
       expect(alpha).not.toHaveBeenCalled()
     })

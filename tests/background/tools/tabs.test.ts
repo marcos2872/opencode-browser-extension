@@ -110,8 +110,8 @@ describe("background/tools/tabs", () => {
 
       expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", false)
       expect(result.metadata).toEqual({ tabId: 2 })
-      expect(result.content).toContain("Aba criada. Tab ID: 2")
-      expect(result.content).toContain("A aba ficou em segundo plano.")
+      expect(result.content).toContain("Tab created. Tab ID: 2")
+      expect(result.content).toContain("The tab stayed in the background.")
     })
 
     it("repassa active:true e não avisa sobre segundo plano quando a aba ficou ativa", async () => {
@@ -121,7 +121,7 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.tabs_create({ active: true }, ctx)
 
       expect(tabs.createTab).toHaveBeenCalledWith("ses_test", "about:blank", true)
-      expect(result.content).not.toContain("A aba ficou em segundo plano.")
+      expect(result.content).not.toContain("The tab stayed in the background.")
     })
 
     it("respeita url e active=false", async () => {
@@ -142,7 +142,7 @@ describe("background/tools/tabs", () => {
   describe("tabs_close", () => {
     it("exige tabId", async () => {
       const { ctx } = makeToolContext()
-      await expect(tabsTools.tabs_close({}, ctx)).rejects.toThrow("Parâmetro obrigatório ausente: tabId.")
+      await expect(tabsTools.tabs_close({}, ctx)).rejects.toThrow("Missing required parameter: tabId.")
     })
 
     it("respeita a negação do usuário", async () => {
@@ -152,7 +152,7 @@ describe("background/tools/tabs", () => {
 
       const result = await tabsTools.tabs_close({ tabId: 5 }, ctx)
 
-      expect(result.content).toBe("Ação negada pelo usuário. Nenhuma aba foi fechada.")
+      expect(result.content).toBe("Action denied by the user. No tab was closed.")
       expect(tabs.closeTab).not.toHaveBeenCalled()
     })
 
@@ -170,7 +170,7 @@ describe("background/tools/tabs", () => {
         url: "https://alvo.com/",
       })
       expect(tabs.closeTab).toHaveBeenCalledWith("ses_test", target.id)
-      expect(result.content).toContain(`Aba ${target.id} fechada. 1 aba(s) restante(s).`)
+      expect(result.content).toContain(`Tab ${target.id} closed. 1 remaining tab(s).`)
       expect(JSON.parse(result.content.split("\n\n")[1])).toEqual({
         availableTabs: [{ tabId: 1, title: "Aba", url: "https://example.com/" }],
         tabCount: 1,
@@ -212,7 +212,7 @@ describe("background/tools/tabs", () => {
         activate: true,
       })
       expect(result.metadata).toEqual({ tabId: target.id })
-      expect(result.content).toContain("Aba anexada ao grupo desta sessão.")
+      expect(result.content).toContain("Tab attached to this session's group.")
     })
 
     it("usa a aba ativa quando tabId não é informado", async () => {
@@ -234,12 +234,12 @@ describe("background/tools/tabs", () => {
       const { ctx } = makeToolContext()
       chrome.tabs.query.mockResolvedValue([])
 
-      await expect(tabsTools.tabs_attach({}, ctx)).rejects.toThrow("Nenhuma aba ativa encontrada para anexar.")
+      await expect(tabsTools.tabs_attach({}, ctx)).rejects.toThrow("No active tab found to attach.")
     })
 
     it("lança erro quando a aba não existe", async () => {
       const { ctx } = makeToolContext()
-      await expect(tabsTools.tabs_attach({ tabId: 404 }, ctx)).rejects.toThrow("Aba não encontrada.")
+      await expect(tabsTools.tabs_attach({ tabId: 404 }, ctx)).rejects.toThrow("Tab not found.")
     })
 
     it("recusa abas que não são http(s)", async () => {
@@ -247,7 +247,7 @@ describe("background/tools/tabs", () => {
       const tab = chrome.__state.addTab({ url: "chrome://extensions" })
 
       await expect(tabsTools.tabs_attach({ tabId: tab.id }, ctx)).rejects.toThrow(
-        "Só é possível anexar abas http(s).",
+        "Only http(s) tabs can be attached.",
       )
     })
 
@@ -258,7 +258,7 @@ describe("background/tools/tabs", () => {
 
       const result = await tabsTools.tabs_attach({ tabId: tab.id }, ctx)
 
-      expect(result.content).toBe("Anexação negada pelo usuário.")
+      expect(result.content).toBe("Attach denied by the user.")
       expect(tabs.addTab).not.toHaveBeenCalled()
     })
   })
@@ -271,7 +271,7 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.navigate({ url: "exemplo.com/pagina" }, ctx)
 
       expect(chrome.tabs.update).toHaveBeenCalledWith(1, { url: "https://exemplo.com/pagina" })
-      expect(result.content).toContain("Navegou para https://exemplo.com/pagina")
+      expect(result.content).toContain("Navigated to https://exemplo.com/pagina")
     })
 
     it("mantém a URL com protocolo explícito", async () => {
@@ -286,7 +286,7 @@ describe("background/tools/tabs", () => {
     it("rejeita URL inválida", async () => {
       const { ctx } = makeToolContext()
       await expect(tabsTools.navigate({ url: "https://[invalido" }, ctx)).rejects.toThrow(
-        "URL inválida: https://[invalido",
+        "Invalid URL: https://[invalido",
       )
       expect(chrome.tabs.update).not.toHaveBeenCalled()
     })
@@ -294,15 +294,15 @@ describe("background/tools/tabs", () => {
     it("rejeita protocolos que não são http(s)", async () => {
       const { ctx } = makeToolContext()
       await expect(tabsTools.navigate({ url: "chrome://settings" }, ctx)).rejects.toThrow(
-        "Só é permitido navegar para http(s).",
+        "Only http(s) navigation is allowed.",
       )
     })
 
     it("exige url ou direction", async () => {
       const { ctx } = makeToolContext()
-      await expect(tabsTools.navigate({}, ctx)).rejects.toThrow("Informe `url` ou `direction` (back/forward).")
+      await expect(tabsTools.navigate({}, ctx)).rejects.toThrow("Provide `url` or `direction` (back/forward).")
       await expect(tabsTools.navigate({ url: "   " }, ctx)).rejects.toThrow(
-        "Informe `url` ou `direction` (back/forward).",
+        "Provide `url` or `direction` (back/forward).",
       )
     })
 
@@ -346,7 +346,7 @@ describe("background/tools/tabs", () => {
 
       const result = await tabsTools.navigate({ url: "https://exemplo.com/" }, ctx)
 
-      expect(result.content).toBe("Navegação negada pelo usuário.")
+      expect(result.content).toBe("Navigation denied by the user.")
       expect(chrome.tabs.update).not.toHaveBeenCalled()
     })
 
@@ -358,7 +358,7 @@ describe("background/tools/tabs", () => {
 
       expect(chrome.tabs.goBack).toHaveBeenCalledWith(1)
       expect(chrome.tabs.goForward).not.toHaveBeenCalled()
-      expect(result.content).toBe("Navegou para trás a partir de https://exemplo.com/.")
+      expect(result.content).toBe("Went back from https://exemplo.com/.")
     })
 
     it("navega para frente", async () => {
@@ -368,7 +368,7 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.navigate({ direction: "forward" }, ctx)
 
       expect(chrome.tabs.goForward).toHaveBeenCalledWith(1)
-      expect(result.content).toBe("Navegou para frente a partir de https://exemplo.com/.")
+      expect(result.content).toBe("Went forward from https://exemplo.com/.")
     })
 
     it("aguarda o evento onUpdated até status complete", async () => {
@@ -383,7 +383,7 @@ describe("background/tools/tabs", () => {
 
       expect(chrome.tabs.update).toHaveBeenCalledWith(1, { url: "https://exemplo.com/proxima" })
       expect(chrome.tabs.onUpdated.listeners).toHaveLength(0)
-      expect(result.content).toContain("Navegou para https://exemplo.com/proxima")
+      expect(result.content).toContain("Navigated to https://exemplo.com/proxima")
     })
 
     it("propaga erro quando a atualização da aba falha", async () => {
@@ -406,7 +406,7 @@ describe("background/tools/tabs", () => {
         const result = await promise
 
         expect(chrome.tabs.goBack).toHaveBeenCalledWith(1)
-        expect(result.content).toBe("Navegou para trás a partir de https://exemplo.com/.")
+        expect(result.content).toBe("Went back from https://exemplo.com/.")
         expect(chrome.tabs.onUpdated.listeners).toHaveLength(0)
       } finally {
         vi.useRealTimers()
@@ -422,16 +422,16 @@ describe("background/tools/tabs", () => {
       const result = await tabsTools.resize_window({ width: 800.4, height: 600.6 }, ctx)
 
       expect(chrome.windows.update).toHaveBeenCalledWith(7, { width: 800, height: 601 })
-      expect(result.content).toBe("Janela redimensionada para 800x601.")
+      expect(result.content).toBe("Window resized to 800x601.")
     })
 
     it("exige width e height", async () => {
       const { ctx } = makeToolContext()
       chrome.__state.addTab({ id: 1, windowId: 7 })
 
-      await expect(tabsTools.resize_window({ width: 800 }, ctx)).rejects.toThrow("Informe width e height.")
-      await expect(tabsTools.resize_window({ height: 600 }, ctx)).rejects.toThrow("Informe width e height.")
-      await expect(tabsTools.resize_window({}, ctx)).rejects.toThrow("Informe width e height.")
+      await expect(tabsTools.resize_window({ width: 800 }, ctx)).rejects.toThrow("Provide width and height.")
+      await expect(tabsTools.resize_window({ height: 600 }, ctx)).rejects.toThrow("Provide width and height.")
+      await expect(tabsTools.resize_window({}, ctx)).rejects.toThrow("Provide width and height.")
       expect(chrome.windows.update).not.toHaveBeenCalled()
     })
 
@@ -439,7 +439,7 @@ describe("background/tools/tabs", () => {
       const { ctx } = makeToolContext()
       chrome.__state.addTab({ id: 1, windowId: 0 })
 
-      await expect(tabsTools.resize_window({ width: 800, height: 600 }, ctx)).rejects.toThrow("Aba sem janela.")
+      await expect(tabsTools.resize_window({ width: 800, height: 600 }, ctx)).rejects.toThrow("Tab has no window.")
     })
 
     it("propaga erro quando a aba não existe", async () => {

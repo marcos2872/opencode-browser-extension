@@ -85,7 +85,7 @@ describe("background/tools/computer", () => {
         url: "https://example.com/",
       })
       expect(mocks.cdp.screenshot).toHaveBeenCalledWith(1)
-      expect(result.content).toBe("Screenshot capturado (Exemplo).")
+      expect(result.content).toBe("Screenshot captured (Exemplo).")
       expect(result.images).toEqual([
         { name: expect.stringMatching(/^screenshot-\d+\.png$/), mime: "image/png", data: "YmFzZTY0" },
       ])
@@ -97,7 +97,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.computer({ action: "screenshot" }, mocks.ctx)
 
-      expect(result.content).toBe("Screenshot negado pelo usuário.")
+      expect(result.content).toBe("Screenshot denied by the user.")
       expect(mocks.cdp.screenshot).not.toHaveBeenCalled()
     })
   })
@@ -112,7 +112,7 @@ describe("background/tools/computer", () => {
       expect(mocks.cdp.screenshot).toHaveBeenCalledWith(1, {
         clip: { x: 100, y: 150, width: 100, height: 150, scale: 2 },
       })
-      expect(result.content).toBe("Região capturada.")
+      expect(result.content).toBe("Region captured.")
       expect(result.images?.[0].data).toBe("emNvb20=")
       expect(mocks.ask).toHaveBeenCalledWith(expect.objectContaining({ title: "Capturar região ampliada" }))
     })
@@ -132,7 +132,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.computer({ action: "zoom", region: [0, 0, 10, 10] }, mocks.ctx)
 
-      expect(result.content).toBe("Captura negada pelo usuário.")
+      expect(result.content).toBe("Capture denied by the user.")
       expect(mocks.cdp.screenshot).not.toHaveBeenCalled()
     })
   })
@@ -151,7 +151,7 @@ describe("background/tools/computer", () => {
         [1, "mousePressed", 10, 20, { button: "left", clickCount: 1 }],
         [1, "mouseReleased", 10, 20, { button: "left", clickCount: 1 }],
       ])
-      expect(result.content).toBe("Clique em (10, 20).")
+      expect(result.content).toBe("Clicked (10, 20).")
       expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
     })
 
@@ -163,7 +163,7 @@ describe("background/tools/computer", () => {
       expect(a11yMock.resolveRef).not.toHaveBeenCalled()
       expect(mocks.cursor).toHaveBeenCalledWith(1, 100.4, 200.6, { click: true })
       expect(mocks.cdp.mouse).toHaveBeenNthCalledWith(1, 1, "mouseMoved", 100.4, 200.6)
-      expect(result.content).toBe("Clique em (100, 201).")
+      expect(result.content).toBe("Clicked (100, 201).")
     })
 
     it("respeita botão e click_count com limite 3", async () => {
@@ -195,7 +195,7 @@ describe("background/tools/computer", () => {
       expect(mocks.cdp.mouse).not.toHaveBeenCalled()
       expect(mocks.indicator).toHaveBeenCalledWith(1, "Clicando", true)
       expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
-      expect(result.content).toBe("Clique em f2_ref_1 (iframe, via eventos de DOM).")
+      expect(result.content).toBe("Clicked f2_ref_1 (iframe, via DOM events).")
     })
 
     it("respeita a negação do usuário", async () => {
@@ -204,7 +204,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.computer({ action: "click", coordinate: [1, 1] }, mocks.ctx)
 
-      expect(result.content).toBe("Ação negada pelo usuário.")
+      expect(result.content).toBe("Action denied by the user.")
       expect(mocks.cdp.mouse).not.toHaveBeenCalled()
     })
 
@@ -216,7 +216,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "click", ref: "ref_1" }, mocks.ctx)
 
       expect(a11yMock.clickRef).toHaveBeenCalledWith(1, "ref_1")
-      expect(result.content).toBe("Clique em (10, 20).")
+      expect(result.content).toBe("Clicked (10, 20).")
     })
 
     it("propaga erro do fallback", async () => {
@@ -243,7 +243,7 @@ describe("background/tools/computer", () => {
     it("lança erro quando não há ref nem coordenada", async () => {
       const mocks = makeMocks()
       await expect(computerTools.computer({ action: "click" }, mocks.ctx)).rejects.toThrow(
-        "Informe `ref` ou `coordinate`.",
+        "Provide `ref` or `coordinate`.",
       )
     })
 
@@ -251,9 +251,9 @@ describe("background/tools/computer", () => {
       const mocks = makeMocks()
       await expect(
         computerTools.computer({ action: "click", coordinate: ["a", "b"] }, mocks.ctx),
-      ).rejects.toThrow("Coordenada inválida.")
+      ).rejects.toThrow("Invalid coordinate.")
       await expect(computerTools.computer({ action: "click", coordinate: [1] }, mocks.ctx)).rejects.toThrow(
-        "Informe `ref` ou `coordinate`.",
+        "Provide `ref` or `coordinate`.",
       )
     })
 
@@ -261,7 +261,7 @@ describe("background/tools/computer", () => {
       a11yMock.resolveRef.mockResolvedValue(null)
       const mocks = makeMocks()
       await expect(computerTools.computer({ action: "click", ref: "ref_9" }, mocks.ctx)).rejects.toThrow(
-        "Ref ref_9 não encontrada.",
+        "Ref ref_9 not found.",
       )
     })
 
@@ -278,7 +278,7 @@ describe("background/tools/computer", () => {
 
       expect(mocks.tabs.addTab).toHaveBeenCalledWith("ses_test", opened.id)
       expect(result.content).toContain(
-        `A nova aba abriu como Tab ID ${opened.id} e entrou no grupo desta sessão.`,
+        `The new tab opened as Tab ID ${opened.id} and joined this session's group.`,
       )
     })
 
@@ -289,7 +289,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "click", coordinate: [1, 1] }, mocks.ctx)
 
       expect(mocks.tabs.addTab).not.toHaveBeenCalled()
-      expect(result.content).toBe("Clique em (1, 1).")
+      expect(result.content).toBe("Clicked (1, 1).")
     })
 
     it("não adota abas sem grupo na sessão", async () => {
@@ -477,7 +477,7 @@ describe("background/tools/computer", () => {
     it("exige keys", async () => {
       const mocks = makeMocks()
       await expect(computerTools.computer({ action: "key" }, mocks.ctx)).rejects.toThrow(
-        "Parâmetro obrigatório ausente: keys.",
+        "Missing required parameter: keys.",
       )
     })
   })
@@ -488,7 +488,7 @@ describe("background/tools/computer", () => {
 
     await expect(
       computerTools.computer({ action: "scroll", scroll_direction: "diagonal" }, mocks.ctx),
-    ).rejects.toThrow("Direção de scroll inválida: diagonal. Use up, down, left ou right.")
+    ).rejects.toThrow("Invalid scroll direction: diagonal. Use up, down, left or right.")
   })
 
   it("rola a partir do centro da janela", async () => {
@@ -498,7 +498,7 @@ describe("background/tools/computer", () => {
 
       expect(mocks.cdp.wheel).toHaveBeenCalledWith(1, 400, 300, 0, 600)
       expect(mocks.cursor).toHaveBeenCalledWith(1, 400, 300)
-      expect(result.content).toBe("Scroll down de 600px.")
+      expect(result.content).toBe("Scrolled down by 600px.")
       expect(mocks.indicator).toHaveBeenCalledWith(1, "Rolando", true)
       expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
     })
@@ -537,7 +537,7 @@ describe("background/tools/computer", () => {
       expect(mocks.cdp.wheel).not.toHaveBeenCalled()
       expect(mocks.indicator).toHaveBeenCalledWith(1, "Rolando", true)
       expect(mocks.hideIndicator).toHaveBeenCalledWith(1)
-      expect(result.content).toBe("Rolou até f2_ref_1 (iframe).")
+      expect(result.content).toBe("Scrolled to f2_ref_1 (iframe).")
     })
 
     it("propaga erro do scrollRef", async () => {
@@ -561,14 +561,14 @@ describe("background/tools/computer", () => {
 
       expect(a11yMock.resolveRef).toHaveBeenCalledWith(1, "ref_1")
       expect(mocks.cdp.wheel).toHaveBeenCalledWith(1, 10, 20, 0, 600)
-      expect(result.content).toBe("Scroll down de 600px.")
+      expect(result.content).toBe("Scrolled down by 600px.")
     })
   })
 
   it("lança erro para ação desconhecida", async () => {
     const mocks = makeMocks()
     await expect(computerTools.computer({ action: "teleport" }, mocks.ctx)).rejects.toThrow(
-      "Ação desconhecida: teleport",
+      "Unknown action: teleport",
     )
     expect(mocks.ask).toHaveBeenCalledWith(expect.objectContaining({ title: "Ação: teleport" }))
   })
@@ -576,7 +576,7 @@ describe("background/tools/computer", () => {
   it("exige action", async () => {
     const mocks = makeMocks()
     await expect(computerTools.computer({}, mocks.ctx)).rejects.toThrow(
-      "Parâmetro obrigatório ausente: action.",
+      "Missing required parameter: action.",
     )
   })
 
@@ -620,7 +620,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.javascript_tool({ text: "1+" }, mocks.ctx)
 
-      expect(result.content).toBe("Erro de execução: SyntaxError: inesperado")
+      expect(result.content).toBe("Execution error: SyntaxError: inesperado")
     })
 
     it("respeita a negação do usuário", async () => {
@@ -629,14 +629,14 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.javascript_tool({ text: "1" }, mocks.ctx)
 
-      expect(result.content).toBe("Execução negada pelo usuário.")
+      expect(result.content).toBe("Execution denied by the user.")
       expect(mocks.cdp.evaluate).not.toHaveBeenCalled()
     })
 
     it("exige text", async () => {
       const mocks = makeMocks()
       await expect(computerTools.javascript_tool({}, mocks.ctx)).rejects.toThrow(
-        "Parâmetro obrigatório ausente: text.",
+        "Missing required parameter: text.",
       )
     })
   })
@@ -655,7 +655,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.read_console_messages({}, mocks.ctx)
 
       expect(mocks.cdp.enableRuntime).toHaveBeenCalledWith(1)
-      expect(result.content).toContain("Encontradas 3 mensagem(ns):")
+      expect(result.content).toContain("Found 3 message(s):")
       expect(result.content).toContain("[1] [LOG]\niniciando")
       expect(result.content).toContain("[2] [ERROR] (https://example.com/app.js:10)\nFalha ao carregar")
       expect(result.content).toContain("[3] [EXCEPTION]\nTypeError")
@@ -668,7 +668,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_console_messages({ pattern: "FALHA" }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 1 mensagem(ns):")
+      expect(result.content).toContain("Found 1 message(s):")
       expect(result.content).toContain("Falha ao carregar")
     })
 
@@ -678,7 +678,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_console_messages({ onlyErrors: true }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 2 mensagem(ns):")
+      expect(result.content).toContain("Found 2 message(s):")
       expect(result.content).not.toContain("iniciando")
     })
 
@@ -688,7 +688,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_console_messages({ only_errors: true }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 2 mensagem(ns):")
+      expect(result.content).toContain("Found 2 message(s):")
     })
 
     it("limita e informa quantas foram mostradas", async () => {
@@ -697,7 +697,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_console_messages({ limit: 1 }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 3 mensagem(ns) (mostrando 1):")
+      expect(result.content).toContain("Found 3 message(s) (showing 1):")
       expect(result.content).toContain("TypeError")
       expect(result.content).not.toContain("iniciando")
     })
@@ -729,8 +729,8 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_console_messages({}, mocks.ctx)
 
-      expect(result.content).toContain("Nenhuma mensagem de console encontrada.")
-      expect(result.content).toContain("recarregue a página")
+      expect(result.content).toContain("No console messages found.")
+      expect(result.content).toContain("reload the page")
     })
   })
 
@@ -747,7 +747,7 @@ describe("background/tools/computer", () => {
       const result = await computerTools.read_network_requests({}, mocks.ctx)
 
       expect(mocks.cdp.enableNetwork).toHaveBeenCalledWith(1)
-      expect(result.content).toContain("Encontradas 2 requisição(ões):")
+      expect(result.content).toContain("Found 2 request(s):")
       expect(result.content).toContain("1. url: https://example.com/api/user\n   method: GET\n   statusCode: 200")
       expect(result.content).toContain("statusCode: pending")
     })
@@ -758,7 +758,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_network_requests({ urlPattern: "LOGO" }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 1 requisição(ões):")
+      expect(result.content).toContain("Found 1 request(s):")
       expect(result.content).toContain("logo.png")
     })
 
@@ -768,7 +768,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_network_requests({ url_pattern: "user" }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 1 requisição(ões):")
+      expect(result.content).toContain("Found 1 request(s):")
     })
 
     it("limita a quantidade exibida", async () => {
@@ -777,7 +777,7 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_network_requests({ limit: 1 }, mocks.ctx)
 
-      expect(result.content).toContain("Encontradas 2 requisição(ões) (mostrando 1):")
+      expect(result.content).toContain("Found 2 request(s) (showing 1):")
       expect(result.content).toContain("logo.png")
       expect(result.content).not.toContain("api/user")
     })
@@ -796,8 +796,8 @@ describe("background/tools/computer", () => {
 
       const result = await computerTools.read_network_requests({}, mocks.ctx)
 
-      expect(result.content).toContain("Nenhuma requisição encontrada.")
-      expect(result.content).toContain("recarregue a página")
+      expect(result.content).toContain("No requests found.")
+      expect(result.content).toContain("reload the page")
     })
   })
 })

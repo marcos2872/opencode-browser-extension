@@ -3,6 +3,8 @@
 Documentação técnica do **OpenCode Browser** — extensão de navegador + plugin do
 OpenCode.
 
+**Idioma:** Português (Brasil) · [English](en/index.md)
+
 | Documento | Descrição |
 |---|---|
 | [Guia do usuário](guias/guia-do-usuario.md) · [versão HTML](../web/index.html) | Guia do usuário final: instalar, parear, conversar, abas, sessões paralelas, permissões e configurações |

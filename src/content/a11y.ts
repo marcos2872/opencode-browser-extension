@@ -283,7 +283,7 @@ function install(): void {
       root = refToElement.get(options.refId) ?? null
       if (!root)
         return {
-          pageContent: `Ref ${options.refId} não encontrada.`,
+          pageContent: `Ref ${options.refId} not found.`,
           viewport: viewport(),
           count: 0,
           url: location.href,
@@ -333,7 +333,7 @@ function install(): void {
 
   function setValue(ref: string, value: string): { ok: boolean; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     const tag = element.tagName.toLowerCase()
     if (element instanceof HTMLInputElement) {
       if (element.type === "checkbox" || element.type === "radio") {
@@ -360,7 +360,7 @@ function install(): void {
       const option = Array.from(element.options).find(
         (item) => item.value === value || item.textContent?.trim() === value,
       )
-      if (!option) return { ok: false, error: "Opção não encontrada no select." }
+      if (!option) return { ok: false, error: "Option not found in the select." }
       element.value = option.value
       element.dispatchEvent(new Event("input", { bubbles: true }))
       element.dispatchEvent(new Event("change", { bubbles: true }))
@@ -376,7 +376,7 @@ function install(): void {
       ;(element as HTMLElement).click()
       return { ok: true }
     }
-    return { ok: false, error: `Elemento <${tag}> não aceita valor.` }
+    return { ok: false, error: `Element <${tag}> does not accept a value.` }
   }
 
   function pageText(maxChars = 50_000) {
@@ -410,7 +410,7 @@ function install(): void {
 
   function clickRef(ref: string): { ok: boolean; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
     dispatchMouse(element, "mouseover")
     dispatchMouse(element, "mousemove")
@@ -422,7 +422,7 @@ function install(): void {
 
   function hoverRef(ref: string): { ok: boolean; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
     dispatchMouse(element, "mouseover")
     dispatchMouse(element, "mousemove")
@@ -431,14 +431,14 @@ function install(): void {
 
   function scrollRef(ref: string): { ok: boolean; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
     return { ok: true }
   }
 
   function focusRef(ref: string): { ok: boolean; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior })
     if (element instanceof HTMLElement) element.focus()
     return { ok: true }
@@ -449,7 +449,7 @@ function install(): void {
     files: Array<{ data: string; name: string; mimeType?: string }>,
   ): { ok: boolean; target?: string; error?: string } {
     const element = refToElement.get(ref)
-    if (!element) return { ok: false, error: `Ref ${ref} não encontrada.` }
+    if (!element) return { ok: false, error: `Ref ${ref} not found.` }
     let transfer: DataTransfer
     try {
       transfer = new DataTransfer()

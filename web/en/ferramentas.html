@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="See what the agent can do in the browser and how results appear in the chat." />
+<title>Browser tools — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html">Conversations and questions</a>
+      <a href="ferramentas.html" aria-current="page">Browser tools</a>
+      <a href="abas-e-sessoes.html">Tabs and sessions</a>
+      <a href="permissoes.html">Permissions</a>
+      <a href="configuracoes.html">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../ferramentas.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">On this page</div>
+  <a class="n2" href="#7-o-que-o-agente-consegue-fazer-no-navegador">7. What the agent can do in the browser</a><a class="n3" href="#cards-de-ferramenta">Tool cards</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Browser tools</h1>
+  <h2 id="7-o-que-o-agente-consegue-fazer-no-navegador">7. What the agent can do in the browser</h2>
+<p>The agent gets 18 tools. Some are read-only and <strong>never</strong> ask for permission; the others change something and go through your approval (depending on the mode).</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Tool</th><th style="text-align:left">What it does</th><th style="text-align:left">Permission</th></tr></thead><tbody><tr><td style="text-align:left"><code>browser_tabs_context</code></td><td style="text-align:left">Lists the tabs in the conversation's group</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_create</code></td><td style="text-align:left">Opens a URL in the group (in the background)</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_attach</code></td><td style="text-align:left">Brings an already open tab into the group</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_tabs_close_tab</code></td><td style="text-align:left">Closes a tab in the group</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_navigate</code></td><td style="text-align:left">Navigates, goes back or forward in the history</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_read_page</code></td><td style="text-align:left">Reads the page and returns the elements with references</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_find</code></td><td style="text-align:left">Finds elements by text, role or name</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_get_page_text</code></td><td style="text-align:left">Extracts the main text, without HTML</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_form_input</code></td><td style="text-align:left">Fills in a field</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_computer</code></td><td style="text-align:left">Clicks, types, presses keys, scrolls, moves the mouse, takes a screenshot, zooms, waits</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_javascript_tool</code></td><td style="text-align:left">Runs JavaScript on the page</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_read_console_messages</code></td><td style="text-align:left">Reads the tab's console and errors</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_read_network_requests</code></td><td style="text-align:left">Reads the tab's network requests</td><td style="text-align:left">Read</td></tr>
+<tr><td style="text-align:left"><code>browser_resize_window</code></td><td style="text-align:left">Resizes the window to test layouts</td><td style="text-align:left">No request</td></tr>
+<tr><td style="text-align:left"><code>browser_update_plan</code></td><td style="text-align:left">Shows domains and steps for you to approve beforehand</td><td style="text-align:left">Plan card</td></tr>
+<tr><td style="text-align:left"><code>browser_upload_image</code></td><td style="text-align:left">Sends files to a file field or drop area</td><td style="text-align:left">Asks</td></tr>
+<tr><td style="text-align:left"><code>browser_gif_creator</code></td><td style="text-align:left">Records action frames and exports a GIF</td><td style="text-align:left">Export asks</td></tr>
+<tr><td style="text-align:left"><code>browser_batch</code></td><td style="text-align:left">Runs several tools in sequence (up to 20)</td><td style="text-align:left">Each action asks for its own</td></tr></tbody></table></div>
+<h3 id="cards-de-ferramenta">Tool cards</h3>
+<p>Each call appears in the chat with a label — “Navigate”, “Read page”, “Click on the page”, “Fill field”, “Console”, “Network” — and a status: <strong>ok</strong>, <strong>error</strong> or <strong>running</strong>.</p>
+<p>You choose how much detail you want in <strong>Settings → Tools in chat</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Mode</th><th style="text-align:left">How it looks</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Grouped (open in a modal)</strong> (default)</td><td style="text-align:left">One summary row per run (“4 tools · view”); the details open in the “Tools of this run” modal</td></tr>
+<tr><td style="text-align:left"><strong>Compact rows, one per call</strong></td><td style="text-align:left">One row per tool, with the error summarized on the row itself</td></tr>
+<tr><td style="text-align:left"><strong>Full cards, with parameters and result</strong></td><td style="text-align:left">Everything open in the chat, including the input JSON and the output</td></tr>
+<tr><td style="text-align:left"><strong>Hide tools and reasoning (only “working”)</strong></td><td style="text-align:left">The chat shows only the activity (“working: reading the page”)</td></tr></tbody></table></div>
+<p>In grouped mode, the modal has an <strong>“Errors only”</strong> filter and closes with <strong>Esc</strong> or by clicking outside.</p>
+<p>Screenshots appear as an image inside the card (up to 3 at a time) and are also saved to disk: the file path comes in the agent's reply.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

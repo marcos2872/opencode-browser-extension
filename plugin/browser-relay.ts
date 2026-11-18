@@ -428,7 +428,7 @@ function sanitizeImages(value: unknown): { images?: ImagePayload[]; dropped: num
 }
 
 function buildContent(result: ToolResponse) {
-  const text = result.content?.trim() || "(sem saída)"
+  const text = result.content?.trim() || "(no output)"
   // As capturas também vão para o disco, e o caminho volta no texto: o agente precisa do arquivo para montar páginas
   // que embutem a tela (mapa de requisitos, guias), não só da imagem na conversa.
   const arquivos = saveImages(result.images ?? [])
@@ -492,7 +492,7 @@ function dispatch(
     if (!sent) {
       relay().pending.delete(id)
       clearTimeout(timer)
-      reject(new Error("Falha ao enviar o pedido para a extensão."))
+      reject(new Error("Failed to send the request to the extension."))
     }
   })
 }
@@ -516,7 +516,7 @@ function waitForActive(ms: number): Promise<Socket | null> {
 }
 
 const NOT_CONNECTED =
-  "A extensão OpenCode Browser não está conectada. Verifique se o Chrome está aberto com a extensão ativa e tente de novo."
+  "The OpenCode Browser extension is not connected. Check that Chrome is open with the extension active and try again."
 
 async function callToolOverHttp(
   tool: string,
@@ -525,7 +525,7 @@ async function callToolOverHttp(
 ): Promise<ToolResponse> {
   const info = readRelayInfo()
   if (!info) {
-    throw new Error("Relay do OpenCode Browser não encontrado. Reinicie o OpenCode.")
+    throw new Error("OpenCode Browser relay not found. Restart OpenCode.")
   }
   const headers = { "content-type": "application/json", "x-relay-token": info.token }
   const base = `http://127.0.0.1:${info.port}`
@@ -553,14 +553,14 @@ async function callToolOverHttp(
     }
     return data
   } catch (error) {
-    if (context.signal.aborted) throw new Error("Execução cancelada.", { cause: error })
+    if (context.signal.aborted) throw new Error("Run cancelled.", { cause: error })
     if (error instanceof TypeError) {
       // Falha de rede: o relay do outro processo pode ter morrido. Reavalia
       // (pode assumir a porta) e pede para tentar de novo.
       relay().remotePort = undefined
       void ensureServer()
       throw new Error(
-        "Relay do OpenCode Browser indisponível. Aguarde a extensão reconectar e tente de novo.",
+        "OpenCode Browser relay unavailable. Wait for the extension to reconnect and try again.",
         { cause: error },
       )
     }
@@ -579,13 +579,13 @@ async function handleHttpTool(request: Request): Promise<Response> {
   try {
     body = await request.json()
   } catch {
-    return Response.json({ ok: false, error: "JSON inválido." }, { status: 400 })
+    return Response.json({ ok: false, error: "Invalid JSON." }, { status: 400 })
   }
   if (!isRecord(body) || typeof body.tool !== "string" || !KNOWN_TOOLS.has(body.tool)) {
     return Response.json({ ok: false, error: "Parâmetro tool ausente ou desconhecido." }, { status: 400 })
   }
   if (body.args !== undefined && !isRecord(body.args)) {
-    return Response.json({ ok: false, error: "Parâmetro args inválido." }, { status: 400 })
+    return Response.json({ ok: false, error: "Invalid args parameter." }, { status: 400 })
   }
   const socket = relay().active ?? (await waitForActive(EXTENSION_GRACE_MS))
   if (!socket) {
@@ -596,7 +596,7 @@ async function handleHttpTool(request: Request): Promise<Response> {
       ? body.id
       : `http_${crypto.randomUUID()}`
   if (relay().pending.has(id)) {
-    return Response.json({ ok: false, error: "id de chamada já em uso." }, { status: 409 })
+    return Response.json({ ok: false, error: "call id already in use." }, { status: 409 })
   }
   try {
     const result = await dispatch(
@@ -619,7 +619,7 @@ async function handleHttpCancel(request: Request): Promise<Response> {
   try {
     const body = (await request.json()) as unknown
     if (isRecord(body) && typeof body.id === "string") {
-      cancelPending(body.id, "Execução cancelada.")
+      cancelPending(body.id, "Run cancelled.")
     }
   } catch {
     // corpo inválido: nada a cancelar
@@ -642,7 +642,7 @@ async function callTool(
     return callToolOverHttp(tool, args, context)
   }
   const id = `call_${crypto.randomUUID()}`
-  const onAbort = () => cancelPending(id, "Execução cancelada.")
+  const onAbort = () => cancelPending(id, "Run cancelled.")
   const promise = dispatch(socket, id, tool, args, context.sessionID, context.progress)
   if (context.signal.aborted) onAbort()
   else context.signal.addEventListener("abort", onAbort, { once: true })
@@ -662,17 +662,17 @@ type ToolSpec = {
   input: Record<string, unknown>
 }
 
-const tabId = { type: "number", description: "ID da aba dentro do grupo desta sessão." }
+const tabId = { type: "number", description: "Tab ID inside this session's group." }
 
 const tools: ToolSpec[] = [
   {
     name: "tabs_context",
     description:
-      "Lista as abas do grupo desta sessão. Use antes de qualquer ferramenta que exija tabId. Se não houver grupo, use createIfEmpty.",
+      "Lists the tabs in this session's group. Use it before any tool that requires a tabId. If there is no group yet, use createIfEmpty.",
     input: {
       type: "object",
       properties: {
-        createIfEmpty: { type: "boolean", description: "Cria um grupo/aba se ainda não existir." },
+        createIfEmpty: { type: "boolean", description: "Creates a group/tab if it does not exist yet." },
       },
       additionalProperties: false,
     },
@@ -680,7 +680,7 @@ const tools: ToolSpec[] = [
   {
     name: "tabs_create",
     description:
-      "Abre uma URL no grupo desta sessão e devolve o tabId. Com a mesma origem (ou aba principal em branco) reaproveita a aba principal; com origem diferente abre uma nova aba.",
+      "Opens a URL in this session's group and returns the tabId. With the same origin (or a blank main tab) it reuses the main tab; with a different origin it opens a new tab.",
     input: {
       type: "object",
       properties: { url: { type: "string" }, active: { type: "boolean" } },
@@ -690,7 +690,7 @@ const tools: ToolSpec[] = [
   {
     name: "tabs_attach",
     description:
-      "Move uma aba existente (informada por tabId ou a aba ativa do navegador) para o grupo desta sessão, dando ao agente acesso ao que já está aberto. Pede permissão. A aba sai do grupo atual do usuário.",
+      "Moves an existing tab (given by tabId or the browser's active tab) into this session's group, giving the agent access to what is already open. Asks for permission. The tab leaves the user's current group.",
     input: {
       type: "object",
       properties: { tabId },
@@ -704,17 +704,17 @@ const tools: ToolSpec[] = [
     // Expomos `tabs_close_tab` e mantemos `tabs_close` no protocolo.
     name: "tabs_close_tab",
     wire: "tabs_close",
-    description: "Fecha uma aba do grupo desta sessão.",
+    description: "Closes a tab in this session's group.",
     input: { type: "object", properties: { tabId }, required: ["tabId"], additionalProperties: false },
   },
   {
     name: "navigate",
     description:
-      "Navega para uma URL ou vai para trás/frente no histórico. Pede permissão para domínios novos.",
+      "Navigates to a URL or goes back/forward in history. Asks for permission on new domains.",
     input: {
       type: "object",
       properties: {
-        url: { type: "string", description: "URL absoluta ou domínio; https:// é adicionado se faltar." },
+        url: { type: "string", description: "Absolute URL or domain; https:// is added when missing." },
         direction: { type: "string", enum: ["back", "forward"] },
         tabId,
       },
@@ -724,7 +724,7 @@ const tools: ToolSpec[] = [
   {
     name: "read_page",
     description:
-      "Retorna a árvore de acessibilidade da página com refs (ref_1, ref_2...). Use as refs em computer/form_input/find. Com frames=all, refs de iframes vêm prefixadas como f<frameId>_ref_N. Em páginas grandes use filter=interactive e max_chars.",
+      "Returns the page accessibility tree with refs (ref_1, ref_2...). Use the refs in computer/form_input/find. With frames=all, iframe refs are prefixed as f<frameId>_ref_N. On large pages use filter=interactive and max_chars.",
     input: {
       type: "object",
       properties: {
@@ -742,7 +742,7 @@ const tools: ToolSpec[] = [
   {
     name: "find",
     description:
-      "Busca heurística por elementos usando texto/role/nome. Retorna até 20 refs. Prefira read_page filter=interactive para páginas grandes.",
+      "Heuristic element search using text/role/name. Returns up to 20 refs. Prefer read_page filter=interactive for large pages.",
     input: {
       type: "object",
       properties: {
@@ -758,7 +758,7 @@ const tools: ToolSpec[] = [
   {
     name: "get_page_text",
     description:
-      "Extrai o texto principal da página (artigo/main/body), sem HTML. Com frames=all, concatena também o texto dos iframes.",
+      "Extracts the page main text (article/main/body) without HTML. With frames=all, also concatenates the iframe texts.",
     input: {
       type: "object",
       properties: { max_chars: { type: "number" }, frames: { type: "string", enum: ["main", "all"] }, tabId },
@@ -767,7 +767,7 @@ const tools: ToolSpec[] = [
   },
   {
     name: "form_input",
-    description: "Preenche um campo identificado por ref (input, textarea, select ou contenteditable).",
+    description: "Fills a field identified by ref (input, textarea, select or contenteditable).",
     input: {
       type: "object",
       properties: { ref: { type: "string" }, value: { type: "string" }, tabId },
@@ -778,7 +778,7 @@ const tools: ToolSpec[] = [
   {
     name: "computer",
     description:
-      "Interage com a página via eventos confiáveis: click, type, key, scroll, hover, screenshot, zoom e wait. Use ref de read_page/find ou coordinate [x,y]. O screenshot também é gravado em disco e o caminho do arquivo vem na resposta (use para montar páginas que embutem a tela). Refs de iframe (f<id>_ref_N) funcionam para click/hover/scroll/type via eventos de DOM.",
+      "Interacts with the page through trusted events: click, type, key, scroll, hover, screenshot, zoom and wait. Use a ref from read_page/find or coordinate [x,y]. Screenshots are also written to disk and the file path comes back in the result (use it to build pages that embed the screen). Iframe refs (f<id>_ref_N) work for click/hover/scroll/type via DOM events.",
     input: {
       type: "object",
       properties: {
@@ -789,13 +789,13 @@ const tools: ToolSpec[] = [
         ref: { type: "string" },
         coordinate: { type: "array", items: { type: "number" }, minItems: 2, maxItems: 2 },
         text: { type: "string" },
-        keys: { type: "string", description: "Ex.: Enter, Tab, Ctrl+A." },
+        keys: { type: "string", description: "E.g. Enter, Tab, Ctrl+A." },
         submit: { type: "boolean" },
         click_count: { type: "number" },
         button: { type: "string", enum: ["left", "right", "middle"] },
         scroll_direction: { type: "string", enum: ["up", "down", "left", "right"] },
         scroll_amount: { type: "number" },
-        duration: { type: "number", description: "Segundos para action=wait (máx. 10)." },
+        duration: { type: "number", description: "Seconds for action=wait (max 10)." },
         region: { type: "array", items: { type: "number" }, minItems: 4, maxItems: 4 },
         tabId,
       },
@@ -806,12 +806,12 @@ const tools: ToolSpec[] = [
   {
     name: "javascript_tool",
     description:
-      "Executa JavaScript no contexto da página. Retorna o valor da última expressão. Último recurso, só para LER dados que as outras ferramentas não alcançam: nunca leia cookies/storage/tokens nem faça requisições a outros domínios. Pede permissão e corta a saída em 50 KB.",
+      "Runs JavaScript in the page context. Returns the value of the last expression. Last resort, only to READ data the other tools cannot reach: never read cookies/storage/tokens nor make requests to other domains. Asks for permission and truncates the output at 50 KB.",
     input: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["javascript_exec"] },
-        text: { type: "string", description: "Código JavaScript." },
+        text: { type: "string", description: "JavaScript code." },
         tabId,
       },
       required: ["text"],
@@ -821,7 +821,7 @@ const tools: ToolSpec[] = [
   {
     name: "read_console_messages",
     description:
-      "Lê mensagens de console/erros da aba. O monitoramento começa quando a ferramenta é usada; recarregue a página para capturar o carregamento.",
+      "Reads the tab console messages/errors. Monitoring starts when the tool is used; reload the page to capture the loading phase.",
     input: {
       type: "object",
       properties: {
@@ -837,7 +837,7 @@ const tools: ToolSpec[] = [
   {
     name: "read_network_requests",
     description:
-      "Lê requisições de rede (XHR/fetch/documentos) da aba. O monitoramento começa quando a ferramenta é usada.",
+      "Reads the tab network requests (XHR/fetch/documents). Monitoring starts when the tool is used.",
     input: {
       type: "object",
       properties: {
@@ -851,7 +851,7 @@ const tools: ToolSpec[] = [
   },
   {
     name: "resize_window",
-    description: "Redimensiona a janela da aba para testar layouts responsivos.",
+    description: "Resizes the tab window to test responsive layouts.",
     input: {
       type: "object",
       properties: { width: { type: "number" }, height: { type: "number" }, tabId },
@@ -862,7 +862,7 @@ const tools: ToolSpec[] = [
   {
     name: "update_plan",
     description:
-      "Apresenta um plano de navegação (domínios + passos) para aprovação. Os domínios aprovados ficam liberados nesta sessão.",
+      "Presents a browsing plan (domains + steps) for approval. Approved domains are allowed for this session.",
     input: {
       type: "object",
       properties: {
@@ -876,11 +876,11 @@ const tools: ToolSpec[] = [
   {
     name: "upload_image",
     description:
-      "Envia arquivos (bytes em base64) para um input[type=file] ou área de drag & drop identificada por ref. Pede permissão. Máximo de 3 arquivos e ~5 MB cada.",
+      "Uploads files (base64 bytes) to an input[type=file] or drag & drop area identified by ref. Asks for permission. At most 3 files, ~5 MB each.",
     input: {
       type: "object",
       properties: {
-        ref: { type: "string", description: "Ref do input de arquivo ou do alvo de drop." },
+        ref: { type: "string", description: "Ref of the file input or drop target." },
         files: {
           type: "array",
           minItems: 1,
@@ -888,7 +888,7 @@ const tools: ToolSpec[] = [
           items: {
             type: "object",
             properties: {
-              data: { type: "string", description: "Bytes do arquivo em base64." },
+              data: { type: "string", description: "File bytes in base64." },
               name: { type: "string" },
               mimeType: { type: "string" },
             },
@@ -905,7 +905,7 @@ const tools: ToolSpec[] = [
   {
     name: "gif_creator",
     description:
-      "Grava as ações do agente como quadros (screenshot por ação) e exporta um GIF animado. Use action=start antes de navegar/interagir, action=stop ao terminar e action=export para gerar o arquivo.",
+      "Records the agent actions as frames (one screenshot per action) and exports an animated GIF. Use action=start before navigating/interacting, action=stop when finished and action=export to generate the file.",
     input: {
       type: "object",
       properties: {
@@ -921,7 +921,7 @@ const tools: ToolSpec[] = [
     name: "batch",
     wire: "browser_batch",
     description:
-      "Executa até 20 ações de navegador independentes em sequência para reduzir idas e voltas. Cada item é {name, input}, com o nome de uma ferramenta de navegador (ex.: read_page); ferramentas de código (read, glob, grep) não pertencem a este lote. Não use quando uma ação depende do resultado da anterior.",
+      "Runs up to 20 independent browser actions in sequence to reduce round trips. Each item is {name, input}, with the name of a browser tool (e.g. read_page); code tools (read, glob, grep) do not belong in this batch. Do not use it when an action depends on the previous result.",
     input: {
       type: "object",
       properties: {
@@ -964,7 +964,7 @@ function activate(socket: Socket): void {
   const current = state.active
   if (current && current !== socket) {
     try {
-      current.close(1000, "Nova conexão da extensão")
+      current.close(1000, "New extension connection")
     } catch {
       // ignore
     }
@@ -1015,7 +1015,7 @@ function startServer(port: number): { stop(force?: boolean): void } {
         socket.data.pingTimer = setInterval(() => {
           if (Date.now() - socket.data.lastPong > 60_000) {
             try {
-              socket.close(4001, "extensão sem resposta")
+              socket.close(4001, "extension not responding")
             } catch {
               // ignore
             }
@@ -1054,7 +1054,7 @@ function startServer(port: number): { stop(force?: boolean): void } {
           const idOk = ALLOW_ANY_EXTENSION || message.extensionId === EXPECTED_EXTENSION_ID
           const secretOk = !WS_SECRET || message.secret === WS_SECRET
           if (!idOk || !secretOk) {
-            socket.close(1008, "Extensão não autorizada")
+            socket.close(1008, "Extension not authorized")
             return
           }
           if (!socket.data.authed) activate(socket)
@@ -1101,7 +1101,7 @@ function startServer(port: number): { stop(force?: boolean): void } {
           clearTimeout(item.timer)
           if (message.ok === false) {
             item.reject(
-              new Error(typeof message.error === "string" ? message.error : "A extensão retornou um erro."),
+              new Error(typeof message.error === "string" ? message.error : "The extension returned an error."),
             )
             return
           }
@@ -1123,7 +1123,7 @@ function startServer(port: number): { stop(force?: boolean): void } {
         if (socket.data.pingTimer) clearInterval(socket.data.pingTimer)
         if (socket.data.helloTimer) clearTimeout(socket.data.helloTimer)
         if (relay().active === socket) relay().active = null
-        failPending(socket, "A extensão desconectou durante a execução.")
+        failPending(socket, "The extension disconnected during the run.")
         if (socket.data.authed) log("extensão desconectada")
       },
     },
@@ -1244,7 +1244,7 @@ export default {
       editor.namespace({
         name: "browser",
         description:
-          "Controla o Chrome através da extensão OpenCode Browser (abas, acessibilidade, cliques, screenshots, console e rede).",
+          "Controls Chrome through the OpenCode Browser extension (tabs, accessibility, clicks, screenshots, console and network).",
       })
       for (const spec of tools) {
         const wireName = spec.wire ?? spec.name

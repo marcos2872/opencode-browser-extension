@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Overview of the OpenCode Browser user guide." />
+<title>User guide — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html">Conversations and questions</a>
+      <a href="ferramentas.html">Browser tools</a>
+      <a href="abas-e-sessoes.html">Tabs and sessions</a>
+      <a href="permissoes.html">Permissions</a>
+      <a href="configuracoes.html">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../index.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">User guide</div>
+  <a href="#explorar">Explore by topic</a>
+  <a href="#demonstracoes">Demos</a>
+  <a href="#percurso">Suggested path</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-inicial">
+  <section class="hero">
+    <h1 id="guia-do-usuario-opencode-browser">User guide — OpenCode Browser</h1>
+<p>This guide walks through <strong>every feature</strong> of the extension, in the order you will meet each one: install, connect, chat, let the agent work in the browser, approve permissions, run several conversations at once and adjust the settings.</p>
+<p>OpenCode Browser is a Chrome side panel that talks to <strong>OpenCode Terminal</strong> running on your machine. The agent reads pages, clicks, fills in forms and navigates inside a tab group isolated per conversation — and every action that changes something asks for your permission (or does not, depending on the chosen mode).</p>
+<p><strong>Nothing leaves your computer</strong>: the extension talks to <code>127.0.0.1</code>, and the plugin that gives the agent its tools only listens on loopback.</p>
+    <p class="acoes-iniciais"><a class="botao-download" href="https://github.com/marcos2872/opencode-browser-extension/releases/latest/download/opencode-browser-extension.zip" target="_blank" rel="noopener noreferrer">Download the ready-to-use package (.zip)</a><a href="instalacao.html#2-1-pelo-pacote-pronto">How to install</a></p>
+  </section>
+  <section id="explorar" class="apresentacao">
+    <h2>Explore by topic</h2>
+    <p>Pick an area of the guide to find instructions and references without going through one long page.</p>
+    <div class="cartoes">
+      <a class="cartao" href="instalacao.html">
+  <span class="numero">01 / GUIDE</span>
+  <h3>Installation and connection</h3>
+  <p>Prerequisites, installation, pairing and plugin connection.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="conversas.html">
+  <span class="numero">02 / GUIDE</span>
+  <h3>Conversations and questions</h3>
+  <p>Get to know the panel, start conversations, use commands and answer the agent.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="ferramentas.html">
+  <span class="numero">03 / GUIDE</span>
+  <h3>Browser tools</h3>
+  <p>See what the agent can do in the browser and how results appear in the chat.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="abas-e-sessoes.html">
+  <span class="numero">04 / GUIDE</span>
+  <h3>Tabs and sessions</h3>
+  <p>Understand tab groups, parallel conversations and switching between sessions.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="permissoes.html">
+  <span class="numero">05 / GUIDE</span>
+  <h3>Permissions</h3>
+  <p>Set permission modes and understand approval requests.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="configuracoes.html">
+  <span class="numero">06 / GUIDE</span>
+  <h3>Settings</h3>
+  <p>Check the connection, sessions, permissions and display options.</p>
+  <span class="acao">Open section →</span>
+</a><a class="cartao" href="ajuda-e-referencia.html">
+  <span class="numero">07 / GUIDE</span>
+  <h3>Help and reference</h3>
+  <p>Signals, common problems, privacy and quick reference.</p>
+  <span class="acao">Open section →</span>
+</a>
+    </div>
+  </section>
+  <section id="demonstracoes" class="demonstracoes">
+    <h2>See OpenCode Browser in action</h2>
+    <p>Short videos show navigation flows, page reading and forms. Use the controls or swipe sideways to see the next ones.</p>
+    <div class="carrossel-videos">
+      <div class="videos" id="videos-demo" tabindex="0" role="region" aria-label="Demo videos">
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Video 1 of 3">
+        <video controls preload="metadata" playsinline aria-label="Demo of forms in the browser">
+          <source src="../../assets/videos/teste-beowser-forms.mp4" type="video/mp4" />
+          Your browser cannot play this video.
+        </video>
+        <div class="video-info">
+          <h3>Forms in the browser</h3>
+          <p>Watch the agent interact with forms on a web page.</p>
+        </div>
+      </article>
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Video 2 of 3">
+        <video controls preload="metadata" playsinline aria-label="Demo of reading and extracting page content">
+          <source src="../../assets/videos/teste-browser-scraping.mp4" type="video/mp4" />
+          Your browser cannot play this video.
+        </video>
+        <div class="video-info">
+          <h3>Reading pages</h3>
+          <p>Demonstration of extracting information from the browser content.</p>
+        </div>
+      </article>
+      <article class="video-card" role="group" aria-roledescription="slide" aria-label="Video 3 of 3">
+        <video controls preload="metadata" playsinline aria-label="Demo of forms from the CLI">
+          <source src="../../assets/videos/teste-cli-forms.mp4" type="video/mp4" />
+          Your browser cannot play this video.
+        </video>
+        <div class="video-info">
+          <h3>Forms from the CLI</h3>
+          <p>Example of a forms flow triggered from the command line.</p>
+        </div>
+      </article>
+      </div>
+      <div class="controles-carrossel">
+        <button id="video-anterior" type="button" aria-label="Show previous video" disabled>‹ Previous</button>
+        <span id="video-contador" aria-live="polite">1 of 3</span>
+        <button id="video-proximo" type="button" aria-label="Show next video">Next ›</button>
+      </div>
+    </div>
+  </section>
+  <section id="percurso" class="percurso">
+    <h2>Suggested path</h2>
+    <ol>
+      <li>Start with <a href="instalacao.html">installation and connection</a>.</li>
+      <li>Get to know <a href="conversas.html">the panel and conversations</a>.</li>
+      <li>Read about <a href="abas-e-sessoes.html">tabs and sessions</a> and <a href="permissoes.html">permissions</a>.</li>
+    </ol>
+    <p>The full guide is also available in <a href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>.</p>
+  </section>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

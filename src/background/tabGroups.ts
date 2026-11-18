@@ -1,4 +1,5 @@
 import { activateTab } from "./focus"
+import { t } from "../shared/i18n/runtime"
 
 interface GroupRecord {
   sessionID: string;
@@ -24,8 +25,10 @@ function sameBaseUrl(a?: string, b?: string): boolean {
  * `sessionID` próprio e nunca recebem aba: qualquer tool que resolvesse a aba
  * criava um grupo com `about:blank` que ficava para sempre no navegador.
  */
-const NO_TAB_MESSAGE =
-  "Esta sessão não tem aba no navegador. Use browser_tabs_create para abrir uma página ou browser_tabs_attach para usar uma aba já aberta."
+/** Resolvido na hora (não no import): o idioma é carregado de forma assíncrona. */
+function noTabMessage(): string {
+  return t("group.noTab")
+}
 
 const STORAGE_KEY = "tabGroups";
 const TITLE_BASE = "OpenCode";
@@ -174,8 +177,7 @@ export class TabGroups {
         url: "about:blank",
         active: false,
       });
-      if (tab.id === undefined)
-        throw new Error("Não foi possível criar a aba do grupo.");
+      if (tab.id === undefined) throw new Error(t("group.createFailed"));
       let groupId: number;
       try {
         groupId = await this.createGroupLocked(
@@ -310,8 +312,8 @@ export class TabGroups {
     if (!record || groupId === null) {
       throw new Error(
         requested === undefined
-          ? NO_TAB_MESSAGE
-          : `A aba ${requested} não pertence a esta sessão.`,
+          ? noTabMessage()
+          : t("group.tabNotInSession", { tabId: requested }),
       );
     }
     await this.expandGroup(groupId);
@@ -319,16 +321,14 @@ export class TabGroups {
     if (requested !== undefined) {
       const match = tabs.find((tab) => tab.id === requested);
       if (!match) {
-        throw new Error(
-          `A aba ${requested} não pertence ao grupo desta sessão.`,
-        );
+        throw new Error(t("group.tabNotInGroup", { tabId: requested }));
       }
       return { tabId: requested, groupId };
     }
     const main =
       tabs.find((tab) => tab.id === record.mainTabId) ??
       tabs.find((tab) => tab.id !== undefined);
-    if (!main?.id) throw new Error("O grupo desta sessão não tem abas.");
+    if (!main?.id) throw new Error(t("group.empty"));
     return { tabId: main.id, groupId };
   }
 
@@ -354,14 +354,14 @@ export class TabGroups {
             record.mainTabId = tabId;
             await this.save();
           }
-          if (options.activate) await activateTab(tabId, "anexar aba à sessão");
+          if (options.activate) await activateTab(tabId, "attach tab to session");
           return record.groupId;
         }
         this.records = records.filter((item) => item !== record);
       }
       // Sem grupo: a aba anexada vira a principal, sem criar about:blank.
       const groupId = await this.createGroupLocked(sessionID, tabId);
-      if (options.activate) await activateTab(tabId, "anexar aba à sessão");
+      if (options.activate) await activateTab(tabId, "attach tab to session");
       return groupId;
     });
   }
@@ -381,7 +381,7 @@ export class TabGroups {
     )?.windowId;
     if (windowId === undefined || windowId === tab.windowId) return;
     throw new Error(
-      "A aba está em outra janela. Abra uma aba nova pela sessão ou mova a aba para a janela do grupo antes de anexá-la.",
+      t("group.otherWindow"),
     );
   }
 
@@ -424,10 +424,10 @@ export class TabGroups {
 
   async detachTab(sessionID: string, tabId: number): Promise<void> {
     const record = await this.get(sessionID);
-    if (!record) throw new Error("A sessão não tem abas anexadas.");
+    if (!record) throw new Error(t("group.noAttachedTabs"));
     const groupTabs = await chrome.tabs.query({ groupId: record.groupId });
     if (!groupTabs.some((tab) => tab.id === tabId)) {
-      throw new Error("A aba não pertence ao contexto desta conversa.");
+      throw new Error(t("group.tabNotInConversation"));
     }
     await chrome.tabs.ungroup(tabId);
   }
@@ -463,10 +463,9 @@ export class TabGroups {
           url,
           active: false,
         });
-        if (created.id === undefined)
-          throw new Error("Não foi possível criar a aba.");
+        if (created.id === undefined) throw new Error(t("group.createTabFailed"));
         await this.createGroupLocked(sessionID, created.id);
-        if (active) await activateTab(created.id, "abrir aba da sessão");
+        if (active) await activateTab(created.id, "open session tab");
         return created.id;
       }
 
@@ -481,7 +480,7 @@ export class TabGroups {
         (isBlankUrl(mainUrl) || sameBaseUrl(mainUrl, url))
       ) {
         await chrome.tabs.update(main.id, { url });
-        if (active) await activateTab(main.id, "abrir aba da sessão");
+        if (active) await activateTab(main.id, "open session tab");
         return main.id;
       }
 
@@ -493,23 +492,23 @@ export class TabGroups {
         url,
         active: false,
       });
-      if (tab.id === undefined) throw new Error("Não foi possível criar a aba.");
+      if (tab.id === undefined) throw new Error(t("group.createTabFailed"));
       await chrome.tabs.group({ tabIds: [tab.id], groupId: current.groupId });
       if (!tabs.some((item) => item.id === current.mainTabId)) {
         current.mainTabId = tab.id;
         await this.save();
       }
-      if (active) await activateTab(tab.id, "abrir aba da sessão");
+      if (active) await activateTab(tab.id, "open session tab");
       return tab.id;
     });
   }
 
   async closeTab(sessionID: string, tabId: number): Promise<void> {
     const groupId = await this.groupOf(sessionID);
-    if (groupId === null) throw new Error(NO_TAB_MESSAGE);
+    if (groupId === null) throw new Error(noTabMessage());
     const tabs = await chrome.tabs.query({ groupId });
     if (!tabs.some((tab) => tab.id === tabId)) {
-      throw new Error("A aba não pertence ao grupo desta sessão.");
+      throw new Error(t("group.tabNotInGroupShort"));
     }
     await chrome.tabs.remove(tabId);
   }

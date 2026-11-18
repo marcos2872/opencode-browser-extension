@@ -289,9 +289,9 @@ permissão; as outras mudam algo e passam pela sua aprovação (conforme o modo)
 
 ### Cards de ferramenta
 
-Cada chamada aparece no chat com um rótulo em português — “Navegar”, “Ler
-página”, “Clicar na página”, “Preencher campo”, “Console”, “Rede” — e um status:
-**ok**, **erro** ou **rodando**.
+Cada chamada aparece no chat com um rótulo curto — “Navegar”, “Ler página”,
+“Clicar na página”, “Preencher campo”, “Console”, “Rede” — e um status: **ok**,
+**erro** ou **rodando**. Os rótulos acompanham o idioma da interface.
 
 Você escolhe quanto detalhe quer ver em **Configurações → Ferramentas no chat**:
 
@@ -534,6 +534,19 @@ Com o painel fechado, chega uma notificação: “O agente precisa de uma respos
 ## 12. Configurações
 
 Abra pelo botão **Configurações** no cabeçalho do painel.
+
+### Idioma
+
+O primeiro cartão das configurações permite escolher o idioma da interface:
+
+| Opção | Efeito |
+|---|---|
+| **Automático (idioma do navegador)** (padrão) | Português se o navegador estiver em português; inglês em qualquer outro idioma |
+| **Português (Brasil)** | Painel, configurações, aviso na página, notificações e manifest em português |
+| **English** | Os mesmos textos em inglês |
+
+A troca é imediata e vale para todas as janelas da extensão. As **respostas do
+agente** não são traduzidas: elas seguem o idioma da mensagem que você escreve.
 
 ### Conexão
 

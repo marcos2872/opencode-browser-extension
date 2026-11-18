@@ -218,4 +218,5 @@ Audio) e encoder de GIF (`gifenc`) com redimensionamento e rótulo por quadro.
 |---|---|
 | `src/shared/types.ts` | Tipos de configuração, modelos, sessões, chat e permissões |
 | `src/shared/protocol.ts` | Protocolo do relay, mensagens de UI e constantes de porta |
-| `src/shared/storage.ts` | Leitura/escrita de configuração e listas de sites |
+| `src/shared/storage.ts` | Leitura/escrita de configuração, listas de sites e idioma (`ui.locale`) |
+| `src/shared/i18n/` | Catálogos pt-BR/en tipados (`pt-BR.ts`, `en.ts`), resolução de idioma e `t()` (`runtime.ts`), hook React (`react.ts`) |

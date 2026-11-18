@@ -2,6 +2,7 @@ import { generateTree, generateTreeFrames, listElements, listElementsFrames, pag
 import { tabContext, withIndicator } from "./tabs"
 import type { ToolContext, ToolMap, ToolResult } from "./types"
 import { requireString, treeOptions, truncate } from "./types"
+import { t } from "../../shared/i18n/runtime"
 
 async function resolveTab(args: Record<string, unknown>, ctx: ToolContext): Promise<number> {
   const requested = typeof args.tabId === "number" ? args.tabId : undefined
@@ -16,7 +17,7 @@ export const pageTools: ToolMap = {
   async read_page(args, ctx): Promise<ToolResult> {
     const tabId = await resolveTab(args, ctx)
     const allFrames = wantsAllFrames(args)
-    return withIndicator(ctx, tabId, allFrames ? "Lendo a página (todos os frames)" : "Lendo a página", async () => {
+    return withIndicator(ctx, tabId, allFrames ? t("activity.readingPageAllFrames") : t("activity.readingPage"), async () => {
       if (allFrames) {
         const tree = await generateTreeFrames(tabId, treeOptions(args))
         const tabs = await tabContext(ctx, tabId)
@@ -89,7 +90,7 @@ export const pageTools: ToolMap = {
 
       if (chosen.length === 0) {
         return {
-          content: `Nenhum elemento encontrado para "${query}".\nTente termos mais simples ou use read_page com filter "interactive".`,
+          content: `No elements found for "${query}".\nTry simpler terms or use read_page with filter "interactive".`,
         }
       }
       const lines = chosen.map(
@@ -115,7 +116,7 @@ export const pageTools: ToolMap = {
     const allFrames = wantsAllFrames(args)
     return withIndicator(ctx, tabId, "Extraindo texto", async () => {
       const page = allFrames ? await pageTextFrames(tabId, max) : await pageText(tabId, 0, max)
-      if (!page.text.trim()) throw new Error("A página não tem texto legível.")
+      if (!page.text.trim()) throw new Error("The page has no readable text.")
       return {
         content: `Title: ${page.title}\nURL: ${page.url}\nSource: <${page.source}>\n---\n${truncate(
           page.text,
@@ -139,16 +140,16 @@ export const pageTools: ToolMap = {
     const allowed = await ctx.ask({
       kind: "action",
       tool: "form_input",
-      title: `Preencher campo ${ref}`,
+      title: t("permission.ask.fillField", { ref }),
       detail: tab?.title,
       url: tab?.url,
       text: value.slice(0, 2000),
     })
-    if (!allowed) return { content: "Preenchimento negado pelo usuário." }
-    const result = await withIndicator(ctx, tabId, `Preenchendo ${ref}`, () => setValue(tabId, ref, value))
+    if (!allowed) return { content: "Fill denied by the user." }
+    const result = await withIndicator(ctx, tabId, `Filling ${ref}`, () => setValue(tabId, ref, value))
     if (!result.ok) throw new Error(result.error ?? "Falha ao preencher o campo.")
     return {
-      content: `Campo ${ref} preenchido.\n\n${await tabContext(ctx, tabId)}`,
+      content: `Field ${ref} filled.\n\n${await tabContext(ctx, tabId)}`,
       metadata: { ref },
     }
   },

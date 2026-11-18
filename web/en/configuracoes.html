@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Check the connection, sessions, permissions and display options." />
+<title>Settings — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html">Conversations and questions</a>
+      <a href="ferramentas.html">Browser tools</a>
+      <a href="abas-e-sessoes.html">Tabs and sessions</a>
+      <a href="permissoes.html">Permissions</a>
+      <a href="configuracoes.html" aria-current="page">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../configuracoes.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">On this page</div>
+  <a class="n2" href="#12-configuracoes">12. Settings</a><a class="n3" href="#idioma">Language</a><a class="n3" href="#conexao">Connection</a><a class="n3" href="#conversas-e-modelo">Conversations and model</a><a class="n3" href="#permissoes">Permissions</a><a class="n3" href="#avisos-e-exibicao">Notices and display</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Settings</h1>
+  <h2 id="12-configuracoes">12. Settings</h2>
+<p>Open them with the <strong>Settings</strong> button in the panel header.</p>
+<h3 id="idioma">Language</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Option</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Automatic (browser language)</strong> (default)</td><td style="text-align:left">Portuguese when the browser is in Portuguese; English in any other language</td></tr>
+<tr><td style="text-align:left"><strong>Português (Brasil)</strong></td><td style="text-align:left">Panel, settings, on-page indicator, notifications and manifest in Portuguese</td></tr>
+<tr><td style="text-align:left"><strong>English</strong></td><td style="text-align:left">The same texts in English</td></tr></tbody></table></div>
+<p>The change is immediate and applies to every extension window. <strong>Agent replies</strong> are not translated: they follow the language of the message you write.</p>
+<h3 id="conexao">Connection</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Field / button</th><th style="text-align:left">What it is for</th></tr></thead><tbody><tr><td style="text-align:left"><strong><code>opencode pair</code> link</strong> + <strong>Connect</strong></td><td style="text-align:left">Only appears when there is no pairing; paste the link and connect</td></tr>
+<tr><td style="text-align:left"><strong>Server</strong></td><td style="text-align:left">Shows the address, read-only</td></tr>
+<tr><td style="text-align:left"><strong>Token</strong></td><td style="text-align:left">Shows the first and last characters, read-only</td></tr>
+<tr><td style="text-align:left"><strong>Open panel</strong></td><td style="text-align:left">Opens the side panel in the current window</td></tr>
+<tr><td style="text-align:left"><strong>Reconnect</strong></td><td style="text-align:left">Reconnects to the OpenCode API</td></tr>
+<tr><td style="text-align:left"><strong>Reconnect plugin</strong></td><td style="text-align:left">Reconnects to the tools plugin</td></tr>
+<tr><td style="text-align:left"><strong>Disconnect</strong></td><td style="text-align:left">Removes the token (asks for confirmation)</td></tr></tbody></table></div>
+<p>Two status lines: <strong>API:</strong> (online, connecting, not configured or the reason for being offline) and <strong>Tools:</strong> (plugin state).</p>
+<h3 id="conversas-e-modelo">Conversations and model</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Field</th><th style="text-align:left">Default</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Browser conversations folder</strong></td><td style="text-align:left"><code>~/.opencode-browser-extensions</code></td><td style="text-align:left">Only lists conversations from that folder</td></tr>
+<tr><td style="text-align:left"><strong>Default model</strong> (+ variant)</td><td style="text-align:left">the server's default model</td><td style="text-align:left">Model for new conversations; models without tools appear as “(no tools)”</td></tr>
+<tr><td style="text-align:left"><strong>Default agent</strong></td><td style="text-align:left"><code>build</code></td><td style="text-align:left">Used when the browser agent is off</td></tr>
+<tr><td style="text-align:left"><strong>Use the <code>opencode-browser</code> agent in new sessions</strong></td><td style="text-align:left">on</td><td style="text-align:left">New conversations start with the agent that knows how to use the browser</td></tr>
+<tr><td style="text-align:left"><strong>Show the conversation of the focused tab group in the panel</strong></td><td style="text-align:left">on</td><td style="text-align:left">The panel follows the focused tab's group</td></tr>
+<tr><td style="text-align:left"><strong>Create a tab group when starting a new conversation</strong></td><td style="text-align:left">off</td><td style="text-align:left">The <strong>+</strong> already creates the group and a blank tab</td></tr>
+<tr><td style="text-align:left"><strong>Allow tabs opened or attached by the agent to come to the front</strong></td><td style="text-align:left">off</td><td style="text-align:left">When on, the extension starts activating tabs</td></tr></tbody></table></div>
+<h3 id="permissoes">Permissions</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Field</th><th style="text-align:left">Default</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left">Mode (ask / allow / block)</td><td style="text-align:left">allow</td><td style="text-align:left">See section 10</td></tr>
+<tr><td style="text-align:left"><strong>Time to answer a request</strong></td><td style="text-align:left">1 minute</td><td style="text-align:left">After that, the action is denied</td></tr>
+<tr><td style="text-align:left"><strong>Element search</strong></td><td style="text-align:left">Heuristic (free)</td><td style="text-align:left">The “OpenCode model” option uses tokens on <code>find</code></td></tr>
+<tr><td style="text-align:left">Always allowed / blocked sites</td><td style="text-align:left">empty</td><td style="text-align:left">Host lists, one per line</td></tr></tbody></table></div>
+<h3 id="avisos-e-exibicao">Notices and display</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Field</th><th style="text-align:left">Default</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Play a sound when the agent finishes or asks for permission while the panel is closed</strong></td><td style="text-align:left">on</td><td style="text-align:left">Short beep</td></tr>
+<tr><td style="text-align:left"><strong>Show a system notification when the agent finishes while the panel is closed</strong></td><td style="text-align:left">on</td><td style="text-align:left">Chrome notification</td></tr>
+<tr><td style="text-align:left"><strong>Tools in chat</strong></td><td style="text-align:left">Grouped</td><td style="text-align:left">Grouped, compact rows, full cards or hidden</td></tr></tbody></table></div>
+<p>The <strong>Save</strong> (model/agent) and <strong>Save permissions</strong> buttons record the changes; the notice <strong>“Permissions saved.”</strong> confirms it.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

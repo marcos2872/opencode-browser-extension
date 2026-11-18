@@ -75,6 +75,22 @@
   }
   header .tema:hover { color: var(--fg); border-color: var(--muted); }
   header .tema:focus-visible { outline: 1px solid var(--link); outline-offset: 2px; }
+  header .idioma {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 3px 8px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  header .idioma:hover { color: var(--fg); border-color: var(--muted); }
+  header .idioma:focus-visible { outline: 1px solid var(--link); outline-offset: 2px; }
   header .tema .icone { font-size: 13px; line-height: 1; }
 
   .layout {
@@ -459,7 +475,8 @@ a.cartao:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
     padding: 10px 16px;
   }
   header .marca { order: 1; }
-  header .tema { order: 2; margin-left: auto; }
+  header .idioma { order: 2; margin-left: auto; }
+  header .tema { order: 2; }
   header .menu-paginas { order: 3; margin-left: 0; }
   header .link-markdown { order: 4; margin-left: auto; }
   header .menu-paginas .lista-paginas { right: auto; left: 0; }

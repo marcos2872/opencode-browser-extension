@@ -121,9 +121,26 @@ Decisões estruturais estão em `docs/adr/`.
 
 ## Convenções
 
-- **Idioma:** código e documentação em português brasileiro; identificadores
-  (variáveis, funções, tipos) em inglês. Mensagens de erro são voltadas ao
-  usuário final, em português, dizendo o que fazer.
+- **Idioma:** a interface, as mensagens de erro do usuário e a documentação
+  existem em **pt-BR e inglês** (veja *Internacionalização*). Identificadores
+  (variáveis, funções, tipos) são sempre em inglês. Comentários e documentação
+  interna continuam em português; o texto que o usuário lê nunca fica solto no
+  código.
+- **Internacionalização:** todo texto que o **usuário** lê (painel,
+  configurações, indicador na página, notificações, títulos de permissão, erros
+  do background) vem de `t("chave", params)` em `src/shared/i18n/runtime.ts`.
+  O catálogo fica em `src/shared/i18n/pt-BR.ts` (fonte das chaves) e
+  `en.ts` (tipado como `typeof pt`: chave ou parâmetro faltando quebra o `tsc`;
+  o teste de paridade também compara as chaves). No React use `useI18n()`.
+  Mensagens são strings (sem parâmetro) ou funções com **um objeto** de
+  parâmetros — nunca posicional. O idioma vem de `chrome.i18n.getUILanguage()`
+  com troca manual em Configurações (`ui.locale` em `chrome.storage.local`).
+  **O que o MODELO lê não é traduzido:** descrições/parâmetros das tools em
+  `plugin/browser-relay.ts`, conteúdo e erro de tool no background e o template
+  do agente ficam em **inglês fixo**; o agente responde no idioma do usuário.
+  O template `plugin/opencode-browser.agent.md` é em inglês e versionado pelo
+  marcador `<!-- opencode-browser-agent vN -->` (suba o `N` ao alterá-lo).
+  O manifest usa `__MSG_*__` com `public/_locales/{pt_BR,en}`.
 - **TypeScript estrito:** `strict: true`, `noEmit`, `verbatimModuleSyntax` e
   imports relativos (sem aliases). Use `import type` para tipos.
 - **Tipos compartilhados:** ficam em `src/shared/`; não duplique tipos nos
@@ -141,7 +158,8 @@ Decisões estruturais estão em `docs/adr/`.
   Respeite as listas `permissions.allow` e `permissions.deny`.
 - **Armazenamento:** chaves namespaced em `chrome.storage.local`, centralizadas
   em `src/shared/storage.ts` (`opencode.config`, `permissions.allow`,
-  `permissions.deny`). Não espalhe acessos diretos a `chrome.storage`.
+  `permissions.deny`, `ui.locale`). Não espalhe acessos diretos a
+  `chrome.storage`.
 - **Estilo:** 2 espaços, aspas duplas, sem ponto e vírgula. ESLint usa
   `typescript-eslint` + `react-hooks`; `no-explicit-any` é liberado, mas evite.
 - **Testes:** Vitest com `jsdom`, Testing Library e mock global das APIs do
@@ -150,7 +168,7 @@ Decisões estruturais estão em `docs/adr/`.
   linhas, funções, branches e instruções (`vitest.config.ts`).
 - **Commits:** Conventional Commits em português (`feat:`, `fix:`, `docs:`,
   `test:`, `ci:`, `chore:`), conforme o histórico do repositório.
-- **Documentação:** fontes Markdown vivem em `docs/`, páginas HTML em `web/`; nenhuma fica dentro de `src/`.
+- **Documentação:** fontes Markdown vivem em `docs/`, páginas HTML em `web/`; nenhuma fica dentro de `src/`. O inglês espelha o pt-BR em `docs/en/` e `web/en/`; os ADRs ficam só em pt-BR (registro histórico). Ao mudar uma página/documento em pt-BR que tenha par, atualize o par em inglês — o site e os links publicados apontam para os dois.
 
 ### Armadilhas conhecidas
 
@@ -178,6 +196,13 @@ Decisões estruturais estão em `docs/adr/`.
   (`<!-- opencode-browser-agent vN -->`), com backup `.bak-vN`. Arquivo sem
   marcador ou com versão igual/maior é preservado.
 - O service worker não tem DOM: som e GIF ficam no documento offscreen.
+- O idioma é resolvido **por contexto** (painel, configurações, background,
+  content script, offscreen) com um cache em `runtime.ts`. Se um texto novo
+  aparecer fora do idioma escolhido, provavelmente o contexto não chamou
+  `loadLocale()` no início (o background chama em `init()`; os entry points do
+  React e o content script também). A troca manual em Configurações grava
+  `ui.locale` e os demais contextos acompanham por `watchLocalePreference()`.
+  Recarregue a extensão depois de buildar.
 - Abas nunca são ativadas por padrão. Toda ativação passa por
   `src/background/focus.ts` → `activateTab()` e depende de `bringTabsToFront`
   (padrão `false`); `ensure()`, `createTab()` e `addTab()` criam/reaproveitam abas

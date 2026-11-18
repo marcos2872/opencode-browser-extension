@@ -1,15 +1,19 @@
 import { useEffect } from "react"
 import type { PermissionDecision, PermissionRequest } from "../shared/types"
 import { CheckIcon, XIcon } from "./icons"
+import { useI18n } from "../shared/i18n/react"
+import type { Catalog } from "../shared/i18n"
 
-const TOOL_LABEL: Record<string, string> = {
-  navigate: "Navegação",
-  computer: "Interação com a página",
-  form_input: "Preenchimento de formulário",
-  javascript_tool: "Execução de JavaScript",
-  tabs_close: "Fechamento de aba",
-  upload_image: "Upload de imagem",
-  update_plan: "Plano de navegação",
+/** Rótulo por tool; `null` cai no próprio nome da tool. */
+const TOOL_LABEL: Partial<Record<string, keyof Catalog>> = {
+  navigate: "permission.tool.navigate",
+  computer: "permission.tool.computer",
+  form_input: "permission.tool.form_input",
+  javascript_tool: "permission.tool.javascript_tool",
+  tabs_close: "permission.tool.tabs_close",
+  upload_image: "permission.tool.upload_image",
+  gif_creator: "permission.tool.gif_creator",
+  update_plan: "permission.tool.update_plan",
 }
 
 interface Props {
@@ -20,6 +24,7 @@ interface Props {
 }
 
 export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
+  const { t } = useI18n()
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -37,25 +42,26 @@ export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
 
   const isPlan = request.kind === "plan"
   const isDomain = request.kind === "domain"
-  const tool = TOOL_LABEL[request.tool] ?? request.tool
+  const toolKey = TOOL_LABEL[request.tool]
+  const tool = toolKey ? t(toolKey) : request.tool
 
   return (
     <div
       className="permission-card"
       role="dialog"
       aria-modal="true"
-      aria-label="Pedido de permissão"
+      aria-label={t("permission.title")}
     >
       <div>
         <h3>{request.title}</h3>
         <p className="sub">
           {sessionLabel
-            ? `Sessão: ${sessionLabel}`
+            ? t("permission.session", { label: sessionLabel })
             : isPlan
-              ? "O agente quer visitar estes domínios antes de continuar."
+              ? t("permission.planIntro")
               : isDomain
-                ? "O agente quer mudar de domínio. Isso muda o que ele pode acessar."
-                : `${tool} · pedido de permissão`}
+                ? t("permission.domainIntro")
+                : t("permission.actionIntro", { tool })}
         </p>
       </div>
 
@@ -85,7 +91,7 @@ export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
         </>
       ) : null}
 
-      {request.screenshot ? <img src={`data:image/png;base64,${request.screenshot}`} alt="Prévia da ação" /> : null}
+      {request.screenshot ? <img src={`data:image/png;base64,${request.screenshot}`} alt={t("permission.screenshotAlt")} /> : null}
       {request.text ? <div className="permission-preview">{request.text}</div> : null}
 
       {isDomain && request.fromDomain && request.toDomain ? (
@@ -99,40 +105,37 @@ export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
           <>
             <div className="row">
               <button className="btn primary" onClick={() => onDecision({ allowed: true, scope: "site" })}>
-                <CheckIcon size={15} /> {isPlan ? "Aprovar plano" : "Permitir"}
+                <CheckIcon size={15} /> {isPlan ? t("permission.approvePlan") : t("permission.allow")}
               </button>
               <button className="btn" onClick={() => onDecision({ allowed: false })}>
-                <XIcon size={15} /> Recusar
+                <XIcon size={15} /> {t("permission.deny")}
               </button>
             </div>
             {isDomain ? (
               <button className="btn" onClick={() => onDecision({ allowed: true, scope: "always" })}>
-                Permitir sempre para {request.toDomain}
+                {t("permission.allowAlwaysDomain", { domain: request.toDomain ?? "" })}
               </button>
             ) : null}
           </>
         ) : (
           <>
             <button className="btn primary" onClick={() => onDecision({ allowed: true, scope: "once" })}>
-              Permitir uma vez <span className="status">Enter</span>
+              {t("permission.allowOnce")} <span className="status">Enter</span>
             </button>
             <button className="btn" onClick={() => onDecision({ allowed: true, scope: "site" })}>
-              Permitir nesta sessão
+              {t("permission.allowSession")}
             </button>
             <button className="btn" onClick={() => onDecision({ allowed: true, scope: "always" })}>
-              Permitir sempre para {request.host || "este site"}
+              {t("permission.allowAlways", { host: request.host ?? "" })}
             </button>
             <button className="btn danger" onClick={() => onDecision({ allowed: false })}>
-              Negar <span className="status">Esc</span>
+              {t("permission.denyAction")} <span className="status">Esc</span>
             </button>
           </>
         )}
       </div>
 
-      <p className="sub">
-        Você pode revogar permissões em Configurações. O agente nunca deve comprar, criar contas ou
-        burlar captchas sem sua confirmação.
-      </p>
+      <p className="sub">{t("permission.footnote")}</p>
     </div>
   )
 }

@@ -58,12 +58,12 @@ export function bool(value: unknown): boolean | undefined {
 export function truncate(text: string, max = 50_000): string {
   if (text.length <= max) return text
   const cut = text.lastIndexOf("\n", max)
-  return `${text.slice(0, cut > 0 ? cut : max)}\n\n[saída truncada em ${max} caracteres]`
+  return `${text.slice(0, cut > 0 ? cut : max)}\n\n[output truncated at ${max} characters]`
 }
 
 export function requireString(args: Record<string, unknown>, key: string): string {
   const value = str(args[key])
-  if (!value) throw new Error(`Parâmetro obrigatório ausente: ${key}.`)
+  if (!value) throw new Error(`Missing required parameter: ${key}.`)
   return value
 }
 

@@ -1,26 +1,33 @@
 import { useState } from "react"
 import type { FormAnswer, FormInfo, ToolCallView } from "../shared/types"
+import type { Translate } from "../shared/i18n"
 import { FormCard } from "../components/FormCard"
 import { BrowserIcon, CheckIcon, ChevronIcon, QuestionIcon, TerminalIcon, XIcon } from "../components/icons"
 import { normalizeToolName } from "./toolNames"
+import type { Catalog } from "../shared/i18n"
+import { useI18n } from "../shared/i18n/react"
 
-const LABELS: Record<string, string> = {
-  tabs_context: "Abas do grupo",
-  tabs_create: "Nova aba",
-  tabs_close: "Fechar aba",
-  navigate: "Navegar",
-  read_page: "Ler página",
-  find: "Buscar elemento",
-  get_page_text: "Extrair texto",
-  form_input: "Preencher campo",
-  computer: "Interagir",
-  javascript_tool: "JavaScript",
-  read_console_messages: "Console",
-  read_network_requests: "Rede",
-  resize_window: "Redimensionar",
-  update_plan: "Plano",
-  browser_batch: "Lote de ações",
-  batch: "Lote de ações",
+/** Tool → chave do catálogo; `undefined` mostra o nome cru. */
+const LABELS: Partial<Record<string, keyof Catalog>> = {
+  tabs_context: "tool.tabs_context",
+  tabs_create: "tool.tabs_create",
+  tabs_close: "tool.tabs_close",
+  tabs_attach: "tool.tabs_attach",
+  navigate: "tool.navigate",
+  read_page: "tool.read_page",
+  find: "tool.find",
+  get_page_text: "tool.get_page_text",
+  form_input: "tool.form_input",
+  computer: "tool.computer",
+  javascript_tool: "tool.javascript_tool",
+  read_console_messages: "tool.read_console_messages",
+  read_network_requests: "tool.read_network_requests",
+  resize_window: "tool.resize_window",
+  update_plan: "tool.update_plan",
+  upload_image: "tool.upload_image",
+  gif_creator: "tool.gif_creator",
+  browser_batch: "tool.browser_batch",
+  batch: "tool.batch",
 }
 
 interface ToolCardProps {
@@ -84,20 +91,21 @@ export function readQuestions(input: unknown): QuestionItem[] {
   })
 }
 
-export function toolLabel(tool: ToolCallView): string {
+export function toolLabel(tool: ToolCallView, t: Translate): string {
   const name = normalizeToolName(tool.name)
-  return LABELS[name] ?? tool.name
+  const key = LABELS[name]
+  return key ? t(key) : tool.name
 }
 
-export function toolSummary(tool: ToolCallView): string {
-  return summary(tool)
+export function toolSummary(tool: ToolCallView, t: Translate): string {
+  return summary(tool, t)
 }
 
-export function toolStatus(tool: ToolCallView): string {
-  return statusLabel(tool)
+export function toolStatus(tool: ToolCallView, t: Translate): string {
+  return statusLabel(tool, t)
 }
 
-function summary(tool: ToolCallView): string {
+function summary(tool: ToolCallView, t: Translate): string {
   const input = (tool.input ?? {}) as Record<string, unknown>
   if (typeof input.url === "string") return input.url
   if (typeof input.query === "string") return `"${input.query}"`
@@ -111,16 +119,16 @@ function summary(tool: ToolCallView): string {
       .join(" ")
   }
   if (typeof input.ref === "string") return input.ref
-  if (typeof input.tabId === "number") return `aba ${input.tabId}`
+  if (typeof input.tabId === "number") return t("tool.tabRef", { id: input.tabId })
   if (Array.isArray(input.domains)) return input.domains.join(", ")
-  if (Array.isArray(input.actions)) return `${input.actions.length} ação(ões)`
+  if (Array.isArray(input.actions)) return t("tool.actionsCount", { count: input.actions.length })
   return ""
 }
 
-function statusLabel(tool: ToolCallView): string {
-  if (tool.status === "ok") return "ok"
-  if (tool.status === "error") return "erro"
-  return "rodando"
+function statusLabel(tool: ToolCallView, t: Translate): string {
+  if (tool.status === "ok") return t("tool.status.ok")
+  if (tool.status === "error") return t("tool.status.error")
+  return t("tool.status.running")
 }
 /** Card de um form pendente; usado pela tool `question` e por forms órfãos. */
 export function PendingFormCard({
@@ -134,15 +142,16 @@ export function PendingFormCard({
   onSubmit: (answer: FormAnswer) => void
   onCancel?: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="tool-card tool-card-question">
       <div className="tool-head">
         <span className="tool-icon">
           <QuestionIcon size={13} />
         </span>
-        <span>{form.title && form.title !== "Questions" ? form.title : "Pergunta"}</span>
+        <span>{form.title && form.title !== "Questions" ? form.title : t("form.question")}</span>
         <span className="spacer" />
-        <span className="tool-status running">aguardando</span>
+        <span className="tool-status running">{t("tool.status.waiting")}</span>
       </div>
       <FormCard key={form.id} form={form} busy={busy} onSubmit={onSubmit} onCancel={onCancel} />
     </div>
@@ -162,6 +171,7 @@ function QuestionCard({
   onFormSubmit?: (form: FormInfo, answer: FormAnswer) => void
   onFormCancel?: (form: FormInfo) => void
 }) {
+  const { t } = useI18n()
   // O form pendente é a fonte de verdade: a tool pode já aparecer como "ok" no
   // histórico hidratado mesmo com o servidor ainda esperando a resposta.
   if (form && onFormSubmit) {
@@ -175,7 +185,7 @@ function QuestionCard({
     )
   }
 
-  const label = statusLabel(tool)
+  const label = statusLabel(tool, t)
   const questions = readQuestions(tool.input)
 
   return (
@@ -184,10 +194,14 @@ function QuestionCard({
         <span className="tool-icon">
           <QuestionIcon size={13} />
         </span>
-        <span>Pergunta</span>
+        <span>{t("tool.question")}</span>
         <span className="spacer" />
-        <span className={`tool-status ${label === "ok" ? "ok" : label === "erro" ? "error" : "running"}`}>
-          {label === "ok" ? <CheckIcon size={11} /> : label === "erro" ? <XIcon size={11} /> : null} {label}
+        <span
+          className={`tool-status ${
+            tool.status === "ok" ? "ok" : tool.status === "error" ? "error" : "running"
+          }`}
+        >
+          {tool.status === "ok" ? <CheckIcon size={11} /> : tool.status === "error" ? <XIcon size={11} /> : null} {label}
         </span>
       </div>
 
@@ -198,7 +212,7 @@ function QuestionCard({
               {item.header ? <strong>{item.header}</strong> : null}
               <span>
                 {item.question}
-                {item.multiple ? <em className="question-multiple"> · múltipla escolha</em> : null}
+                {item.multiple ? <em className="question-multiple">{t("tool.multipleChoice")}</em> : null}
               </span>
             </li>
           ))}
@@ -217,6 +231,7 @@ export function ToolCard({
   onFormCancel,
   detailed = true,
 }: ToolCardProps) {
+  const { t } = useI18n()
   const [expanded, setExpanded] = useState(false)
 
   if (normalizeToolName(tool.name) === "question") {
@@ -233,9 +248,10 @@ export function ToolCard({
   }
 
   const name = normalizeToolName(tool.name)
-  const label = LABELS[name] ?? tool.name
-  const detail = summary(tool)
-  const state = statusLabel(tool)
+  const labelKey = LABELS[name]
+  const label = labelKey ? t(labelKey) : tool.name
+  const detail = summary(tool, t)
+  const state = statusLabel(tool, t)
   const hasBody =
     Boolean(tool.images?.length) ||
     Boolean(tool.output) ||
@@ -298,8 +314,12 @@ function ToolHead({
       <span>{label}</span>
       {detail ? <span className="status">{detail.slice(0, 80)}</span> : null}
       <span className="spacer" />
-      <span className={`tool-status ${state === "ok" ? "ok" : state === "erro" ? "error" : "running"}`}>
-        {state === "ok" ? <CheckIcon size={11} /> : state === "erro" ? <XIcon size={11} /> : null} {state}
+      <span
+        className={`tool-status ${
+          tool.status === "ok" ? "ok" : tool.status === "error" ? "error" : "running"
+        }`}
+      >
+        {tool.status === "ok" ? <CheckIcon size={11} /> : tool.status === "error" ? <XIcon size={11} /> : null} {state}
       </span>
       {expandable ? (
         <ChevronIcon size={12} className={`chevron${expanded ? " open" : ""}`} />
@@ -321,6 +341,7 @@ function ToolHead({
 }
 
 export function ToolBody({ tool }: { tool: ToolCallView }) {
+  const { t } = useI18n()
   return (
     <>
       {tool.images?.length ? (
@@ -338,14 +359,14 @@ export function ToolBody({ tool }: { tool: ToolCallView }) {
 
       {tool.input && Object.keys(tool.input).length > 0 ? (
         <details>
-          <summary className="sub">Parâmetros</summary>
+          <summary className="sub">{t("tool.params")}</summary>
           <div className="tool-args">{JSON.stringify(tool.input, null, 2)}</div>
         </details>
       ) : null}
 
       {tool.output ? (
         <details open={tool.status === "error"}>
-          <summary className="sub">Resultado</summary>
+          <summary className="sub">{t("tool.result")}</summary>
           <div className="tool-output">{tool.output}</div>
         </details>
       ) : null}

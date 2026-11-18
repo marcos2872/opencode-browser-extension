@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { RelayState } from "../shared/types"
 import { describeRelay } from "../components/relayStatus"
 import { CheckIcon, LinkIcon, RefreshIcon, TerminalIcon } from "../components/icons"
+import { useI18n } from "../shared/i18n/react"
 
 interface Props {
   relay: RelayState
@@ -15,6 +16,7 @@ const PAIR_COMMAND = "opencode pair"
 const PLUGIN_COMMAND = "cp plugin/browser-relay.ts ~/.config/opencode/plugins/"
 
 export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
+  const { t } = useI18n()
   const [link, setLink] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -39,28 +41,28 @@ export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
         <span>OpenCode Browser</span>
       </div>
 
-      <h1>Conecte o navegador ao OpenCode da sua máquina</h1>
+      <h1>{t("onboarding.title")}</h1>
       <p>
-        A extensão usa a API local do <a href="https://opencode.ai/download" target="_blank">OpenCode Terminal (v2)</a>. O pareamento gera um token de uso único e expira
-        em 5 minutos. Nada sai do seu computador.
+        {t("onboarding.intro.1")} <a href="https://opencode.ai/download" target="_blank">{t("onboarding.intro.product")}</a>
+        {t("onboarding.intro.2")}
       </p>
 
       <ol>
         <li>
-          No terminal, rode:
+          {t("onboarding.step1")}
           <div className="code-line" style={{ marginTop: 6 }}>
             <code>{PAIR_COMMAND}</code>
-            <button className="icon-btn" onClick={() => void copy(PAIR_COMMAND, "pair")} title="Copiar comando">
+            <button className="icon-btn" onClick={() => void copy(PAIR_COMMAND, "pair")} title={t("app.copyCommand")}>
               {copied === "pair" ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
             </button>
           </div>
         </li>
-        <li>Copie o link exibido (o mesmo que abre a interface web do OpenCode) e cole abaixo.</li>
-        <li>Clique em conectar.</li>
+        <li>{t("onboarding.step2")}</li>
+        <li>{t("onboarding.step3")}</li>
       </ol>
 
       <div className="field">
-        <label htmlFor="pair-link">Link do `opencode pair`</label>
+        <label htmlFor="pair-link">{t("onboarding.pairLabel")}</label>
         <input
           id="pair-link"
           className="input"
@@ -81,34 +83,28 @@ export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
         disabled={busy || !link.trim()}
         onClick={() => void onPair(link.trim())}
       >
-        {busy ? "Conectando..." : "Conectar ao OpenCode"}
+        {busy ? t("onboarding.pairBusy") : t("onboarding.pairAction")}
       </button>
 
-      <div className="note">
-        Dica: você pode rodar `opencode pair` de novo a qualquer momento. O token anterior continua
-        válido até você desconectar.
-      </div>
+      <div className="note">{t("onboarding.tip")}</div>
 
       <details className="card" style={{ padding: 12 }}>
         <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
-          Instalar o plugin de ferramentas do navegador
+          {t("onboarding.plugin.title")}
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-          <p className="desc">
-            O chat funciona só com a API. Para o agente controlar o Chrome, instale o plugin no
-            OpenCode e reinicie o serviço.
-          </p>
+          <p className="desc">{t("onboarding.plugin.body")}</p>
           <div className="code-line">
             <code>{PLUGIN_COMMAND}</code>
-            <button className="icon-btn" onClick={() => void copy(PLUGIN_COMMAND, "plugin")} title="Copiar comando">
+            <button className="icon-btn" onClick={() => void copy(PLUGIN_COMMAND, "plugin")} title={t("app.copyCommand")}>
               {copied === "plugin" ? <CheckIcon size={14} /> : <LinkIcon size={14} />}
             </button>
           </div>
           <div className="status-line">
             <span className={`dot ${relay.connected ? "ok" : "warn"}`} />
-            {relay.connected ? "Plugin conectado" : describeRelay(relay)}
+            {relay.connected ? t("onboarding.plugin.connected") : describeRelay(relay)}
             <button className="btn small" onClick={onReconnect}>
-              <RefreshIcon size={13} /> Reconectar
+              <RefreshIcon size={13} /> {t("onboarding.plugin.reconnect")}
             </button>
           </div>
         </div>

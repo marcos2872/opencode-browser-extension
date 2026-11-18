@@ -12,6 +12,8 @@ import { SessionBar } from "./SessionBar"
 import { sessionLabel } from "../shared/sessionLabel"
 import { sessionStats } from "./sessionStats"
 import { request } from "./api"
+import { useI18n } from "../shared/i18n/react"
+import { loadLocale, watchLocalePreference } from "../shared/i18n/runtime"
 
 async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> {
   const response = await request({ type: "tabs:list", sessionID })
@@ -20,6 +22,7 @@ async function listSessionTabs(sessionID: string): Promise<BrowserTabContext[]> 
 }
 
 export default function App() {
+  const { t, locale } = useI18n()
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
   const [permissions, setPermissions] = useState<PermissionRequest[]>([])
   const [formBusyID, setFormBusyID] = useState<string | null>(null)
@@ -51,6 +54,11 @@ export default function App() {
     setToast(message)
     setTimeout(() => setToast((current) => (current === message ? null : current)), 3000)
   }
+
+  useEffect(() => {
+    void loadLocale()
+    watchLocalePreference()
+  }, [])
 
   useEffect(() => {
     let disposed = false
@@ -163,7 +171,7 @@ export default function App() {
     const response = await request({ type: "pair", link })
     setPairBusy(false)
     if (!response.ok) setPairError(response.error)
-    else showToast("Conectado ao OpenCode.")
+    else showToast(t("app.toast.paired"))
   }
 
   async function changeModel(model: ModelRef) {
@@ -207,7 +215,7 @@ export default function App() {
       else {
         applySelectedSession(response)
         if (response.groupCreated) {
-          showToast("Nova conversa criada · grupo de abas aberto")
+          showToast(t("app.toast.groupCreated"))
         }
       }
       // Se o usuário digitou antes de existir sessão, o texto acompanha a nova.
@@ -235,7 +243,7 @@ export default function App() {
 
   async function deleteSession() {
     if (!snapshot?.activeSessionID) return
-    if (!window.confirm("Excluir esta sessão? O histórico será removido do OpenCode.")) return
+    if (!window.confirm(t("app.confirm.deleteSession"))) return
     const response = await request({ type: "session:delete", id: snapshot.activeSessionID })
     if (!response.ok) showToast(response.error)
   }
@@ -325,7 +333,7 @@ export default function App() {
           <div className="thinking">
             <span />
             <span />
-            <span /> carregando
+            <span /> {t("app.loadingInline")}
           </div>
         </div>
         {toast ? (
@@ -345,20 +353,20 @@ export default function App() {
         : "warn"
   const statusLabel =
     snapshot.connection.phase === "online"
-      ? "online"
+      ? t("app.status.online")
       : snapshot.connection.phase === "offline"
-        ? "offline"
+        ? t("app.status.offline")
         : snapshot.connection.phase === "connecting"
-          ? "conectando"
-          : "..."
+          ? t("app.status.connecting")
+          : t("app.status.unknown")
   const offlineReason = !snapshot.config
     ? null
     : snapshot.connection.phase === "offline"
-      ? "OpenCode offline — inicie o servidor para enviar"
+      ? t("app.offline.startServer")
       : snapshot.connection.phase === "connecting"
-        ? "Conectando ao OpenCode…"
+        ? t("app.offline.connecting")
         : snapshot.connection.phase === "unconfigured"
-          ? "OpenCode não configurado"
+          ? t("app.offline.unconfigured")
           : null
   const currentModel =
     activeSession?.model ??
@@ -389,7 +397,7 @@ export default function App() {
           <span className="brand-mark">
             <Logo size={15} />
           </span>
-          <span className="brand-text">OpenCode</span>
+          <span className="brand-text">{t("app.brand")}</span>
         </div>
         {activeSession ? (
           <span className="session-title" title={sessionLabel(activeSession)}>
@@ -398,7 +406,10 @@ export default function App() {
         ) : null}
         <span
           className="status"
-          title={`API do OpenCode: ${statusLabel}${snapshot.connection.detail ? ` — ${snapshot.connection.detail}` : ""}`}
+          title={t("app.apiTitle", {
+            status: statusLabel,
+            detail: snapshot.connection.detail ?? undefined,
+          })}
         >
           <span className={`dot ${backendClass}`} />
           {statusLabel}
@@ -414,7 +425,7 @@ export default function App() {
         ) : null}
         <button
           className="icon-btn"
-          title="Configurações"
+          title={t("app.settingsTitle")}
           onClick={() => void request({ type: "open:options" })}
         >
           <SettingsIcon size={16} />
@@ -496,6 +507,7 @@ export default function App() {
                     snapshot.sessions.find((session) => session.id === activePermission.sessionID) ?? {
                       id: activePermission.sessionID,
                     },
+                    locale,
                   )
                 : undefined
             }

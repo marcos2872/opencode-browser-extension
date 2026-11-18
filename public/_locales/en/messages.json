@@ -1,0 +1,18 @@
+{
+  "extName": {
+    "message": "OpenCode Browser",
+    "description": "Extension name in the Chrome Web Store and extension manager."
+  },
+  "extDescription": {
+    "message": "Connects your browser to the models of the OpenCode running on your machine.",
+    "description": "Short description shown in the extension manager."
+  },
+  "actionTitle": {
+    "message": "Open OpenCode Browser",
+    "description": "Toolbar icon tooltip."
+  },
+  "commandTogglePanel": {
+    "message": "Open/close the OpenCode Browser panel",
+    "description": "Description of the keyboard shortcut that opens the panel."
+  }
+}

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Get to know the panel, start conversations, use commands and answer the agent." />
+<title>Conversations and questions — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html" aria-current="page">Conversations and questions</a>
+      <a href="ferramentas.html">Browser tools</a>
+      <a href="abas-e-sessoes.html">Tabs and sessions</a>
+      <a href="permissoes.html">Permissions</a>
+      <a href="configuracoes.html">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../conversas.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">On this page</div>
+  <a class="n2" href="#5-conhecer-a-tela">5. Getting to know the screen</a><a class="n3" href="#atalhos">Shortcuts</a><a class="n2" href="#6-sua-primeira-conversa">6. Your first conversation</a><a class="n3" href="#comandos-com-barra">Slash commands</a><a class="n3" href="#rascunho-por-conversa">Draft per conversation</a><a class="n3" href="#contexto-e-custo">Context and cost</a><a class="n3" href="#parar-uma-execucao">Stopping a run</a><a class="n2" href="#11-quando-o-agente-faz-uma-pergunta">11. When the agent asks a question</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Conversations and questions</h1>
+  <h2 id="5-conhecer-a-tela">5. Getting to know the screen</h2>
+<p>The panel has five regions:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Region</th><th style="text-align:left">What it holds</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Header</strong></td><td style="text-align:left">The “OpenCode” brand, the conversation title, the API status dot (online/offline/connecting) and the <strong>Settings</strong> button</td></tr>
+<tr><td style="text-align:left"><strong>Conversation bar</strong></td><td style="text-align:left">Conversation picker, agent picker, tabs button, <strong>+</strong> (new conversation) and delete</td></tr>
+<tr><td style="text-align:left"><strong>Chat</strong></td><td style="text-align:left">Messages, model reasoning, tool cards and permission requests</td></tr>
+<tr><td style="text-align:left"><strong>Composer</strong></td><td style="text-align:left">Text field, <code>/</code> command menu, Send/Stop button and the footer with context and cost</td></tr>
+<tr><td style="text-align:left"><strong>Notices</strong></td><td style="text-align:left">Connection banner, status strip, permission cards and temporary notices (toasts)</td></tr></tbody></table></div>
+<h3 id="atalhos">Shortcuts</h3>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Key</th><th style="text-align:left">Where</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Enter</strong></td><td style="text-align:left">Composer</td><td style="text-align:left">Sends the message</td></tr>
+<tr><td style="text-align:left"><strong>Shift+Enter</strong></td><td style="text-align:left">Composer</td><td style="text-align:left">Breaks the line without sending</td></tr>
+<tr><td style="text-align:left"><strong>Enter</strong></td><td style="text-align:left">Permission card</td><td style="text-align:left">“Allow once”</td></tr>
+<tr><td style="text-align:left"><strong>Esc</strong></td><td style="text-align:left">Permission card</td><td style="text-align:left">Denies the request and closes the card</td></tr>
+<tr><td style="text-align:left"><strong>Esc</strong></td><td style="text-align:left">Tools modal</td><td style="text-align:left">Closes the modal</td></tr>
+<tr><td style="text-align:left"><strong>Ctrl+Shift+O</strong> / <strong>Cmd+Shift+O</strong></td><td style="text-align:left">On any tab</td><td style="text-align:left">Opens the panel</td></tr></tbody></table></div>
+<blockquote><p>The composer has no “stop” shortcut: to interrupt, use the <strong>Stop</strong> button (the same icon appears on the page, inside the agent indicator).</p></blockquote>
+<hr />
+<h2 id="6-sua-primeira-conversa">6. Your first conversation</h2>
+<ol>
+<li>Type in the <strong>“Ask OpenCode something...”</strong> field and press <strong>Enter</strong>.</li>
+<li>The reply appears as a stream; while the agent works, the field shows <strong>“The agent is working...”</strong>.</li>
+<li>When it uses a tool, cards appear (see section 7).</li>
+<li>If it needs permission, the card appears over the panel (section 10).</li>
+</ol>
+<p>The empty screen offers four ready-made suggestions:</p>
+<ul>
+<li>“Open Hacker News and summarize today's top 5 stories.”</li>
+<li>“Read the current page, find the contact form and fill it with test data.”</li>
+<li>“Investigate the console errors and network requests on this page.”</li>
+<li>“Look up the price of a product in three stores and compare them in a table.”</li>
+</ul>
+<h3 id="comandos-com-barra">Slash commands</h3>
+<p>Type <code>/</code> (with no space after it) to open the command menu. The list comes from your OpenCode and shows up to 6 suggestions; choosing one completes the field with <code>/name </code>. After choosing, write the rest and send — for example <code>/review fix the diff</code>.</p>
+<p>If you send <code>/name</code> and nothing else, the command runs without arguments.</p>
+<h3 id="rascunho-por-conversa">Draft per conversation</h3>
+<p>The text you typed is kept <strong>per conversation</strong>. Switching conversations and coming back does not erase what was written. If you type before any conversation exists, the text goes with the conversation that gets created.</p>
+<h3 id="contexto-e-custo">Context and cost</h3>
+<p>The composer footer shows, when available:</p>
+<ul>
+<li><strong>“Context 1,234 (12%)”</strong> — tokens from the last request and how much of the model window they take;</li>
+<li><strong>“Session US$ 0.0000”</strong> — cost reported by OpenCode.</li>
+</ul>
+<p>Without that data, the footer shows the hint “Enter sends · Shift+Enter breaks the line”.</p>
+<h3 id="parar-uma-execucao">Stopping a run</h3>
+<p>The <strong>Stop</strong> button in the composer interrupts <strong>the conversation on screen</strong>. Each conversation has its own button: stopping one does not affect the others.</p>
+<hr />
+<h2 id="11-quando-o-agente-faz-uma-pergunta">11. When the agent asks a question</h2>
+<p>Besides permissions, the agent may ask for an <strong>answer</strong> from you — a choice, a number, a yes/no. That appears as a card in the chat, with the question title and the status “waiting”.</p>
+<p>The possible fields are: free text, number, yes/no, single choice, multiple choice (with the “Other answer” option) and external link. Required fields must be filled in to enable the button.</p>
+<ul>
+<li><strong>Answer</strong> — sends your answer and the agent continues;</li>
+<li><strong>Cancel</strong> — ends the question without an answer (no confirmation).</li>
+</ul>
+<p>With the panel closed, a notification arrives: “The agent needs an answer: …”.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

@@ -1,8 +1,9 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import { htmlLangPlugin } from "./scripts/html-lang.mjs"
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), htmlLangPlugin()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
