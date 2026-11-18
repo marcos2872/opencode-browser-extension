@@ -1,5 +1,6 @@
 import type { Recording } from "../recording"
 import type { ToolMap, ToolResult } from "./types"
+import { t } from "../../shared/i18n/runtime"
 import { requireString } from "./types"
 
 export function gifTools(recording: Recording): ToolMap {
@@ -9,19 +10,19 @@ export function gifTools(recording: Recording): ToolMap {
       if (action === "start") {
         recording.start(ctx.sessionID)
         const { tabId } = await ctx.tabs.resolveTab(ctx.sessionID)
-        await recording.capture(tabId, "início da gravação")
-        return { content: "Gravação iniciada. Cada ação do agente gera um quadro (máx. 30)." }
+        await recording.capture(tabId, "recording start")
+        return { content: "Recording started. Each agent action adds a frame (max 30)." }
       }
       if (action === "stop") {
         await recording.stop()
         return {
-          content: `Gravação parada (${recording.count} quadro(s)). Use action=export para gerar o GIF.`,
+          content: `Recording stopped (${recording.count} frame(s)). Use action=export to generate the GIF.`,
         }
       }
       if (action === "export") {
         const frames = await recording.take()
         if (frames.length === 0) {
-          throw new Error("Nenhum quadro gravado. Use action=start antes de navegar/interagir.")
+          throw new Error("No frames recorded. Use action=start before navigating/interacting.")
         }
         const requested = typeof args.tabId === "number" ? args.tabId : undefined
         const tab = await chrome.tabs
@@ -30,18 +31,18 @@ export function gifTools(recording: Recording): ToolMap {
         const allowed = await ctx.ask({
           kind: "action",
           tool: "gif_creator",
-          title: "Exportar GIF da gravação",
-          detail: `${frames.length} quadros`,
+          title: t("permission.ask.exportGif"),
+          detail: `${frames.length} frames`,
           url: tab?.url,
         })
-        if (!allowed) return { content: "Exportação negada pelo usuário." }
+        if (!allowed) return { content: "Export denied by the user." }
         const response = (await chrome.runtime.sendMessage({
           type: "ENCODE_GIF",
           frames,
           delay: 600,
         })) as { data?: string; error?: string } | undefined
         if (!response?.data) {
-          throw new Error(response?.error ?? "Falha ao gerar o GIF (offscreen indisponível).")
+          throw new Error(response?.error ?? "Failed to generate the GIF (offscreen unavailable).")
         }
         const filename = `opencode-browser-${Date.now()}.gif`
         try {
@@ -56,12 +57,12 @@ export function gifTools(recording: Recording): ToolMap {
         recording.clear()
         const size = Math.round((response.data.length * 3) / 4 / 1024)
         return {
-          content: `GIF gerado (${frames.length} quadros, ~${size} KB) e salvo em Downloads/${filename}.`,
+          content: `GIF generated (${frames.length} frames, ~${size} KB) and saved to Downloads/${filename}.`,
           images: [{ name: filename, mime: "image/gif", data: response.data }],
           metadata: { frames: frames.length, filename },
         }
       }
-      throw new Error(`Ação desconhecida: ${action}. Use start, stop ou export.`)
+      throw new Error(`Unknown action: ${action}. Use start, stop or export.`)
     },
   }
 }

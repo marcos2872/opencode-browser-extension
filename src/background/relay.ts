@@ -1,5 +1,6 @@
 import { RELAY_PORT, RELAY_PROTOCOL, RELAY_URL, type RelayInbound, type RelayOutbound } from "../shared/protocol"
 import type { RelayState } from "../shared/types"
+import { t } from "../shared/i18n/runtime"
 
 const CANDIDATE_PORTS = [RELAY_PORT, RELAY_PORT + 1, RELAY_PORT + 2, RELAY_PORT + 3]
 /** Silêncio máximo do plugin antes de considerá-lo morto (só com plugins novos). */
@@ -143,7 +144,7 @@ export class RelayClient {
         this.agentPending.delete(message.id)
         clearTimeout(pending.timer)
         if (message.ok) pending.resolve({ path: message.path })
-        else pending.reject(new Error(message.error ?? "O plugin não gravou o agente."))
+        else pending.reject(new Error(message.error ?? t("relayError.noAgent")))
         return
       }
       if (message.type === "tool_request") {
@@ -155,14 +156,14 @@ export class RelayClient {
       if (this.socket !== socket) return
       this.socket = null
       this.stopWatchdog()
-      this.rejectAgentPending("O plugin desconectou antes de instalar o agente.")
+      this.rejectAgentPending(t("relayError.disconnectedBeforeAgent"))
       const silent = event.code === 4000
       this.setState({
         connected: false,
         url,
         lastError: silent
-          ? "O plugin parou de responder."
-          : event.reason || `Conexão encerrada (${event.code}).`,
+          ? t("relayError.noResponse")
+          : event.reason || t("relayError.closedCode", { code: event.code }),
         reason: silent
           ? "silent"
           : event.code === 1008
@@ -177,7 +178,7 @@ export class RelayClient {
       this.setState({
         connected: false,
         url,
-        lastError: "Plugin do OpenCode não encontrado.",
+        lastError: t("relayError.pluginMissing"),
         reason: "missing_plugin",
       })
     })
@@ -201,13 +202,13 @@ export class RelayClient {
   /** Pede ao plugin para gravar o agente do navegador na configuração global. */
   ensureAgent(): Promise<{ path?: string }> {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      return Promise.reject(new Error("Plugin do OpenCode não conectado."))
+      return Promise.reject(new Error(t("relayError.pluginNotConnected")))
     }
     const id = crypto.randomUUID()
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.agentPending.delete(id)
-        reject(new Error("O plugin não respondeu ao instalar o agente."))
+        reject(new Error(t("relayError.agentInstallSilent")))
       }, 5_000)
       this.agentPending.set(id, { resolve, reject, timer })
       if (!this.send({ type: "ensure_agent", id })) {
@@ -234,7 +235,7 @@ export class RelayClient {
         connected: false,
         url: this.state.url,
         reason: "silent",
-        lastError: "O plugin parou de responder.",
+        lastError: t("relayError.noResponse"),
       })
       try {
         socket.close(4000, "sem pong")
@@ -267,7 +268,7 @@ export class RelayClient {
 
   private close(): void {
     this.stopWatchdog()
-    this.rejectAgentPending("Conexão encerrada antes de instalar o agente.")
+    this.rejectAgentPending(t("relayError.closedBeforeAgent"))
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null

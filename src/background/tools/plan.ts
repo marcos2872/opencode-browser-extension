@@ -1,4 +1,5 @@
 import type { ToolMap, ToolResult } from "./types"
+import { t } from "../../shared/i18n/runtime"
 import { truncate } from "./types"
 
 export const planTools: ToolMap = {
@@ -10,20 +11,20 @@ export const planTools: ToolMap = {
       ? args.approach.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
       : []
     if (domains.length === 0 || approach.length === 0) {
-      throw new Error("update_plan exige `domains` e `approach` como arrays não vazios.")
+      throw new Error("update_plan requires `domains` and `approach` as non-empty arrays.")
     }
     const first = domains[0]
     const allowed = await ctx.ask({
       kind: "plan",
       tool: "update_plan",
-      title: "Aprovar plano de navegação",
+      title: t("permission.ask.approvePlan"),
       detail: approach.join("\n"),
       url: /^https?:\/\//i.test(first) ? first : `https://${first}`,
       plan: { domains, approach },
     })
     if (!allowed) {
       return {
-        content: "Plano recusado pelo usuário. Não navegue para os domínios propostos.",
+        content: "Plan declined by the user. Do not navigate to the proposed domains.",
         metadata: { approved: false },
       }
     }
@@ -31,7 +32,7 @@ export const planTools: ToolMap = {
       ctx.permissions.allowForSession(ctx.sessionID, domain.replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
     }
     return {
-      content: `Plano aprovado. Domínios liberados nesta sessão: ${domains.join(", ")}.\n\n${truncate(
+      content: `Plan approved. Domains allowed in this session: ${domains.join(", ")}.\n\n${truncate(
         approach.map((step, index) => `${index + 1}. ${step}`).join("\n"),
         4000,
       )}`,

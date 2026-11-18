@@ -1,4 +1,6 @@
 import type { ChatMessage, ModelInfo, SessionInfo, TokenUsage } from "../shared/types"
+import { currentLocale } from "../shared/i18n/runtime"
+import type { Locale } from "../shared/i18n"
 
 export interface SessionStats {
   contextUsed?: number
@@ -7,13 +9,25 @@ export interface SessionStats {
   cost?: number
 }
 
-const tokenFormat = new Intl.NumberFormat("pt-BR")
-const costFormat = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 4,
-  maximumFractionDigits: 4,
-})
+const formatters = new Map<Locale, { tokens: Intl.NumberFormat; cost: Intl.NumberFormat }>()
+
+/** Formatação de número/moeda acompanha o idioma da interface. */
+function formatterFor(locale: Locale) {
+  let entry = formatters.get(locale)
+  if (!entry) {
+    entry = {
+      tokens: new Intl.NumberFormat(locale),
+      cost: new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      }),
+    }
+    formatters.set(locale, entry)
+  }
+  return entry
+}
 
 /**
  * Resumo da sessão para o rodapé do composer: tokens da última requisição
@@ -59,10 +73,10 @@ function usageContext(usage?: TokenUsage): number | undefined {
   return undefined
 }
 
-export function formatTokens(value: number): string {
-  return tokenFormat.format(value)
+export function formatTokens(value: number, locale: Locale = currentLocale()): string {
+  return formatterFor(locale).tokens.format(value)
 }
 
-export function formatCost(value: number): string {
-  return costFormat.format(value)
+export function formatCost(value: number, locale: Locale = currentLocale()): string {
+  return formatterFor(locale).cost.format(value)
 }

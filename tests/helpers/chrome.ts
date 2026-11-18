@@ -218,6 +218,10 @@ export interface ChromeMock {
   commands: {
     onCommand: FakeEvent
   }
+  i18n: {
+    getUILanguage: ReturnType<typeof vi.fn>
+    getMessage: ReturnType<typeof vi.fn>
+  }
   action: {
     setBadgeText: ReturnType<typeof vi.fn>
     setTitle: ReturnType<typeof vi.fn>
@@ -553,6 +557,12 @@ export function createChromeMock(): ChromeMock {
       WINDOW_ID_NONE: -1,
     },
     commands: { onCommand: new FakeEvent() },
+    // Os testes rodam em pt-BR para manter as asserções de texto existentes;
+    // `getUILanguage` é mockado como o Chrome faria num navegador em português.
+    i18n: {
+      getUILanguage: vi.fn(() => "pt-BR"),
+      getMessage: vi.fn((name: string) => name),
+    },
     action: {
       setBadgeText: vi.fn(async () => undefined),
       setTitle: vi.fn(async () => undefined),

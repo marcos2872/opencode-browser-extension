@@ -4,7 +4,7 @@
 [![Qualidade de código](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml/badge.svg)](https://github.com/marcos2872/opencode-browser-extension/actions/workflows/quality.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 
-<p><a href="web/index.html">Veja a apresentação e os vídeos de demonstração →</a></p>
+<p><a href="https://marcos2872.github.io/opencode-browser-extension/web/index.html">Veja a apresentação e os vídeos de demonstração →</a> · <a href="https://marcos2872.github.io/opencode-browser-extension/web/en/index.html">English guide</a></p>
 
 > Extensão MV3 que conecta o Chrome ao OpenCode instalado na sua máquina: usa os
 > modelos locais para conversar e dá ao agente um grupo de abas isolado para
@@ -23,7 +23,7 @@ Nada sai da sua máquina: a extensão fala apenas com o servidor local do OpenCo
 ## Demonstrações
 
 A apresentação do guia reúne vídeos de fluxos com formulários, leitura de páginas
-e uso via CLI: [abrir demonstrações](web/index.html#demonstracoes).
+e uso via CLI: [abrir demonstrações](https://marcos2872.github.io/opencode-browser-extension/web/index.html#demonstracoes).
 
 ## Stack
 
@@ -94,8 +94,8 @@ então o reload é obrigatório.
 
 | Documento | Conteúdo |
 |---|---|
-| [docs/index.md](docs/index.md) | Índice geral da documentação |
-| [docs/guias/guia-do-usuario.md](docs/guias/guia-do-usuario.md) | Guia do usuário final (também em [HTML](web/index.html)) |
+| [docs/index.md](docs/index.md) | Índice geral da documentação (também em [English](docs/en/index.md)) |
+| [docs/guias/guia-do-usuario.md](docs/guias/guia-do-usuario.md) | Guia do usuário final (também em [HTML](https://marcos2872.github.io/opencode-browser-extension/web/index.html)) · [English](docs/en/guias/guia-do-usuario.md) |
 | [docs/arquitetura/architecture.md](docs/arquitetura/architecture.md) | Visão de arquitetura e componentes |
 | [docs/arquitetura/extension.md](docs/arquitetura/extension.md) | Como a extensão funciona (service worker, content scripts, UI) |
 | [docs/arquitetura/plugin.md](docs/arquitetura/plugin.md) | Plugin do OpenCode, relay, protocolo e portas |

@@ -1,5 +1,41 @@
 /* global window, document, localStorage, IntersectionObserver */
 (() => {
+  // O site tem uma árvore por idioma (web/ e web/en/) e os dois usam este mesmo
+  // script: os textos de interface saem de `lang` do documento.
+  const textos = {
+    pt: {
+      tema: "Tema",
+      alternar: "clique para alternar",
+      temaRotulos: { sistema: "sistema", claro: "claro", escuro: "escuro" },
+      contador: (atual, total) => `${atual} de ${total}`,
+      copiar: "Copiar",
+      copiada: "Copiado!",
+      copiarAria: "Copiar comando do bloco",
+      copiadoAria: "Comando copiado",
+      falhou: "Falha ao copiar",
+      falhouAria: "Falha ao copiar comando",
+      falhouTitulo: "Selecione o comando e copie manualmente.",
+      erroCopia: "Não foi possível copiar o comando.",
+    },
+    en: {
+      tema: "Theme",
+      alternar: "click to switch",
+      temaRotulos: { sistema: "system", claro: "light", escuro: "dark" },
+      contador: (atual, total) => `${atual} of ${total}`,
+      copiar: "Copy",
+      copiada: "Copied!",
+      copiarAria: "Copy the block command",
+      copiadoAria: "Command copied",
+      falhou: "Copy failed",
+      falhouAria: "Failed to copy the command",
+      falhouTitulo: "Select the command and copy it manually.",
+      erroCopia: "Could not copy the command.",
+    },
+  };
+  const textosDaPagina =
+    document.documentElement.lang.toLowerCase().startsWith("pt")
+      ? textos.pt
+      : textos.en;
   const chave = "guia-do-usuario-tema";
   const sistema = window.matchMedia("(prefers-color-scheme: light)");
   const guardado = localStorage.getItem(chave);
@@ -26,10 +62,13 @@
       const icones = { sistema: "◐", claro: "☀", escuro: "☾" };
       const atualizarBotao = () => {
         aplicar();
-        rotulo.textContent = preferencia;
+        rotulo.textContent = textosDaPagina.temaRotulos[preferencia];
         icone.textContent = icones[preferencia];
-        botao.setAttribute("aria-label", `Tema: ${preferencia}`);
-        botao.title = `Tema: ${preferencia} (clique para alternar)`;
+        botao.setAttribute(
+          "aria-label",
+          `${textosDaPagina.tema}: ${textosDaPagina.temaRotulos[preferencia]}`,
+        );
+        botao.title = `${textosDaPagina.tema}: ${textosDaPagina.temaRotulos[preferencia]} (${textosDaPagina.alternar})`;
         localStorage.setItem(chave, preferencia);
       };
       botao.addEventListener("click", () => {
@@ -76,7 +115,7 @@
       const atualizarControles = () => {
         anterior.disabled = indice === 0;
         proximo.disabled = indice === slides.length - 1;
-        contador.textContent = `${indice + 1} de ${slides.length}`;
+        contador.textContent = textosDaPagina.contador(indice + 1, slides.length);
       };
       const irPara = (novoIndice) => {
         indice = Math.max(0, Math.min(novoIndice, slides.length - 1));
@@ -134,7 +173,7 @@
       } finally {
         campo.remove();
       }
-      if (!copiado) throw new Error("Não foi possível copiar o comando.");
+      if (!copiado) throw new Error(textosDaPagina.erroCopia);
     };
 
     document.querySelectorAll("pre[data-linguagem]").forEach((bloco) => {
@@ -144,8 +183,8 @@
       const botao = document.createElement("button");
       botao.className = "botao-copiar";
       botao.type = "button";
-      botao.textContent = "Copiar";
-      botao.setAttribute("aria-label", "Copiar comando do bloco");
+      botao.textContent = textosDaPagina.copiar;
+      botao.setAttribute("aria-label", textosDaPagina.copiarAria);
       const moldura = document.createElement("div");
       moldura.className = "bloco-terminal";
       bloco.parentNode.insertBefore(moldura, bloco);
@@ -156,20 +195,20 @@
         botao.disabled = true;
         try {
           await copiarTexto(codigo.textContent ?? "");
-          botao.textContent = "Copiado!";
+          botao.textContent = textosDaPagina.copiada;
           botao.classList.add("copiado");
-          botao.setAttribute("aria-label", "Comando copiado");
+          botao.setAttribute("aria-label", textosDaPagina.copiadoAria);
         } catch {
-          botao.textContent = "Falha ao copiar";
-          botao.title = "Selecione o comando e copie manualmente.";
-          botao.setAttribute("aria-label", "Falha ao copiar comando");
+          botao.textContent = textosDaPagina.falhou;
+          botao.title = textosDaPagina.falhouTitulo;
+          botao.setAttribute("aria-label", textosDaPagina.falhouAria);
         }
         window.setTimeout(() => {
           botao.disabled = false;
-          botao.textContent = "Copiar";
+          botao.textContent = textosDaPagina.copiar;
           botao.title = "";
           botao.classList.remove("copiado");
-          botao.setAttribute("aria-label", "Copiar comando do bloco");
+          botao.setAttribute("aria-label", textosDaPagina.copiarAria);
         }, 1600);
       });
     });

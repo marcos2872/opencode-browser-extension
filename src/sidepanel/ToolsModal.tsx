@@ -3,6 +3,7 @@ import type { ToolCallView } from "../shared/types"
 import { BrowserIcon, ChevronIcon, TerminalIcon, XIcon } from "../components/icons"
 import { ToolBody, firstLine, toolLabel, toolStatus, toolSummary } from "./ToolCard"
 import { normalizeToolName } from "./toolNames"
+import { useI18n } from "../shared/i18n/react"
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`
@@ -33,6 +34,7 @@ export function ToolRun({
   tools: ToolCallView[]
   onOpen: () => void
 }) {
+  const { t } = useI18n()
   if (!tools.length) return null
   const errors = tools.filter((tool) => tool.status === "error")
   const duration = totalDuration(tools)
@@ -41,17 +43,13 @@ export function ToolRun({
     <div className={`tool-run${errors.length ? " failed" : ""}`}>
       <button type="button" className="tool-run-head" onClick={onOpen}>
         <BrowserIcon size={13} />
-        <span>
-          {tools.length} ferramenta{tools.length > 1 ? "s" : ""}
-        </span>
+        <span>{t("tool.runCount", { count: tools.length })}</span>
         {errors.length ? (
-          <span className="tool-run-errors">
-            {errors.length} erro{errors.length > 1 ? "s" : ""}
-          </span>
+          <span className="tool-run-errors">{t("tool.runErrors", { count: errors.length })}</span>
         ) : null}
         <span className="spacer" />
         {duration ? <span className="tool-run-time">{duration}</span> : null}
-        <span className="tool-run-open">ver</span>
+        <span className="tool-run-open">{t("tool.runOpen")}</span>
       </button>
       {errors.length && errors[0].output ? (
         <div className="tool-error-line">{firstLine(errors[0].output)}</div>
@@ -69,6 +67,7 @@ export function ToolsModal({
   title: string
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [onlyErrors, setOnlyErrors] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -99,12 +98,10 @@ export function ToolsModal({
       <div className="tools-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="tools-modal-head">
           <strong>{title}</strong>
-          <span className="tools-modal-count">
-            {tools.length} ferramenta{tools.length > 1 ? "s" : ""}
-          </span>
+          <span className="tools-modal-count">{t("tool.runCount", { count: tools.length })}</span>
           {errors.length ? (
             <span className="tool-status error">
-              {errors.length} erro{errors.length > 1 ? "s" : ""}
+              {t("tool.runErrors", { count: errors.length })}
             </span>
           ) : null}
           <span className="spacer" />
@@ -113,8 +110,8 @@ export function ToolsModal({
             type="button"
             className="icon-btn"
             onClick={onClose}
-            title="Fechar"
-            aria-label="Fechar"
+            title={t("common.close")}
+            aria-label={t("common.close")}
           >
             <XIcon size={14} />
           </button>
@@ -127,14 +124,14 @@ export function ToolsModal({
               checked={onlyErrors}
               onChange={(event) => setOnlyErrors(event.target.checked)}
             />
-            Somente erros
+            {t("tool.modalOnlyErrors")}
           </label>
         ) : null}
 
         <div className="tools-modal-list">
           {visible.map((tool) => {
-            const state = toolStatus(tool)
-            const detail = toolSummary(tool)
+            const state = toolStatus(tool, t)
+            const detail = toolSummary(tool, t)
             const duration = toolDuration(tool)
             const open = expanded === tool.id
             return (
@@ -152,13 +149,13 @@ export function ToolsModal({
                       <BrowserIcon size={13} />
                     )}
                   </span>
-                  <span className="tool-item-name">{toolLabel(tool)}</span>
+                  <span className="tool-item-name">{toolLabel(tool, t)}</span>
                   {detail ? <span className="status">{detail.slice(0, 60)}</span> : null}
                   <span className="spacer" />
                   {duration ? <span className="tool-item-time">{duration}</span> : null}
                   <span
                     className={`tool-status ${
-                      state === "ok" ? "ok" : state === "erro" ? "error" : "running"
+                      tool.status === "ok" ? "ok" : tool.status === "error" ? "error" : "running"
                     }`}
                   >
                     {state}

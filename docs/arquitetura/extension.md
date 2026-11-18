@@ -34,7 +34,7 @@ src/
 ├── sidepanel/                   # chat (App, Chat, Composer, ModelPicker, SessionBar...)
 ├── options/                     # configurações
 ├── components/                  # Markdown, ícones, card de permissão
-├── shared/                      # types.ts, protocol.ts, storage.ts
+├── shared/                      # types.ts, protocol.ts, storage.ts, i18n/
 ├── styles/app.css               # tema claro/escuro, layout e scrollbars
 ├── offscreen.ts                 # keepalive, beep e encoder de GIF
 └── types/gifenc.d.ts            # tipos do encoder

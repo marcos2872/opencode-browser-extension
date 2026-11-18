@@ -71,7 +71,7 @@ export async function assertScriptable(tabId: number): Promise<void> {
   const url = tab?.url ?? ""
   if (!/^https?:\/\//i.test(url) && !/^file:\/\//i.test(url)) {
     throw new Error(
-      `A aba está em "${url || "sem URL"}". Use a ferramenta navigate para abrir uma página http(s) antes de ler ou interagir com o conteúdo.`,
+      `The tab is at "${url || "no URL"}". Use the navigate tool to open an http(s) page before reading or interacting with the content.`,
     )
   }
 }
@@ -97,15 +97,15 @@ export async function ensureBridge(tabId: number, frameId = 0): Promise<void> {
   } catch {
     throw new Error(
       frameId === 0
-        ? "Não foi possível preparar a página. Recarregue a aba e tente novamente (páginas chrome:// e a Chrome Web Store são bloqueadas)."
-        : `Não foi possível preparar o frame ${frameId}.`,
+        ? "Could not prepare the page. Reload the tab and try again (chrome:// pages and the Chrome Web Store are blocked)."
+        : `Could not prepare frame ${frameId}.`,
     )
   }
   if (!(await hasBridge(tabId, frameId))) {
     throw new Error(
       frameId === 0
-        ? "Não foi possível preparar a página. Recarregue a aba e tente novamente (páginas chrome:// e a Chrome Web Store são bloqueadas)."
-        : `Não foi possível preparar o frame ${frameId}.`,
+        ? "Could not prepare the page. Reload the tab and try again (chrome:// pages and the Chrome Web Store are blocked)."
+        : `Could not prepare frame ${frameId}.`,
     )
   }
 }
@@ -122,13 +122,13 @@ async function call<T>(
     func: (name: string, params: unknown[]) => {
       const api = (window as unknown as { __opencodeA11y?: Record<string, (...input: unknown[]) => unknown> })
         .__opencodeA11y
-      if (!api || typeof api[name] !== "function") throw new Error("Ponte da página indisponível.")
+      if (!api || typeof api[name] !== "function") throw new Error("Page bridge unavailable.")
       return api[name](...params)
     },
     args: [fn, args],
   })
   if (results[0]?.result === undefined) {
-    throw new Error("A página não retornou dados.")
+    throw new Error("The page returned no data.")
   }
   return results[0].result as T
 }
@@ -145,7 +145,7 @@ export async function resolveRef(tabId: number, ref: string): Promise<A11yElemen
   const { frameId, localRef } = parseRef(ref)
   if (frameId !== 0) {
     throw new Error(
-      `A ref ${ref} está dentro de um iframe e não tem coordenadas no frame principal. Use ações por ref (click, form_input, type) em vez de coordenadas.`,
+      `Ref ${ref} is inside an iframe and has no coordinates in the main frame. Use ref-based actions (click, form_input, type) instead of coordinates.`,
     )
   }
   return call<A11yElement | null>(tabId, 0, "resolve", [localRef])
@@ -261,7 +261,7 @@ export async function pageTextFrames(
     "pageText",
     [maxChars],
   )
-  if (results.length === 0) throw new Error("A página não tem texto legível.")
+  if (results.length === 0) throw new Error("The page has no readable text.")
   const mainEntry = results.find((item) => item.frameId === 0) ?? results[0]
   const main = mainEntry.result
   const extras = results

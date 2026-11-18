@@ -47,6 +47,19 @@ anúncio do plugin.
 | `permissions.allow` | Hosts sempre permitidos (uma linha por host nas options) |
 | `permissions.deny` | Hosts sempre bloqueados |
 
+## Idioma
+
+| Chave | Descrição | Valores | Padrão |
+|---|---|---|---|
+| `ui.locale` | Idioma da interface (painel, configurações, indicador na página, notificações e manifest) | `auto` \| `pt-BR` \| `en` | `auto` |
+
+`auto` segue o idioma da interface do navegador (`chrome.i18n.getUILanguage()`):
+qualquer variante de português (`pt`, `pt-BR`, `pt-PT`) resolve para pt-BR e
+todo o resto para inglês. Fica fora de `opencode.config` porque o onboarding
+precisa ler e trocar o idioma antes do pareamento. O texto que o **modelo** lê
+(descrições das tools, resultados e template do agente) é fixo em inglês; o
+agente responde no idioma da mensagem do usuário.
+
 ## Variáveis de ambiente do plugin
 
 | Variável | Descrição | Tipo | Padrão | Obrigatório | Onde se usa |

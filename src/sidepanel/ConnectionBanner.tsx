@@ -1,6 +1,8 @@
 import { RefreshIcon, SettingsIcon } from "../components/icons"
 import { describeRelay } from "../components/relayStatus"
 import type { ConnectionState, RelayState } from "../shared/types"
+import type { Translate } from "../shared/i18n"
+import { useI18n } from "../shared/i18n/react"
 
 interface Props {
   connection: ConnectionState
@@ -17,65 +19,57 @@ interface Content {
   actionLabel?: string
 }
 
-function describe(connection: ConnectionState): Content | null {
+function describe(connection: ConnectionState, t: Translate): Content | null {
   if (connection.phase === "online" || connection.phase === "unconfigured") {
     return null
   }
   if (connection.phase === "connecting") {
     return {
       tone: "warn",
-      title: "Conectando ao OpenCode…",
-      detail:
-        "Se o servidor ainda não estiver rodando, inicie o OpenCode no terminal com `opencode serve`.",
+      title: t("banner.connecting.title"),
+      detail: t("banner.connecting.detail"),
     }
   }
   switch (connection.failure) {
     case "unauthorized":
       return {
         tone: "err",
-        title: "Token do OpenCode inválido ou expirado",
-        detail:
-          "Rode `opencode pair` no terminal, cole o novo link nas configurações e tente de novo.",
+        title: t("banner.unauthorized.title"),
+        detail: t("banner.unauthorized.detail"),
         action: "options",
-        actionLabel: "Abrir configurações",
+        actionLabel: t("app.openSettings"),
       }
     case "timeout":
       return {
         tone: "err",
-        title: "O OpenCode demorou demais para responder",
-        detail:
-          connection.detail ??
-          "O servidor pode estar travado. Reinicie o OpenCode e tente novamente.",
+        title: t("banner.timeout.title"),
+        detail: connection.detail ?? t("banner.timeout.detail"),
         action: "retry",
-        actionLabel: "Tentar novamente",
+        actionLabel: t("app.retry"),
       }
     case "server_error":
       return {
         tone: "err",
-        title: "O OpenCode respondeu com erro",
-        detail:
-          connection.detail ??
-          "Confira o log do servidor do OpenCode e tente novamente.",
+        title: t("banner.serverError.title"),
+        detail: connection.detail ?? t("banner.serverError.detail"),
         action: "retry",
-        actionLabel: "Tentar novamente",
+        actionLabel: t("app.retry"),
       }
     case "stream_closed":
       return {
         tone: "warn",
-        title: "A conexão com o OpenCode foi encerrada",
-        detail:
-          "Tente reconectar. Se o problema continuar, reinicie o OpenCode no terminal.",
+        title: t("banner.streamClosed.title"),
+        detail: t("banner.streamClosed.detail"),
         action: "retry",
-        actionLabel: "Reconectar",
+        actionLabel: t("app.reconnect"),
       }
     default:
       return {
         tone: "err",
-        title: "O OpenCode não está respondendo",
-        detail:
-          "Inicie o OpenCode no terminal com `opencode serve` e clique em Tentar novamente.",
+        title: t("banner.unreachable.title"),
+        detail: t("banner.unreachable.detail"),
         action: "retry",
-        actionLabel: "Tentar novamente",
+        actionLabel: t("app.retry"),
       }
   }
 }
@@ -86,7 +80,8 @@ export function ConnectionBanner({
   onRetry,
   onOpenOptions,
 }: Props) {
-  const content = describe(connection)
+  const { t, locale } = useI18n()
+  const content = describe(connection, t)
   if (!content) return null
   const relayOffline = !relay.connected
 
@@ -96,16 +91,16 @@ export function ConnectionBanner({
         <strong>{content.title}</strong>
         <span>{content.detail}</span>
         {relayOffline ? (
-          <span className="connection-note">{describeRelay(relay)}</span>
+          <span className="connection-note">{describeRelay(relay, locale)}</span>
         ) : null}
       </div>
       {content.action === "retry" ? (
         <button className="btn small" onClick={onRetry}>
-          <RefreshIcon size={13} /> {content.actionLabel ?? "Tentar novamente"}
+          <RefreshIcon size={13} /> {content.actionLabel ?? t("app.retry")}
         </button>
       ) : content.action === "options" ? (
         <button className="btn small" onClick={onOpenOptions}>
-          <SettingsIcon size={13} /> {content.actionLabel ?? "Abrir configurações"}
+          <SettingsIcon size={13} /> {content.actionLabel ?? t("app.openSettings")}
         </button>
       ) : null}
     </div>

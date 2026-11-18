@@ -1,6 +1,3 @@
-/** Rótulo inicial do overlay, antes de a primeira tool informar o status. */
-export const INDICATOR_DEFAULT_STATUS = "OpenCode está nesta aba"
-
 /** Duração da viagem do mouse virtual; o clique real espera esse tempo. */
 export const INDICATOR_MOVE_MS = 320
 

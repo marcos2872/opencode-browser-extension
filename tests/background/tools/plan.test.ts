@@ -7,16 +7,16 @@ describe("background/tools/plan", () => {
     const { ctx } = makeToolContext()
 
     await expect(planTools.update_plan({}, ctx)).rejects.toThrow(
-      "update_plan exige `domains` e `approach` como arrays não vazios.",
+      "update_plan requires `domains` and `approach` as non-empty arrays.",
     )
     await expect(planTools.update_plan({ domains: [], approach: ["passo"] }, ctx)).rejects.toThrow(
-      "update_plan exige `domains` e `approach` como arrays não vazios.",
+      "update_plan requires `domains` and `approach` as non-empty arrays.",
     )
     await expect(planTools.update_plan({ domains: ["x.com"], approach: [] }, ctx)).rejects.toThrow(
-      "update_plan exige `domains` e `approach` como arrays não vazios.",
+      "update_plan requires `domains` and `approach` as non-empty arrays.",
     )
     await expect(planTools.update_plan({ domains: "x.com", approach: "passo" }, ctx)).rejects.toThrow(
-      "update_plan exige `domains` e `approach` como arrays não vazios.",
+      "update_plan requires `domains` and `approach` as non-empty arrays.",
     )
   })
 
@@ -85,7 +85,7 @@ describe("background/tools/plan", () => {
       domains: ["https://example.com/pagina", "http://sub.outro.com/a/b", "terceiro.com/x?y=1"],
     })
     expect(result.content).toContain(
-      "Plano aprovado. Domínios liberados nesta sessão: https://example.com/pagina, http://sub.outro.com/a/b, terceiro.com/x?y=1.",
+      "Plan approved. Domains allowed in this session: https://example.com/pagina, http://sub.outro.com/a/b, terceiro.com/x?y=1.",
     )
     expect(result.content).toContain("1. Passo único")
   })
@@ -107,7 +107,7 @@ describe("background/tools/plan", () => {
 
     const result = await planTools.update_plan({ domains: ["x.com"], approach: ["passo"] }, ctx)
 
-    expect(result.content).toBe("Plano recusado pelo usuário. Não navegue para os domínios propostos.")
+    expect(result.content).toBe("Plan declined by the user. Do not navigate to the proposed domains.")
     expect(result.metadata).toEqual({ approved: false })
     expect(permissions.allowForSession).not.toHaveBeenCalled()
   })

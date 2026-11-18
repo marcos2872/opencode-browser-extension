@@ -7,6 +7,7 @@ on:
       - "web/**"
       - "assets/videos/**"
       - "docs/guias/guia-do-usuario.md"
+      - "docs/en/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,10 +35,13 @@ jobs:
       - name: Montar o artefato do site
         run: |
           set -euo pipefail
-          mkdir -p _site/web _site/assets/videos _site/docs/guias
+          # `web/en` (site em inglês) vem junto com `web/.`; `docs/en` precisa
+          # ser copiada à parte porque o site aponta para ela.
+          mkdir -p _site/web _site/assets/videos _site/docs/guias _site/docs/en/guias
           cp -R web/. _site/web/
           cp -R assets/videos/. _site/assets/videos/
           cp docs/guias/guia-do-usuario.md _site/docs/guias/
+          cp -R docs/en/. _site/docs/en/
           cat > _site/index.html <<'HTML'
           <!doctype html>
           <html lang="pt-BR">
@@ -45,10 +49,11 @@ jobs:
             <meta charset="utf-8" />
             <meta http-equiv="refresh" content="0; url=web/index.html" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>OpenCode Browser — Guia</title>
+            <title>OpenCode Browser — Guia / Guide</title>
           </head>
           <body>
-            <p><a href="web/index.html">Abrir o guia do OpenCode Browser</a></p>
+            <p><a href="web/index.html">Abrir o guia do OpenCode Browser</a> ·
+            <a href="web/en/index.html">Open the English guide</a></p>
           </body>
           </html>
           HTML

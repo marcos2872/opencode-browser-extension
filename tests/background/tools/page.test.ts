@@ -48,7 +48,7 @@ describe("background/tools/page", () => {
       expect(result.content).toContain("[ref_1] Botão")
       expect(result.content).toContain("Viewport: 1280x720")
       expect(result.metadata).toEqual({ count: 1, frames: 1 })
-      expect(indicator).toHaveBeenCalledWith(1, "Lendo a página", true)
+      expect(indicator).toHaveBeenCalledWith(1, "lendo a página", true)
       expect(hideIndicator).toHaveBeenCalledWith(1)
     })
 
@@ -108,7 +108,7 @@ describe("background/tools/page", () => {
 
       const result = await pageTools.read_page({}, ctx)
 
-      expect(result.content).toContain("[saída truncada em 50000 caracteres]")
+      expect(result.content).toContain("[output truncated at 50000 characters]")
       expect(result.content.length).toBeLessThan(60_000)
     })
 
@@ -120,7 +120,7 @@ describe("background/tools/page", () => {
 
       expect(result.content.startsWith("a".repeat(100))).toBe(true)
       expect(result.content).not.toContain("b".repeat(10))
-      expect(result.content).toContain("[saída truncada em 50000 caracteres]")
+      expect(result.content).toContain("[output truncated at 50000 characters]")
     })
   })
 
@@ -233,7 +233,7 @@ describe("background/tools/page", () => {
       const result = await pageTools.find({ query: "inexistente-xyz" }, ctx)
 
       expect(result.content).toBe(
-        'Nenhum elemento encontrado para "inexistente-xyz".\nTente termos mais simples ou use read_page com filter "interactive".',
+        'No elements found for "inexistente-xyz".\nTry simpler terms or use read_page with filter "interactive".',
       )
       expect(result.metadata).toBeUndefined()
     })
@@ -252,7 +252,7 @@ describe("background/tools/page", () => {
 
     it("exige query", async () => {
       const { ctx } = makeToolContext()
-      await expect(pageTools.find({}, ctx)).rejects.toThrow("Parâmetro obrigatório ausente: query.")
+      await expect(pageTools.find({}, ctx)).rejects.toThrow("Missing required parameter: query.")
     })
   })
 
@@ -295,7 +295,7 @@ describe("background/tools/page", () => {
       a11yMock.pageText.mockResolvedValue({ ...PAGE, text: "   \n  " })
       const { ctx } = makeToolContext()
 
-      await expect(pageTools.get_page_text({}, ctx)).rejects.toThrow("A página não tem texto legível.")
+      await expect(pageTools.get_page_text({}, ctx)).rejects.toThrow("The page has no readable text.")
     })
   })
 
@@ -314,9 +314,9 @@ describe("background/tools/page", () => {
         text: "texto",
       })
       expect(a11yMock.setValue).toHaveBeenCalledWith(1, "ref_1", "texto")
-      expect(result.content).toContain("Campo ref_1 preenchido.")
+      expect(result.content).toContain("Field ref_1 filled.")
       expect(result.metadata).toEqual({ ref: "ref_1" })
-      expect(indicator).toHaveBeenCalledWith(1, "Preenchendo ref_1", true)
+      expect(indicator).toHaveBeenCalledWith(1, "Filling ref_1", true)
       expect(hideIndicator).toHaveBeenCalledWith(1)
     })
 
@@ -326,7 +326,7 @@ describe("background/tools/page", () => {
 
       const result = await pageTools.form_input({ ref: "ref_1", value: "x" }, ctx)
 
-      expect(result.content).toBe("Preenchimento negado pelo usuário.")
+      expect(result.content).toBe("Fill denied by the user.")
       expect(a11yMock.setValue).not.toHaveBeenCalled()
     })
 
@@ -364,7 +364,7 @@ describe("background/tools/page", () => {
     it("exige ref", async () => {
       const { ctx } = makeToolContext()
       await expect(pageTools.form_input({ value: "x" }, ctx)).rejects.toThrow(
-        "Parâmetro obrigatório ausente: ref.",
+        "Missing required parameter: ref.",
       )
     })
   })

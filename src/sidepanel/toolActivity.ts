@@ -1,80 +1,91 @@
 import type { ChatMessage, ToolCallView } from "../shared/types"
 import { normalizeToolName } from "./toolNames"
+import type { Translate } from "../shared/i18n"
+import { messages as translatorFor } from "../shared/i18n"
+import type { Locale } from "../shared/i18n"
+import { currentLocale } from "../shared/i18n/runtime"
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
 }
 
-function computerActivity(input: Record<string, unknown>): string {
+function computerActivity(
+  input: Record<string, unknown>,
+  t: Translate,
+): string {
   switch (text(input.action)) {
     case "click":
-      return "clicando"
+      return t("activity.clicking")
     case "type":
-      return "digitando"
+      return t("activity.typing")
     case "key":
-      return "pressionando teclas"
+      return t("activity.pressingKeys")
     case "scroll":
-      return "rolando a página"
+      return t("activity.scrolling")
     case "hover":
-      return "passando o mouse"
+      return t("activity.hovering")
     case "screenshot":
-      return "capturando a tela"
+      return t("activity.screenshot")
     case "zoom":
-      return "ampliando a tela"
+      return t("activity.zoom")
     case "wait":
-      return "aguardando"
+      return t("activity.waiting")
     default:
-      return "interagindo com a página"
+      return t("activity.interacting")
   }
 }
 
 /** Frase curta, no gerúndio, para o indicador de trabalho. */
-export function toolActivity(tool: ToolCallView): string {
+export function toolActivity(
+  tool: ToolCallView,
+  locale: Locale = currentLocale(),
+): string {
+  const t = translatorFor(locale)
   const input = (tool.input ?? {}) as Record<string, unknown>
   switch (normalizeToolName(tool.name)) {
     case "navigate":
-      if (text(input.direction) === "back") return "voltando uma página"
-      if (text(input.direction) === "forward") return "avançando uma página"
-      return "navegando"
+      if (text(input.direction) === "back") return t("activity.back")
+      if (text(input.direction) === "forward") return t("activity.forward")
+      return t("activity.navigating")
     case "read_page":
-      return "lendo a página"
+      return t("activity.readingPage")
     case "get_page_text":
-      return "lendo o texto da página"
+      return t("activity.readingText")
     case "find":
-      return "procurando na página"
+      return t("activity.finding")
     case "form_input":
-      return "preenchendo um campo"
+      return t("activity.filling")
     case "computer":
-      return computerActivity(input)
+      return computerActivity(input, t)
     case "tabs_context":
-      return "verificando as abas"
+      return t("activity.tabsContext")
     case "tabs_create":
-      return "abrindo uma aba"
+      return t("activity.tabOpening")
     case "tabs_close":
-      return "fechando uma aba"
+      return t("activity.tabClosing")
     case "tabs_attach":
-      return "conectando a aba"
+      return t("activity.tabAttaching")
     case "javascript_tool":
-      return "executando script"
+      return t("activity.script")
     case "read_console_messages":
-      return "lendo o console"
+      return t("activity.console")
     case "read_network_requests":
-      return "verificando a rede"
+      return t("activity.network")
     case "resize_window":
-      return "redimensionando a janela"
+      return t("activity.resizing")
     case "update_plan":
-      return "planejando os próximos passos"
+      return t("activity.planning")
     case "browser_batch":
     case "batch":
-      return "executando ações"
+      return t("activity.batch")
     case "upload_image":
-      return "enviando um arquivo"
+      return t("activity.uploading")
     case "gif_creator":
-      return "gravando a tela"
+      return t("activity.recording")
     case "question":
-      return "aguardando sua resposta"
+      return t("activity.question")
     default:
-      return "trabalhando"
+      return t("activity.working")
   }
 }
 
@@ -94,26 +105,34 @@ function currentRun(messages: ChatMessage[]): ChatMessage[] {
  * Texto do indicador: a tool em execução agora; se não houver, a última usada
  * no run; se o modelo está escrevendo a resposta, "escrevendo a resposta".
  */
-export function activityLabel(messages: ChatMessage[]): string {
+export function activityLabel(
+  messages: ChatMessage[],
+  locale: Locale = currentLocale(),
+): string {
+  const t = translatorFor(locale)
   const run = currentRun(messages)
   const tools = run.flatMap((message) =>
     message.kind === "assistant" ? message.tools : [],
   )
   const running = [...tools].reverse().find((tool) => tool.status === "running")
-  if (running) return toolActivity(running)
+  if (running) return toolActivity(running, locale)
 
   const last = run.at(-1)
   if (last?.kind === "assistant" && last.streaming) {
-    return last.text.trim() ? "escrevendo a resposta" : "pensando"
+    return last.text.trim() ? t("activity.writing") : t("activity.thinking")
   }
 
   const lastTool = tools.at(-1)
-  return lastTool ? toolActivity(lastTool) : "trabalhando"
+  return lastTool ? toolActivity(lastTool, locale) : t("activity.working")
 }
 
 /** Texto completo do indicador, já com o prefixo "trabalhando:". */
-export function activityText(messages: ChatMessage[]): string {
-  const label = activityLabel(messages)
-  if (label === "trabalhando" || label === "pensando") return label
-  return `trabalhando: ${label}`
+export function activityText(
+  messages: ChatMessage[],
+  locale: Locale = currentLocale(),
+): string {
+  const t = translatorFor(locale)
+  const label = activityLabel(messages, locale)
+  if (label === t("activity.working") || label === t("activity.thinking")) return label
+  return t("activity.prefix", { detail: label })
 }

@@ -11,6 +11,7 @@ import type {
 import type { OpencodeEvent } from "../../shared/protocol";
 import { parseSse } from "./sse";
 import { messageUsage } from "./usage";
+import { t } from "../../shared/i18n/runtime";
 
 const PAIR_PATH = /\/auth\/connect\/([A-Za-z0-9_-]+)/;
 
@@ -56,8 +57,7 @@ export function formatOpencodeError(error: unknown): string {
       searchable,
     )
   ) {
-    guidance =
-      "Confira o saldo e os limites de gastos do OpenCode Go/provedor, ou selecione outro provedor ou modelo.";
+    guidance = t("opencode.guidance.payment");
   } else if (
     status === 401 ||
     status === 403 ||
@@ -65,14 +65,12 @@ export function formatOpencodeError(error: unknown): string {
       searchable,
     )
   ) {
-    guidance =
-      "Confira as credenciais e permissões configuradas para esse provedor no OpenCode.";
+    guidance = t("opencode.guidance.auth");
   } else if (
     status === 429 ||
     /rate.?limit|too many requests/.test(searchable)
   ) {
-    guidance =
-      "O provedor limitou as requisições. Aguarde um pouco ou confira a cota e os limites da conta.";
+    guidance = t("opencode.guidance.rateLimit");
   }
 
   return guidance ? `${detail}\n\n${guidance}` : detail;
@@ -121,18 +119,14 @@ export class OpencodeClient {
     try {
       url = new URL(trimmed);
     } catch {
-      throw new OpencodeError(
-        "Link inválido. Cole o link completo exibido por `opencode pair`.",
-      );
+      throw new OpencodeError(t("opencode.pairInvalid"));
     }
     if (url.protocol !== "http:" && url.protocol !== "https:") {
-      throw new OpencodeError(
-        "O link precisa começar com http:// ou https://.",
-      );
+      throw new OpencodeError(t("opencode.pairProtocol"));
     }
     const match = url.pathname.match(PAIR_PATH);
     if (!match?.[1]) {
-      throw new OpencodeError("O link não contém /auth/connect/<código>.");
+      throw new OpencodeError(t("opencode.pairPath"));
     }
     return { baseUrl: url.origin, code: match[1] };
   }
@@ -147,7 +141,7 @@ export class OpencodeClient {
       });
     } catch (error) {
       throw new OpencodeError(
-        `Não foi possível falar com o OpenCode em ${baseUrl}. Ele está rodando?`,
+        t("opencode.unreachable", { baseUrl }),
         undefined,
         { cause: error },
       );
@@ -155,14 +149,14 @@ export class OpencodeClient {
     if (!response.ok) {
       throw new OpencodeError(
         response.status === 401
-          ? "Link expirado ou já usado. Rode `opencode pair` novamente."
-          : `Falha ao parear (HTTP ${response.status}).`,
+          ? t("opencode.pairExpired")
+          : t("opencode.pairFailed", { status: response.status }),
         response.status,
       );
     }
     const payload = (await response.json()) as { token?: unknown };
     if (typeof payload.token !== "string" || payload.token.length === 0) {
-      throw new OpencodeError("O servidor não devolveu um token de sessão.");
+      throw new OpencodeError(t("opencode.noToken"));
     }
     return { baseUrl, token: payload.token };
   }
@@ -213,8 +207,8 @@ export class OpencodeClient {
     } catch (error) {
       throw new OpencodeError(
         timedOut
-          ? `O OpenCode não respondeu em ${Math.round(timeoutMs / 1000)}s. Ele ainda está rodando?`
-          : `Não foi possível falar com o OpenCode em ${this.baseUrl}. Ele está rodando?`,
+          ? t("opencode.timeout", { seconds: Math.round(timeoutMs / 1000) })
+          : t("opencode.unreachable", { baseUrl: this.baseUrl }),
         undefined,
         { cause: error, timedOut },
       );
@@ -343,7 +337,7 @@ export class OpencodeClient {
       method: "POST",
       body: JSON.stringify(body),
     });
-    if (!payload?.data?.id) throw new OpencodeError("Sessão criada sem id.");
+    if (!payload?.data?.id) throw new OpencodeError(t("opencode.sessionNoID"));
     return payload.data;
   }
 
@@ -422,7 +416,7 @@ export class OpencodeClient {
     });
     if (!response.ok || !response.body) {
       throw new OpencodeError(
-        `Stream de eventos indisponível (HTTP ${response.status}).`,
+        t("opencode.streamUnavailable", { status: response.status }),
         response.status,
       );
     }

@@ -17,13 +17,13 @@ describe("background/tools/upload", () => {
     const { ctx } = makeToolContext()
 
     await expect(uploadTools.upload_image({ ref: "ref_1" }, ctx)).rejects.toThrow(
-      "Informe `files` com [{ data: <base64>, name, mimeType }].",
+      "Provide `files` with [{ data: <base64>, name, mimeType }].",
     )
     await expect(uploadTools.upload_image({ ref: "ref_1", files: [] }, ctx)).rejects.toThrow(
-      "Informe `files` com [{ data: <base64>, name, mimeType }].",
+      "Provide `files` with [{ data: <base64>, name, mimeType }].",
     )
     await expect(uploadTools.upload_image({ ref: "ref_1", files: "nada" }, ctx)).rejects.toThrow(
-      "Informe `files` com [{ data: <base64>, name, mimeType }].",
+      "Provide `files` with [{ data: <base64>, name, mimeType }].",
     )
     expect(a11yMock.uploadFiles).not.toHaveBeenCalled()
   })
@@ -33,13 +33,13 @@ describe("background/tools/upload", () => {
 
     await expect(
       uploadTools.upload_image({ ref: "ref_1", files: [null, "x", { data: "" }, { data: 42 }] }, ctx),
-    ).rejects.toThrow("Informe `files` com [{ data: <base64>, name, mimeType }].")
+    ).rejects.toThrow("Provide `files` with [{ data: <base64>, name, mimeType }].")
   })
 
   it("exige ref", async () => {
     const { ctx } = makeToolContext()
     await expect(uploadTools.upload_image({ files: [{ data: BASE64 }] }, ctx)).rejects.toThrow(
-      "Parâmetro obrigatório ausente: ref.",
+      "Missing required parameter: ref.",
     )
   })
 
@@ -70,7 +70,7 @@ describe("background/tools/upload", () => {
 
     await expect(
       uploadTools.upload_image({ ref: "ref_1", files: [{ data: huge, name: "grande.bin" }] }, ctx),
-    ).rejects.toThrow("O arquivo grande.bin excede o limite de ~5 MB.")
+    ).rejects.toThrow("File grande.bin exceeds the ~5 MB limit.")
     expect(a11yMock.uploadFiles).not.toHaveBeenCalled()
   })
 
@@ -80,8 +80,8 @@ describe("background/tools/upload", () => {
     await uploadTools.upload_image({ ref: "ref_1", files: [{ data: "YQ==" }, { data: "Yg==", name: "   " }] }, ctx)
 
     expect(a11yMock.uploadFiles).toHaveBeenCalledWith(1, "ref_1", [
-      { data: "YQ==", name: "arquivo-1.bin", mimeType: undefined },
-      { data: "Yg==", name: "arquivo-2.bin", mimeType: undefined },
+      { data: "YQ==", name: "file-1.bin", mimeType: undefined },
+      { data: "Yg==", name: "file-2.bin", mimeType: undefined },
     ])
   })
 
@@ -114,7 +114,7 @@ describe("background/tools/upload", () => {
       ctx,
     )
 
-    expect(result.content).toBe("Upload negado pelo usuário.")
+    expect(result.content).toBe("Upload denied by the user.")
     expect(a11yMock.uploadFiles).not.toHaveBeenCalled()
     expect(ask).toHaveBeenCalledWith({
       kind: "action",
@@ -137,9 +137,9 @@ describe("background/tools/upload", () => {
     expect(a11yMock.uploadFiles).toHaveBeenCalledWith(1, "ref_1", [
       { data: BASE64, name: "foto.png", mimeType: undefined },
     ])
-    expect(result.content).toBe("Arquivo(s) enviados (foto.png) via input de arquivo.")
+    expect(result.content).toBe("File(s) uploaded (foto.png) via file input.")
     expect(result.metadata).toEqual({ ref: "ref_1", count: 1 })
-    expect(indicator).toHaveBeenCalledWith(1, "Enviando arquivo", true)
+    expect(indicator).toHaveBeenCalledWith(1, "Uploading file", true)
     expect(hideIndicator).toHaveBeenCalledWith(1)
   })
 
@@ -149,7 +149,7 @@ describe("background/tools/upload", () => {
 
     const result = await uploadTools.upload_image({ ref: "ref_1", files: [{ data: BASE64, name: "a.png" }] }, ctx)
 
-    expect(result.content).toBe("Arquivo(s) enviados (a.png) via drag & drop.")
+    expect(result.content).toBe("File(s) uploaded (a.png) via drag & drop.")
   })
 
   it("propaga erro do content script", async () => {
@@ -167,7 +167,7 @@ describe("background/tools/upload", () => {
 
     await expect(
       uploadTools.upload_image({ ref: "ref_1", files: [{ data: BASE64, name: "a.png" }] }, ctx),
-    ).rejects.toThrow("Falha ao enviar o arquivo.")
+    ).rejects.toThrow("Failed to send the file.")
   })
 
   it("encaminha a ref de iframe sem alterar", async () => {

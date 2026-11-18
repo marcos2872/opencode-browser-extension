@@ -1,8 +1,14 @@
 import type { OpencodeConfig } from "./types"
+import type { LocalePreference } from "./i18n"
 
 const CONFIG_KEY = "opencode.config"
 const ALLOW_KEY = "permissions.allow"
 const DENY_KEY = "permissions.deny"
+/**
+ * Idioma da interface. Fica fora de `opencode.config` porque o onboarding (e a
+ * página de configurações antes do pareamento) precisa ler e trocar o idioma.
+ */
+const LOCALE_KEY = "ui.locale"
 
 export async function getConfig(): Promise<OpencodeConfig | null> {
   const data = await chrome.storage.local.get(CONFIG_KEY)
@@ -36,4 +42,18 @@ export async function getDenyList(): Promise<string[]> {
 
 export async function setDenyList(hosts: string[]): Promise<void> {
   await chrome.storage.local.set({ [DENY_KEY]: [...new Set(hosts)] })
+}
+
+const LOCALE_VALUES = new Set<LocalePreference>(["auto", "pt-BR", "en"])
+
+export async function getLocalePreference(): Promise<LocalePreference | null> {
+  const data = await chrome.storage.local.get(LOCALE_KEY)
+  const value = data[LOCALE_KEY]
+  return typeof value === "string" && LOCALE_VALUES.has(value as LocalePreference)
+    ? (value as LocalePreference)
+    : null
+}
+
+export async function setLocalePreference(preference: LocalePreference): Promise<void> {
+  await chrome.storage.local.set({ [LOCALE_KEY]: preference })
 }

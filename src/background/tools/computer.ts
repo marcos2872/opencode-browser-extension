@@ -2,6 +2,7 @@ import { clickRef, focusRef, hoverRef, isMainFrameRef, resolveRef, scrollRef } f
 import { withIndicator } from "./tabs"
 import type { ToolContext, ToolMap, ToolResult } from "./types"
 import { num, requireString, truncate } from "./types"
+import { t } from "../../shared/i18n/runtime"
 
 async function resolveTab(args: Record<string, unknown>, ctx: ToolContext): Promise<number> {
   const requested = typeof args.tabId === "number" ? args.tabId : undefined
@@ -40,17 +41,17 @@ async function pointFor(
   const ref = typeof args.ref === "string" ? args.ref : undefined
   if (ref) {
     const element = await resolveRef(tabId, ref)
-    if (!element) throw new Error(`Ref ${ref} não encontrada.`)
+    if (!element) throw new Error(`Ref ${ref} not found.`)
     return { x: element.x ?? 0, y: element.y ?? 0 }
   }
   const coordinate = args.coordinate
   if (Array.isArray(coordinate) && coordinate.length >= 2) {
     const x = Number(coordinate[0])
     const y = Number(coordinate[1])
-    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Coordenada inválida.")
+    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Invalid coordinate.")
     return { x, y }
   }
-  throw new Error("Informe `ref` ou `coordinate`.")
+  throw new Error("Provide `ref` or `coordinate`.")
 }
 
 async function adoptOpenerTabs(ctx: ToolContext, tabId: number): Promise<number[]> {
@@ -85,15 +86,15 @@ export const computerTools: ToolMap = {
       const allowed = await ctx.ask({
         kind: "action",
         tool: "computer",
-        title: "Tirar screenshot",
+        title: t("permission.ask.screenshot"),
         detail: tab?.title,
         url: tab?.url,
       })
-      if (!allowed) return { content: "Screenshot negado pelo usuário." }
+      if (!allowed) return { content: "Screenshot denied by the user." }
       return withIndicator(ctx, tabId, "Capturando screenshot", async () => {
         const data = await ctx.cdp.screenshot(tabId)
         return {
-          content: `Screenshot capturado (${tab?.title ?? "página"}).`,
+          content: `Screenshot captured (${tab?.title ?? "page"}).`,
           images: [{ name: `screenshot-${Date.now()}.png`, mime: "image/png", data }],
         }
       })
@@ -103,11 +104,11 @@ export const computerTools: ToolMap = {
       const allowed = await ctx.ask({
         kind: "action",
         tool: "computer",
-        title: "Capturar região ampliada",
+        title: t("permission.ask.zoom"),
         detail: tab?.title,
         url: tab?.url,
       })
-      if (!allowed) return { content: "Captura negada pelo usuário." }
+      if (!allowed) return { content: "Capture denied by the user." }
       const region = args.region
       let clip: { x: number; y: number; width: number; height: number; scale: number } | undefined
       if (Array.isArray(region) && region.length >= 4) {
@@ -120,10 +121,10 @@ export const computerTools: ToolMap = {
           scale: 2,
         }
       }
-      return withIndicator(ctx, tabId, "Capturando região", async () => {
+      return withIndicator(ctx, tabId, t("activity.capturingRegion"), async () => {
         const data = await ctx.cdp.screenshot(tabId, clip ? { clip } : {})
         return {
-          content: "Região capturada.",
+          content: "Region captured.",
           images: [{ name: `zoom-${Date.now()}.png`, mime: "image/png", data }],
         }
       })
@@ -137,25 +138,25 @@ export const computerTools: ToolMap = {
       url: tab?.url,
       text: typeof args.text === "string" ? args.text.slice(0, 2000) : undefined,
     })
-    if (!allowed) return { content: "Ação negada pelo usuário." }
+    if (!allowed) return { content: "Action denied by the user." }
 
     if (action === "click") {
       const ref = typeof args.ref === "string" ? args.ref : undefined
       if (ref && !isMainFrameRef(ref)) {
-        const result = await withIndicator(ctx, tabId, "Clicando", () => clickRef(tabId, ref))
-        if (!result.ok) throw new Error(result.error ?? "Falha ao clicar no elemento.")
+        const result = await withIndicator(ctx, tabId, t("activity.clickingShort"), () => clickRef(tabId, ref))
+        if (!result.ok) throw new Error(result.error ?? "Failed to click the element.")
         await sleep(200)
         const adopted = await adoptOpenerTabs(ctx, tabId)
         const suffix =
           adopted.length > 0
-            ? `\nA nova aba abriu como Tab ID ${adopted.join(", ")} e entrou no grupo desta sessão.`
+            ? `\nThe new tab opened as Tab ID ${adopted.join(", ")} and joined this session's group.`
             : ""
-        return { content: `Clique em ${ref} (iframe, via eventos de DOM).${suffix}` }
+        return { content: `Clicked ${ref} (iframe, via DOM events).${suffix}` }
       }
       const point = await pointFor(args, ctx, tabId)
       const button = args.button === "right" ? "right" : args.button === "middle" ? "middle" : "left"
       const count = Math.min(Math.max(num(args.click_count) ?? num(args.clickCount) ?? 1, 1), 3)
-      await ctx.indicator(tabId, "Clicando", true)
+      await ctx.indicator(tabId, t("activity.clickingShort"), true)
       await ctx.cursor(tabId, point.x, point.y, { click: true })
       try {
         await ctx.cdp.mouse(tabId, "mouseMoved", point.x, point.y)
@@ -171,7 +172,7 @@ export const computerTools: ToolMap = {
         const fallback = await clickRef(tabId, ref)
         if (!fallback.ok) {
           await ctx.hideIndicator(tabId)
-          throw new Error(fallback.error ?? "Falha ao clicar (DevTools aberto?).", { cause: error })
+          throw new Error(fallback.error ?? "Failed to click (DevTools open?).", { cause: error })
         }
       }
       await sleep(250)
@@ -179,13 +180,13 @@ export const computerTools: ToolMap = {
       await ctx.hideIndicator(tabId)
       const suffix =
         adopted.length > 0
-          ? `\nA nova aba abriu como Tab ID ${adopted.join(", ")} e entrou no grupo desta sessão.`
+          ? `\nThe new tab opened as Tab ID ${adopted.join(", ")} and joined this session's group.`
           : ""
-      return { content: `Clique em (${Math.round(point.x)}, ${Math.round(point.y)}).${suffix}` }
+      return { content: `Clicked (${Math.round(point.x)}, ${Math.round(point.y)}).${suffix}` }
     }
 
     if (action === "hover") {
-      return withIndicator(ctx, tabId, "Passando o mouse", async () => {
+      return withIndicator(ctx, tabId, t("activity.hoveringShort"), async () => {
         const ref = typeof args.ref === "string" ? args.ref : undefined
         if (ref && !isMainFrameRef(ref)) {
           const result = await hoverRef(tabId, ref)
@@ -249,14 +250,14 @@ export const computerTools: ToolMap = {
     if (action === "scroll") {
       const direction = typeof args.scroll_direction === "string" ? args.scroll_direction : "down"
       if (!["up", "down", "left", "right"].includes(direction)) {
-        throw new Error(`Direção de scroll inválida: ${direction}. Use up, down, left ou right.`)
+        throw new Error(`Invalid scroll direction: ${direction}. Use up, down, left or right.`)
       }
       const amount = Math.min(Math.max(num(args.scroll_amount) ?? 600, 50), 5000)
       const ref = typeof args.ref === "string" ? args.ref : undefined
       if (ref && !isMainFrameRef(ref)) {
-        const result = await withIndicator(ctx, tabId, "Rolando", () => scrollRef(tabId, ref))
-        if (!result.ok) throw new Error(result.error ?? "Falha ao rolar até o elemento.")
-        return { content: `Rolou até ${ref} (iframe).` }
+        const result = await withIndicator(ctx, tabId, t("activity.scrollingShort"), () => scrollRef(tabId, ref))
+        if (!result.ok) throw new Error(result.error ?? "Failed to scroll to the element.")
+        return { content: `Scrolled to ${ref} (iframe).` }
       }
       const point =
         typeof args.ref === "string" || Array.isArray(args.coordinate)
@@ -272,10 +273,10 @@ export const computerTools: ToolMap = {
       } finally {
         await ctx.hideIndicator(tabId)
       }
-      return { content: `Scroll ${direction} de ${amount}px.` }
+      return { content: `Scrolled ${direction} by ${amount}px.` }
     }
 
-    throw new Error(`Ação desconhecida: ${action}`)
+    throw new Error(`Unknown action: ${action}`)
   },
 
   async javascript_tool(args, ctx): Promise<ToolResult> {
@@ -285,16 +286,16 @@ export const computerTools: ToolMap = {
     const allowed = await ctx.ask({
       kind: "action",
       tool: "javascript_tool",
-      title: "Executar JavaScript na página",
+      title: t("permission.ask.javascript"),
       detail: tab?.title,
       url: tab?.url,
       text: code.slice(0, 2000),
     })
-    if (!allowed) return { content: "Execução negada pelo usuário." }
-    return withIndicator(ctx, tabId, "Executando JavaScript", async () => {
+    if (!allowed) return { content: "Execution denied by the user." }
+    return withIndicator(ctx, tabId, t("activity.runningJs"), async () => {
       const result = await ctx.cdp.evaluate(tabId, code, { awaitPromise: true, timeoutMs: 10_000 })
       if (result.exception) {
-        return { content: `Erro de execução: ${truncate(result.exception, 5000)}` }
+        return { content: `Execution error: ${truncate(result.exception, 5000)}` }
       }
       const value = result.value
       const text =
@@ -326,7 +327,7 @@ export const computerTools: ToolMap = {
     if (entries.length === 0) {
       return {
         content:
-          "Nenhuma mensagem de console encontrada.\n\nO monitoramento começa quando esta ferramenta é usada; recarregue a página para capturar mensagens do carregamento.",
+          "No console messages found.\n\nMonitoring starts when this tool is used; reload the page to capture loading messages.",
       }
     }
     const slice = entries.slice(-limit)
@@ -334,7 +335,7 @@ export const computerTools: ToolMap = {
       const where = entry.url && entry.lineNumber !== undefined ? ` (${entry.url}:${entry.lineNumber})` : ""
       return `[${index + 1}] [${entry.type.toUpperCase()}]${where}\n${entry.text}`
     })
-    return { content: `Encontradas ${entries.length} mensagem(ns)${entries.length > limit ? ` (mostrando ${limit})` : ""}:\n\n${lines.join("\n\n")}` }
+    return { content: `Found ${entries.length} message(s)${entries.length > limit ? ` (showing ${limit})` : ""}:\n\n${lines.join("\n\n")}` }
   },
 
   async read_network_requests(args, ctx): Promise<ToolResult> {
@@ -351,37 +352,40 @@ export const computerTools: ToolMap = {
     if (entries.length === 0) {
       return {
         content:
-          "Nenhuma requisição encontrada.\n\nO monitoramento começa quando esta ferramenta é usada; recarregue a página para capturar as requisições iniciais.",
+          "No requests found.\n\nMonitoring starts when this tool is used; reload the page to capture the initial requests.",
       }
     }
     const slice = entries.slice(-limit)
     const lines = slice.map(
       (entry, index) => `${index + 1}. url: ${entry.url}\n   method: ${entry.method}\n   statusCode: ${entry.status ?? "pending"}`,
     )
-    return { content: `Encontradas ${entries.length} requisição(ões)${entries.length > limit ? ` (mostrando ${limit})` : ""}:\n\n${lines.join("\n\n")}` }
+    return { content: `Found ${entries.length} request(s)${entries.length > limit ? ` (showing ${limit})` : ""}:\n\n${lines.join("\n\n")}` }
   },
 }
 
 function actionTitle(action: string): string {
   switch (action) {
     case "click":
-      return "Clicar na página"
+      return t("permission.ask.click")
     case "type":
-      return "Digitar na página"
+      return t("permission.ask.type")
     case "key":
-      return "Pressionar tecla"
+      return t("permission.ask.key")
     case "scroll":
-      return "Rolar a página"
+      return t("permission.ask.scroll")
     case "hover":
-      return "Mover o mouse"
+      return t("permission.ask.hover")
     default:
-      return `Ação: ${action}`
+      return t("permission.ask.action", { action })
   }
 }
 
 function actionDetail(args: Record<string, unknown>): string | undefined {
-  if (typeof args.ref === "string") return `Elemento ${args.ref}`
-  if (Array.isArray(args.coordinate)) return `Coordenada ${args.coordinate.slice(0, 2).join(", ")}`
+  if (typeof args.ref === "string") return `Element ${args.ref}`
+  if (Array.isArray(args.coordinate)) {
+    const [x, y] = args.coordinate
+    return t("permission.ask.coordinate", { x: Number(x), y: Number(y) })
+  }
   if (typeof args.keys === "string") return args.keys
   return undefined
 }

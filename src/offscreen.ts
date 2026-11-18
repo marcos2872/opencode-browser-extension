@@ -1,4 +1,5 @@
 import { GIFEncoder, applyPalette, quantize } from "gifenc"
+import { t } from "./shared/i18n/runtime"
 
 // Mantém o service worker acordado enquanto o painel/relay está em uso.
 // Offscreen documents não estão sujeitos ao limite de 30s do MV3.
@@ -85,7 +86,7 @@ async function encodeGif(
     canvas.width = width
     canvas.height = height
     const context = canvas.getContext("2d", { willReadFrequently: true })
-    if (!context) return { error: "Canvas indisponível." }
+    if (!context) return { error: t("offscreen.canvasUnavailable") }
 
     const encoder = GIFEncoder()
     for (const [index, bitmap] of bitmaps.entries()) {

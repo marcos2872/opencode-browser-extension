@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Set permission modes and understand approval requests." />
+<title>Permissions — OpenCode Browser</title>
+<link rel="icon" type="image/png" sizes="48x48" href="../assets/logo-app.png" />
+<link rel="stylesheet" href="../assets/guia.css" />
+<script src="../assets/guia.js"></script>
+</head>
+<body>
+<header>
+  <a class="marca" href="index.html">
+    <img src="../assets/logo-app.png" alt="" width="32" height="32" />
+    <span class="marca-texto">opencode <span>browser</span></span>
+  </a>
+  <details class="menu-paginas">
+    <summary>
+      <span class="icone-menu" aria-hidden="true">☰</span>
+      <span>Pages</span>
+      <span class="indicador-menu" aria-hidden="true">▾</span>
+    </summary>
+    <nav class="lista-paginas" aria-label="Guide pages">
+      <a href="index.html">Overview</a>
+      <a href="instalacao.html">Installation and connection</a>
+      <a href="conversas.html">Conversations and questions</a>
+      <a href="ferramentas.html">Browser tools</a>
+      <a href="abas-e-sessoes.html">Tabs and sessions</a>
+      <a href="permissoes.html" aria-current="page">Permissions</a>
+      <a href="configuracoes.html">Settings</a>
+      <a href="ajuda-e-referencia.html">Help and reference</a>
+    </nav>
+  </details>
+  <a class="link-markdown" href="../../docs/en/guias/guia-do-usuario.md">Markdown</a>
+  <a class="idioma" href="../permissoes.html" hreflang="pt-BR" title="Português">PT</a>
+  <button id="alternar-tema" class="tema" type="button" aria-label="Theme: system" title="Theme: system">
+    <span class="icone" aria-hidden="true">◐</span>
+    <span class="rotulo">system</span>
+  </button>
+</header>
+<div class="layout">
+  <aside aria-label="Page navigation">
+  <div class="grupo">On this page</div>
+  <a class="n2" href="#10-permissoes">10. Permissions</a><a class="n3" href="#modos">Modes</a><a class="n3" href="#o-que-nunca-pede-permissao">What never asks for permission</a><a class="n3" href="#o-card-de-permissao">The permission card</a><a class="n3" href="#tempo-para-responder">Time to answer</a><a class="n3" href="#com-o-painel-fechado">With the panel closed</a><a class="n3" href="#varias-conversas-pedindo-ao-mesmo-tempo">Several conversations asking at the same time</a><a class="n3" href="#listas-de-permitidos-e-bloqueados">Allow and block lists</a>
+</aside>
+  <main id="conteudo" class="pagina pagina-topico">
+  <h1 class="titulo-pagina">Permissions</h1>
+  <h2 id="10-permissoes">10. Permissions</h2>
+<h3 id="modos">Modes</h3>
+<p>In <strong>Settings → Permissions</strong>:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Mode</th><th style="text-align:left">Behavior</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Ask on every site</strong></td><td style="text-align:left">Asks on the first action on each domain</td></tr>
+<tr><td style="text-align:left"><strong>Allow actions automatically (recommended)</strong> (<em>default</em>)</td><td style="text-align:left">Does not ask; respects the block list</td></tr>
+<tr><td style="text-align:left"><strong>Block actions</strong></td><td style="text-align:left">Read-only; no interaction is executed</td></tr></tbody></table></div>
+<h3 id="o-que-nunca-pede-permissao">What never asks for permission</h3>
+<p>Reading and background work: listing tabs, opening a tab, reading the page, finding an element, extracting text, reading the console, reading the network, resizing the window and recording GIF frames. Starting and stopping GIF recording also do not ask.</p>
+<h3 id="o-card-de-permissao">The permission card</h3>
+<p>When an action needs approval, the card appears <strong>over the panel</strong> and shows:</p>
+<ul>
+<li>the host in evidence, with an alert dot;</li>
+<li>what will be done (“Navigate from a.com to b.com”, “Click on the page”, “Fill field ref_3”, “Run JavaScript in the page”…);</li>
+<li>details: tab title, destination URL, value that will be typed (up to 2,000 characters), file names;</li>
+<li>a preview (screenshot) when one exists;</li>
+<li>the conversation name, if the request comes from <strong>another</strong> conversation (“Session: …”).</li>
+</ul>
+<p>The options:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Button</th><th style="text-align:left">Effect</th></tr></thead><tbody><tr><td style="text-align:left"><strong>Allow once</strong> (Enter)</td><td style="text-align:left">This action only</td></tr>
+<tr><td style="text-align:left"><strong>Allow for this session</strong></td><td style="text-align:left">Releases the host for as long as that conversation exists (kept in memory only)</td></tr>
+<tr><td style="text-align:left"><strong>Always allow for example.com</strong></td><td style="text-align:left">Saves the host to the allow list</td></tr>
+<tr><td style="text-align:left"><strong>Deny</strong> (Esc)</td><td style="text-align:left">Refuses the action</td></tr></tbody></table></div>
+<p>Cross-domain navigation and plan requests have their own buttons: <strong>Allow</strong> / <strong>Always allow for …</strong> / <strong>Refuse</strong>, and <strong>Approve plan</strong> / <strong>Refuse</strong>.</p>
+<p>The card's footer reminds you: “You can revoke permissions in Settings. The agent must never buy, create accounts or bypass captchas without your confirmation.”</p>
+<h3 id="tempo-para-responder">Time to answer</h3>
+<p>The default is <strong>60 seconds</strong>. If you do not answer, the action is <strong>denied</strong>. The time can be changed in Settings (30 s, 1 min, 2 min, 5 min).</p>
+<h3 id="com-o-painel-fechado">With the panel closed</h3>
+<p>The request becomes a <strong>system notification</strong> (“OpenCode Browser: pending approval”) and plays a sound alert. Clicking the notification opens the panel with the request already on screen.</p>
+<h3 id="varias-conversas-pedindo-ao-mesmo-tempo">Several conversations asking at the same time</h3>
+<p>Requests go into a <strong>queue</strong>: the one from the conversation you are viewing appears first; once you answer, the next one comes in — with the name of the originating conversation. Nothing is lost or expires hidden, and when you reopen the panel all pending requests reappear.</p>
+<blockquote><p>While a card is open it covers the panel, including when it comes from another conversation. To release it quickly, use <strong>Esc</strong> (deny) or answer it.</p></blockquote>
+<h3 id="listas-de-permitidos-e-bloqueados">Allow and block lists</h3>
+<p>In <strong>Settings → Permissions</strong>:</p>
+<ul>
+<li><strong>Always allowed sites (one per line)</strong></li>
+<li><strong>Always blocked sites (one per line)</strong></li>
+</ul>
+<p>The block list is evaluated <strong>before</strong> everything else: if the host is on the block list, not even the “allow automatically” mode releases it.</p>
+<p><strong>The format is just the host, lowercase, exactly as it appears in the address bar</strong> — no <code>https://</code>, no path, no port and no wildcard:</p>
+<div class="tabela"><table><thead><tr><th style="text-align:left">Entry</th><th style="text-align:left">Works?</th><th style="text-align:left">Why</th></tr></thead><tbody><tr><td style="text-align:left"><code>github.com</code></td><td style="text-align:left">Yes</td><td style="text-align:left">It is the host</td></tr>
+<tr><td style="text-align:left"><code>docs.github.com</code></td><td style="text-align:left">Yes</td><td style="text-align:left">A subdomain is another host (it needs its own line)</td></tr>
+<tr><td style="text-align:left"><code>localhost</code></td><td style="text-align:left">Yes</td><td style="text-align:left">Host without a port</td></tr>
+<tr><td style="text-align:left"><code>https://github.com</code></td><td style="text-align:left">No</td><td style="text-align:left">The scheme is not part of the host</td></tr>
+<tr><td style="text-align:left"><code>github.com/repo</code></td><td style="text-align:left">No</td><td style="text-align:left">A path is not part of the host</td></tr>
+<tr><td style="text-align:left"><code>*.github.com</code></td><td style="text-align:left">No</td><td style="text-align:left">There is no wildcard</td></tr>
+<tr><td style="text-align:left"><code>GitHub.com</code></td><td style="text-align:left">No</td><td style="text-align:left">The comparison is case-sensitive</td></tr></tbody></table></div>
+<p>Each line is compared by equality. Typing <code>https://…</code> does not show an error on screen, but it <strong>has no effect</strong> — it is worth checking after saving.</p>
+</main>
+</div>
+<footer class="rodape">
+  <p>© 2026 Marcos Brito <span aria-hidden="true">·</span> Free software under the <a href="https://github.com/marcos2872/opencode-browser-extension/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> license</p>
+  <a class="link-repositorio" href="https://github.com/marcos2872/opencode-browser-extension" aria-label="OpenCode Browser repository on GitHub" target="_blank" rel="noopener noreferrer">
+    <img class="icone-github icone-github-claro" src="../assets/GitHub_Invertocat_Black.svg" alt="" aria-hidden="true" />
+    <img class="icone-github icone-github-escuro" src="../assets/GitHub_Invertocat_White.svg" alt="" aria-hidden="true" />
+    <span>Repository on GitHub</span>
+  </a>
+</footer>
+</body>
+</html>

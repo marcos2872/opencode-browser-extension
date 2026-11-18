@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import type { CommandInfo } from "../shared/types"
 import { SendIcon, StopIcon } from "../components/icons"
 import { formatCost, formatTokens, type SessionStats } from "./sessionStats"
+import { useI18n } from "../shared/i18n/react"
 
 const MIN_HEIGHT = 22
 const MAX_HEIGHT = 160
@@ -48,6 +49,7 @@ export function Composer({
   onSend,
   onStop,
 }: Props) {
+  const { t, locale } = useI18n()
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -84,14 +86,17 @@ export function Composer({
         .slice(0, 6)
     : []
 
+  const tokens = stats?.contextUsed !== undefined ? formatTokens(stats.contextUsed, locale) : null
   const contextLabel =
-    stats?.contextUsed !== undefined
-      ? stats.percent !== undefined
-        ? `Contexto ${formatTokens(stats.contextUsed)} (${stats.percent}%)`
-        : `Contexto ${formatTokens(stats.contextUsed)} tokens`
-      : null
+    tokens === null
+      ? null
+      : stats?.percent !== undefined
+        ? t("composer.contextPercent", { tokens, percent: stats.percent })
+        : t("composer.contextTokens", { tokens })
   const costLabel =
-    stats?.cost !== undefined ? `Sessão ${formatCost(stats.cost)}` : null
+    stats?.cost !== undefined
+      ? t("composer.sessionCost", { cost: formatCost(stats.cost, locale) })
+      : null
   const statsLabel = [contextLabel, costLabel].filter(Boolean).join(" · ")
 
   return (
@@ -112,12 +117,10 @@ export function Composer({
           value={value}
           rows={1}
           placeholder={
-            busy
-              ? "O agente está trabalhando..."
-              : blockedReason ?? "Peça algo ao OpenCode..."
+            busy ? t("composer.placeholder.busy") : blockedReason ?? t("composer.placeholder.idle")
           }
           disabled={disabled || Boolean(blockedReason)}
-          title={blockedReason ?? "Enter envia · Shift+Enter quebra linha"}
+          title={blockedReason ?? t("composer.hint")}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
@@ -128,7 +131,7 @@ export function Composer({
         />
         <div className="composer-actions">
           {busy ? (
-            <button className="send-btn" onClick={onStop} title="Parar">
+            <button className="send-btn" onClick={onStop} title={t("composer.stop")}>
               <StopIcon size={14} />
             </button>
           ) : (
@@ -136,7 +139,7 @@ export function Composer({
               className="send-btn"
               onClick={onSend}
               disabled={disabled || Boolean(blockedReason) || !value.trim()}
-              title={blockedReason ?? "Enviar (Enter)"}
+              title={blockedReason ?? t("composer.send")}
             >
               <SendIcon size={14} />
             </button>
@@ -146,25 +149,17 @@ export function Composer({
       <div className="composer-hint">
         <span
           className="composer-usage"
-          title={
-            statsLabel
-              ? "Tokens da última requisição / janela do modelo · custo informado pelo OpenCode"
-              : undefined
-          }
+          title={statsLabel ? t("composer.usageHint") : undefined}
         >
-          {statsLabel || "Enter envia · Shift+Enter quebra linha"}
+          {statsLabel || t("composer.hint")}
         </span>
         <span
           className="status"
           role="status"
-          title={
-            relayConnected
-              ? "Plugin do navegador conectado; ferramentas disponíveis"
-              : "Plugin do navegador desconectado; ferramentas indisponíveis"
-          }
+          title={relayConnected ? t("composer.toolsOnHint") : t("composer.toolsOffHint")}
         >
           <span className={`dot ${relayConnected ? "ok" : "warn"}`} />
-          {relayConnected ? "ferramentas conectadas" : "ferramentas offline"}
+          {relayConnected ? t("composer.toolsOn") : t("composer.toolsOff")}
         </span>
       </div>
     </div>

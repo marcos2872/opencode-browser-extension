@@ -34,6 +34,8 @@ describe("plugin: agente do navegador", () => {
     const content = readFileSync(path, "utf8")
     expect(content.startsWith("---\n")).toBe(true)
     expect(content).toContain("mode: primary")
+    // O agente é distribuído em inglês e responde no idioma do usuário.
+    expect(content).toContain("Answer in the same language as the user's message.")
     expect(content).toContain("permissions:\n  - action: \"*\"")
     expect(content).toContain('action: "browser_*"')
     expect(content).toContain("browser_tabs_context")
@@ -60,7 +62,7 @@ describe("plugin: agente do navegador", () => {
     expect(ensureAgentFile(directory)).toBe(path)
 
     const atual = readFileSync(path, "utf8")
-    expect(atual).toContain("<!-- opencode-browser-agent v4 -->")
+    expect(atual).toMatch(/<!-- opencode-browser-agent v\d+ -->/)
     expect(atual).not.toBe(antigo)
     expect(existsSync(`${path}.bak-v1`)).toBe(true)
     expect(readFileSync(`${path}.bak-v1`, "utf8")).toBe(antigo)

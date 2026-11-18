@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { FormAnswer, FormField, FormInfo } from "../shared/types"
 import { CheckIcon, XIcon } from "./icons"
+import { useI18n } from "../shared/i18n/react"
 
 type DraftValue = string | string[] | boolean
 
@@ -73,6 +74,7 @@ function isComplete(fields: FormField[], answer: FormAnswer): boolean {
 }
 
 export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
+  const { t } = useI18n()
   const fields = form.fields.filter((field) => !field.hidden)
   const [draft, setDraft] = useState<Record<string, DraftValue>>(() => initialDraft(fields))
   const [custom, setCustom] = useState<Record<string, string>>({})
@@ -97,7 +99,7 @@ export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
   if (fields.length === 0) return null
 
   return (
-    <div className="form-card" role="group" aria-label={form.title || "Pergunta"}>
+    <div className="form-card" role="group" aria-label={form.title || t("form.question")}>
       {form.title && form.title !== "Questions" ? <h4>{form.title}</h4> : null}
 
       {fields.map((field) => {
@@ -115,7 +117,7 @@ export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
                   disabled={busy}
                   onChange={(event) => setValue(field.key, event.target.checked)}
                 />
-                <span>Sim</span>
+                <span>{t("form.yes")}</span>
               </label>
             ) : null}
 
@@ -148,7 +150,7 @@ export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
                   <input
                     className="form-input"
                     type="text"
-                    placeholder="Outra resposta"
+                    placeholder={t("form.otherAnswer")}
                     value={custom[field.key] ?? ""}
                     disabled={busy}
                     onChange={(event) => {
@@ -194,7 +196,7 @@ export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
                   <input
                     className="form-input"
                     type="text"
-                    placeholder="Outra resposta"
+                    placeholder={t("form.otherAnswer")}
                     value={custom[field.key] ?? ""}
                     disabled={busy}
                     onChange={(event) => setCustomText(field.key, event.target.value)}
@@ -221,11 +223,11 @@ export function FormCard({ form, busy, onSubmit, onCancel }: Props) {
 
       <div className="form-actions">
         <button className="btn primary" disabled={busy || !ready} onClick={() => onSubmit(answer)}>
-          <CheckIcon size={15} /> Responder
+          <CheckIcon size={15} /> {t("form.submit")}
         </button>
         {onCancel ? (
           <button className="btn" disabled={busy} onClick={onCancel}>
-            <XIcon size={15} /> Cancelar
+            <XIcon size={15} /> {t("form.cancel")}
           </button>
         ) : null}
       </div>

@@ -1,5 +1,6 @@
 import type { PermissionDecision, PermissionMode, PermissionRequest } from "../shared/types"
 import { getAllowList, getConfig, getDenyList, setAllowList, setDenyList } from "../shared/storage"
+import { t } from "../shared/i18n/runtime"
 
 const READ_ONLY = new Set([
   "tabs_context",
@@ -179,7 +180,7 @@ export class Permissions {
       .create(`${NOTIFY_PREFIX}${request.id}`, {
         type: "basic",
         iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
-        title: "OpenCode Browser: aprovação pendente",
+        title: t("notify.permissionTitle"),
         message: request.title.slice(0, 180),
       })
       .catch(() => undefined)

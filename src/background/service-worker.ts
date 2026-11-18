@@ -21,7 +21,8 @@ import { uploadTools } from "./tools/upload";
 import { ToolRegistry } from "./tools/registry";
 import { tabsTools } from "./tools/tabs";
 import type { ToolContext } from "./tools/types";
-import { getConfig, setConfig } from "../shared/storage";
+import { getConfig, setConfig } from "../shared/storage"
+import { t, loadLocale, watchLocalePreference } from "../shared/i18n/runtime";
 import { sessionLabel } from "../shared/sessionLabel";
 import {
   PORT_NAME,
@@ -231,7 +232,7 @@ function broadcastNow(): void {
 }
 
 function errorMessage(error: unknown): string {
-  return formatOpencodeError(error) || "Erro inesperado do OpenCode.";
+  return formatOpencodeError(error) || t("background.unexpected");
 }
 
 function setConnection(patch: Partial<ConnectionState>): void {
@@ -312,7 +313,7 @@ function markRunInterrupted(state: SessionState, sessionID: string): void {
   }
   if (message.kind !== "assistant") return;
   message.error =
-    "A conexão com o OpenCode caiu durante a execução. A resposta pode estar incompleta.";
+    t("background.streamDropped");
   message.streaming = false;
   notifySession(sessionID);
 }
@@ -369,7 +370,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
         active: true,
         lastFocusedWindow: true,
       });
-      if (!tab?.id) throw new Error("Nenhuma aba ativa encontrada.");
+      if (!tab?.id) throw new Error(t("background.noActiveTab"));
       const sessionID =
         request.sessionID ?? activeSessionID ?? "default";
       // Falha rápido antes de pedir aprovação (ver ADR 0009: anexar aba de
@@ -379,7 +380,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
         {
           kind: "action",
           tool: "tabs_attach",
-          title: "Dar acesso a esta aba ao agente",
+          title: t("background.attachCurrentTab"),
           detail: tab.title,
           url: tab.url,
         },
@@ -422,7 +423,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await reconnectBackend();
       return { ok: true, snapshot: snapshot() };
     default:
-      return { ok: false, error: "Comando desconhecido." };
+      return { ok: false, error: t("background.unknownCommand") };
   }
 }
 
@@ -567,9 +568,9 @@ async function unpair(): Promise<void> {
 }
 
 async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
-  if (!config) throw new Error("Configure o pareamento primeiro.");
+  if (!config) throw new Error(t("background.configureFirst"));
   const next: OpencodeConfig = { ...config, ...patch };
-  if (!next.baseUrl || !next.token) throw new Error("Configuração inválida.");
+  if (!next.baseUrl || !next.token) throw new Error(t("background.invalidConfig"));
   const connectionChanged =
     next.baseUrl !== config.baseUrl ||
     next.token !== config.token ||
@@ -598,7 +599,7 @@ async function updateSettings(patch: Partial<OpencodeConfig>): Promise<void> {
 }
 
 async function refreshModels(): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   const active = client;
   const listed = await active.listModels();
   if (client !== active) return;
@@ -693,7 +694,7 @@ async function refreshUsage(sessionID: string): Promise<void> {
 }
 
 async function refreshSessions(): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   const active = client;
   const directory = config?.directory;
   const listed = await active.listSessions();
@@ -738,7 +739,7 @@ async function createSession(
   model?: ModelRef,
   agent?: string,
 ): Promise<SessionInfo> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   cancelPendingFollow();
   const chosen = pickModel(model);
   const browserAgent =
@@ -844,7 +845,7 @@ async function respondForm(
   formID: string,
   answer: FormAnswer,
 ): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   await ownedSessions.add(sessionID);
   await client.replyForm(sessionID, formID, answer);
   removeForm(sessionID, formID);
@@ -856,7 +857,7 @@ async function cancelForm(
   formID: string,
   message?: string,
 ): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   await ownedSessions.add(sessionID);
   await client.cancelForm(sessionID, formID, message);
   removeForm(sessionID, formID);
@@ -997,7 +998,7 @@ async function switchModel(
   sessionID?: string,
 ): Promise<void> {
   const target = sessionID ?? activeSessionID;
-  if (!client || !target) throw new Error("Nenhuma sessão ativa.");
+  if (!client || !target) throw new Error(t("background.noActiveSession"));
   await client.switchModel(target, model);
   await ownedSessions.add(target);
   const session = sessions.find((item) => item.id === target);
@@ -1055,12 +1056,12 @@ function handleSendFailure(
 async function targetSession(sessionID?: string): Promise<string> {
   if (sessionID) {
     if (!sessions.some((session) => session.id === sessionID)) {
-      throw new Error("Sessão não encontrada.");
+      throw new Error(t("background.sessionNotFound"));
     }
     return sessionID;
   }
   if (!activeSessionID) await createSession();
-  if (!activeSessionID) throw new Error("Não foi possível criar a sessão.");
+  if (!activeSessionID) throw new Error(t("background.sessionCreateFailed"));
   return activeSessionID;
 }
 
@@ -1069,7 +1070,7 @@ async function runCommand(
   text: string,
   sessionID?: string,
 ): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   const target = await targetSession(sessionID);
   await ownedSessions.add(target);
   const state = stateOf(target);
@@ -1091,7 +1092,7 @@ async function runCommand(
 }
 
 async function switchAgent(agent: string, sessionID?: string): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   const target = sessionID ?? activeSessionID;
   if (target) {
     await client.switchAgent(target, agent);
@@ -1107,7 +1108,7 @@ async function switchAgent(agent: string, sessionID?: string): Promise<void> {
 }
 
 async function sendPrompt(text: string, sessionID?: string): Promise<void> {
-  if (!client) throw new Error("OpenCode não configurado.");
+  if (!client) throw new Error(t("background.notConfigured"));
   const trimmed = text.trim();
   if (!trimmed) return;
   const target = await targetSession(sessionID);
@@ -1223,7 +1224,7 @@ function startSse(resetBackoff = true): void {
         setConnection({
           phase: "offline",
           failure: "stream_closed",
-          detail: "O OpenCode encerrou o stream de eventos.",
+          detail: t("background.streamClosed"),
           attempts: connection.attempts + 1,
         });
       } catch (error) {
@@ -1298,7 +1299,7 @@ async function reconnectBackend(): Promise<void> {
   const stored = await getConfig();
   if (!stored) {
     setConnection({ phase: "unconfigured" });
-    throw new Error("Configure o pareamento primeiro.");
+    throw new Error(t("background.configureFirst"));
   }
   const wasOnline = connection.phase === "online";
   config = stored;
@@ -1368,11 +1369,8 @@ function onOpencodeEvent(event: {
         .create(`oc-form-${form.id}`, {
           type: "basic",
           iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
-          title: "OpenCode Browser",
-          message: (form.title
-            ? `O agente precisa de uma resposta: ${form.title}`
-            : "O agente precisa de uma resposta."
-          ).slice(0, 180),
+          title: t("notify.formTitle"),
+          message: t("notify.formNeedsAnswer", { title: form.title }).slice(0, 180),
         })
         .catch(() => undefined);
     }
@@ -1600,8 +1598,11 @@ function onOpencodeEvent(event: {
       const attempt =
         typeof data.attempt === "number" ? data.attempt : undefined;
       const reason =
-        typeof data.message === "string" ? data.message : "erro temporário";
-      state.statusMessage = `Tentando novamente${attempt ? ` (tentativa ${attempt})` : ""}: ${reason}`;
+        typeof data.message === "string" ? data.message : t("background.temporaryError");
+      state.statusMessage = t("background.retrying", {
+          attempt: attempt ? ` (tentativa ${attempt})` : "",
+          reason,
+        });
       notifySession(sessionID);
       break;
     }
@@ -1621,8 +1622,8 @@ function onOpencodeEvent(event: {
             .create(`oc-${Date.now()}`, {
               type: "basic",
               iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
-              title: "OpenCode Browser",
-              message: `Concluído: ${title}`.slice(0, 180),
+              title: t("notify.formTitle"),
+              message: t("notify.done", { session: title }).slice(0, 180),
             })
             .catch(() => undefined);
         }
@@ -1682,7 +1683,7 @@ function markSessionError(
   const detail = formatOpencodeError(error);
   if (detail) message.error = detail;
   else if (!message.error) {
-    message.error = "A execução falhou no OpenCode sem detalhes adicionais.";
+    message.error = t("background.executionFailed");
   }
   message.streaming = false;
   if (sessionID !== activeSessionID) markUnread(sessionID);
@@ -1822,15 +1823,17 @@ async function executeRelayTool(
             `${item.ref} | ${item.role} | ${item.name}${item.type ? ` | ${item.type}` : ""}`,
         )
         .join("\n");
+      // Lido pelo modelo, não pelo usuário: inglês fixo, como as descrições
+      // das tools.
       const prompt = [
-        "Você escolhe elementos de uma página web para uma consulta.",
-        `Consulta: ${query}`,
+        "You pick elements of a web page for a query.",
+        `Query: ${query}`,
         "",
-        "Elementos (ref | role | nome | tipo):",
+        "Elements (ref | role | name | type):",
         list,
         "",
-        "Responda SOMENTE com os refs mais relevantes, um por linha, no máximo 10, do mais relevante ao menos.",
-        "Se nenhum servir, responda NENHUM.",
+        "Answer ONLY with the most relevant refs, one per line, at most 10, from most to least relevant.",
+        "If none fit, answer NONE.",
       ].join("\n");
       try {
         const text = await client.generate(prompt, model);
@@ -1933,7 +1936,7 @@ async function updateBadge(): Promise<void> {
     if (!config) {
       await chrome.action.setBadgeText({ text: "!" });
       await chrome.action.setTitle({
-        title: "OpenCode Browser: configure o pareamento",
+        title: t("badge.configurePairing"),
       });
     } else {
       const unread = sessionStates
@@ -1944,9 +1947,7 @@ async function updateBadge(): Promise<void> {
         text: unread ? String(Math.min(unread, 9)) : "",
       });
       await chrome.action.setTitle({
-        title: unread
-          ? `OpenCode Browser: ${unread} conversa${unread > 1 ? "s" : ""} com novidade`
-          : "OpenCode Browser",
+        title: unread ? t("badge.unread", { count: unread }) : t("notify.formTitle"),
       });
     }
   } catch {
@@ -2175,10 +2176,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if ("permissions.allow" in changes || "permissions.deny" in changes) {
     void permissions.init();
   }
+  // O idioma pode ter mudado em outra página (Configurações): atualiza badge e
+  // título do ícone, que foram escritos no idioma anterior.
+  if ("ui.locale" in changes) {
+    void loadLocale().then(() => updateBadge()).catch(() => undefined);
+  }
 });
+watchLocalePreference();
 
 async function init(): Promise<void> {
   try {
+    // Primeiro de tudo: notificações, badge e erros usam o idioma desde já.
+    await loadLocale().catch(() => undefined);
     await ownedSessions.init();
     await permissions.init();
     // A limpeza mexe em abas: nunca durante uma execução do agente.

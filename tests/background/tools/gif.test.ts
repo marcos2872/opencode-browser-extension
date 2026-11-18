@@ -36,7 +36,7 @@ describe("background/tools/gif", () => {
       expect(recording.count).toBe(1)
       expect(tabs.resolveTab).toHaveBeenCalledWith("ses_test")
       expect(cdp.screenshot).toHaveBeenCalledWith(1)
-      expect(result.content).toBe("Gravação iniciada. Cada ação do agente gera um quadro (máx. 30).")
+      expect(result.content).toBe("Recording started. Each agent action adds a frame (max 30).")
     })
   })
 
@@ -49,7 +49,7 @@ describe("background/tools/gif", () => {
       const result = await tools.gif_creator({ action: "stop" }, ctx)
 
       expect(recording.active).toBe(false)
-      expect(result.content).toBe("Gravação parada (2 quadro(s)). Use action=export para gerar o GIF.")
+      expect(result.content).toBe("Recording stopped (2 frame(s)). Use action=export to generate the GIF.")
     })
   })
 
@@ -60,7 +60,7 @@ describe("background/tools/gif", () => {
       const { ctx } = makeToolContext()
 
       await expect(tools.gif_creator({ action: "export" }, ctx)).rejects.toThrow(
-        "Nenhum quadro gravado. Use action=start antes de navegar/interagir.",
+        "No frames recorded. Use action=start before navigating/interacting.",
       )
       expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
     })
@@ -77,10 +77,10 @@ describe("background/tools/gif", () => {
         kind: "action",
         tool: "gif_creator",
         title: "Exportar GIF da gravação",
-        detail: "1 quadros",
+        detail: "1 frames",
         url: "https://example.com/",
       })
-      expect(result.content).toBe("Exportação negada pelo usuário.")
+      expect(result.content).toBe("Export denied by the user.")
       expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
       expect(recording.count).toBe(1)
     })
@@ -102,7 +102,7 @@ describe("background/tools/gif", () => {
       chrome.runtime.sendMessage.mockResolvedValue(undefined)
 
       await expect(tools.gif_creator({ action: "export" }, ctx)).rejects.toThrow(
-        "Falha ao gerar o GIF (offscreen indisponível).",
+        "Failed to generate the GIF (offscreen unavailable).",
       )
     })
 
@@ -136,7 +136,7 @@ describe("background/tools/gif", () => {
         },
       ])
       expect(result.metadata).toMatchObject({ frames: 2 })
-      expect(result.content).toContain("GIF gerado (2 quadros")
+      expect(result.content).toContain("GIF generated (2 frames")
       expect(recording.count).toBe(0)
     })
 
@@ -184,7 +184,7 @@ describe("background/tools/gif", () => {
     const { ctx } = makeToolContext()
 
     await expect(tools.gif_creator({ action: "pause" }, ctx)).rejects.toThrow(
-      "Ação desconhecida: pause. Use start, stop ou export.",
+      "Unknown action: pause. Use start, stop or export.",
     )
   })
 
@@ -193,6 +193,6 @@ describe("background/tools/gif", () => {
     const tools = gifTools(recording)
     const { ctx } = makeToolContext()
 
-    await expect(tools.gif_creator({}, ctx)).rejects.toThrow("Parâmetro obrigatório ausente: action.")
+    await expect(tools.gif_creator({}, ctx)).rejects.toThrow("Missing required parameter: action.")
   })
 })

@@ -5,6 +5,7 @@ import { PendingFormCard, ToolCard, questionToolID } from "./ToolCard"
 import { activityText } from "./toolActivity"
 import { normalizeToolName } from "./toolNames"
 import { ToolRun, ToolsModal } from "./ToolsModal"
+import { useI18n } from "../shared/i18n/react"
 
 export type ToolDisplay = "grouped" | "rows" | "full" | "hidden"
 
@@ -27,12 +28,7 @@ interface Props {
   toolDisplay?: ToolDisplay
 }
 
-const SUGGESTIONS = [
-  "Abra o Hacker News e resuma as 5 principais notícias de hoje.",
-  "Leia a página atual, encontre o formulário de contato e preencha com dados de teste.",
-  "Investigue os erros do console e as requisições de rede desta página.",
-  "Pesquise o preço de um produto em três lojas e compare em uma tabela.",
-]
+
 
 /** Índice da primeira mensagem de assistente do run que contém `index`. */function runStartIndex(messages: ChatMessage[], index: number): number {
   let start = index
@@ -54,9 +50,16 @@ function collectRunTools(messages: ChatMessage[]): Map<number, ToolCallView[]> {
 }
 
 export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormID, onFormSubmit, onFormCancel, toolDisplay = "grouped" }: Props) {
+  const { t, locale } = useI18n()
   const [openRunID, setOpenRunID] = useState<string | null>(null)
   const hidden = toolDisplay === "hidden"
-  const activity = hidden ? activityText(messages) : "aguardando o OpenCode"
+  const activity = hidden ? activityText(messages, locale) : t("app.waiting")
+  const suggestions = [
+    t("chat.suggestion.news"),
+    t("chat.suggestion.form"),
+    t("chat.suggestion.console"),
+    t("chat.suggestion.price"),
+  ]
   const runTools = collectRunTools(messages)
   const hiddenRuns = new Map<number, HiddenRun>()
   if (hidden) {
@@ -99,13 +102,10 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
     return (
       <div className="chat">
         <div className="empty">
-          <h2>Seu navegador, com os modelos do OpenCode</h2>
-          <p>
-            O agente roda na sua máquina e ganha um grupo de abas isolado para navegar, ler e
-            interagir. Cada ação sensível pede sua permissão.
-          </p>
+          <h2>{t("chat.empty.title")}</h2>
+          <p>{t("chat.empty.body")}</p>
           <div className="suggestions">
-            {SUGGESTIONS.map((suggestion) => (
+            {suggestions.map((suggestion) => (
               <button className="suggestion" key={suggestion} onClick={() => onSuggestion(suggestion)}>
                 {suggestion}
               </button>
@@ -115,7 +115,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
             <div className="thinking">
               <span />
               <span />
-              <span /> pensando
+              <span /> {t("app.thinking")}
             </div>
           ) : null}
           <div ref={bottomRef} />
@@ -216,7 +216,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
               ) : null}
               {message.reasoning ? (
                 <details className="reasoning">
-                  <summary>Raciocínio</summary>
+                  <summary>{t("chat.reasoning")}</summary>
                   <div>{message.reasoning}</div>
                 </details>
               ) : null}
@@ -237,7 +237,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
                 <div className="thinking">
                   <span />
                   <span />
-                  <span /> trabalhando
+                  <span /> {t("app.working")}
                 </div>
               ) : null}
               {showGroupedTools ? (
@@ -283,7 +283,7 @@ export function Chat({ messages, busy, onSuggestion, bottomRef, forms, busyFormI
       {!hidden && openRunID && openTools.length ? (
         <ToolsModal
           tools={openTools}
-          title="Ferramentas desta execução"
+          title={t("tool.modalTitle")}
           onClose={() => setOpenRunID(null)}
         />
       ) : null}

@@ -17,28 +17,28 @@ export class ToolRegistry {
   }
 
   async run(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
-    if (ctx.signal.aborted) throw new Error("Execução interrompida pelo usuário.")
+    if (ctx.signal.aborted) throw new Error("Execution interrupted by the user.")
     const normalized = name.replace(/^browser_/, "")
     if (normalized === "browser_batch" || normalized === "batch") {
       return this.batch(args, ctx)
     }
     const handler = this.tools.get(normalized)
-    if (!handler) throw new Error(`Ferramenta desconhecida: ${name}.`)
+    if (!handler) throw new Error(`Unknown tool: ${name}.`)
     return handler(args, ctx)
   }
 
   private async batch(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
     const actions = Array.isArray(args.actions) ? args.actions : []
-    if (actions.length === 0) throw new Error("browser_batch exige `actions`.")
-    if (actions.length > 20) throw new Error("browser_batch aceita no máximo 20 ações.")
+    if (actions.length === 0) throw new Error("browser_batch requires `actions`.")
+    if (actions.length > 20) throw new Error("browser_batch accepts at most 20 actions.")
     const results: Array<{ index: number; name: string; ok: boolean; output?: string; error?: string }> = []
     for (const [index, raw] of actions.entries()) {
       if (ctx.signal.aborted) {
-        results.push({ index, name: "?", ok: false, error: "Interrompido pelo usuário." })
+        results.push({ index, name: "?", ok: false, error: "Interrupted by the user." })
         break
       }
       if (!raw || typeof raw !== "object") {
-        results.push({ index, name: "?", ok: false, error: "Ação inválida." })
+        results.push({ index, name: "?", ok: false, error: "Invalid action." })
         continue
       }
       const item = raw as { name?: unknown; input?: unknown }
@@ -48,7 +48,7 @@ export class ToolRegistry {
           ? (item.input as Record<string, unknown>)
           : {}
       if (!name || name === "browser_batch" || name === "batch") {
-        results.push({ index, name, ok: false, error: "Nome de ação inválido." })
+        results.push({ index, name, ok: false, error: "Invalid action name." })
         continue
       }
       try {
