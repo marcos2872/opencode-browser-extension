@@ -67,11 +67,10 @@ Sent with `chrome.runtime.sendMessage` (pages → SW) and through a `Port` named
 | `unpair`              | —                       | Removes the token and resets the state |
 | `models:refresh`      | —                       | Reloads the catalog                    |
 | `sessions:list`       | —                       | Reloads the sessions                   |
-| `session:new`         | `model?`, `agent?`, `windowId?` | Creates a session; `windowId` defines where the automatic group is born |
+| `session:new`         | `model?`, `windowId?` | Creates a session with the fixed browser agent; `windowId` defines where the automatic group is born |
 | `session:select`      | `id`                    | Selects and hydrates                   |
 | `session:delete`      | `id`                    | Removes the session                    |
 | `session:model`       | `model`, `sessionID?`   | Changes the session model              |
-| `session:agent`       | `agent`, `sessionID?`   | Changes the session agent              |
 | `tabs:attach-current` | `sessionID?`            | Attaches the active tab to the group (refuses a tab from another window) |
 | `tabs:list`           | `sessionID`             | Lists tabs in the session context      |
 | `tabs:detach`         | `sessionID`, `tabID`    | Removes the tab from the context without closing it |

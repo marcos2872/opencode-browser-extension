@@ -31,6 +31,7 @@ export const pt = {
   "app.status.offline": "offline",
   "app.status.connecting": "conectando",
   "app.status.unknown": "...",
+  "app.status.api": (p: { status: string }) => `API: ${p.status}`,
   "app.apiTitle": (p: { status: string; detail?: string }) =>
     p.detail ? `API do OpenCode: ${p.status} — ${p.detail}` : `API do OpenCode: ${p.status}`,
   "app.offline.startServer": "OpenCode offline — inicie o servidor para enviar",
@@ -98,6 +99,7 @@ export const pt = {
   // ----------------------------------------------------------------- composer
   "composer.placeholder.busy": "O agente está trabalhando...",
   "composer.placeholder.idle": "Peça algo ao OpenCode...",
+  "composer.inputLabel": "Mensagem para o agente",
   "composer.hint": "Enter envia · Shift+Enter quebra linha",
   "composer.send": "Enviar (Enter)",
   "composer.stop": "Parar",
@@ -130,6 +132,8 @@ export const pt = {
   "banner.unreachable.title": "O OpenCode não está respondendo",
   "banner.unreachable.detail":
     "Inicie o OpenCode no terminal com `opencode serve` e clique em Tentar novamente.",
+  "banner.toolsOffline.title": "Ferramentas do navegador desconectadas",
+  "banner.reconnectPlugin": "Reconectar plugin",
 
   // ----------------------------------------------------------- relay (plugin)
   "relay.connected": "Plugin conectado",
@@ -250,6 +254,7 @@ export const pt = {
   "permission.allowAlwaysDomain": (p: { domain: string }) =>
     `Permitir sempre para ${p.domain}`,
   "permission.allowOnce": "Permitir uma vez",
+  "permission.scopeLabel": "Permissões mais amplas",
   "permission.allowSession": "Permitir nesta sessão",
   "permission.allowAlways": (p: { host: string }) =>
     `Permitir sempre para ${p.host || "este site"}`,
@@ -297,11 +302,22 @@ export const pt = {
   "options.openPanel": "Abrir painel",
   "options.lead":
     "Configurações da extensão que conecta o Chrome aos modelos do OpenCode local.",
+  "options.navigation": "Seções de configuração",
+  "options.sessions": "Sessões e modelo",
+  "options.behavior": "Comportamento",
+  "options.chat": "Chat e ferramentas",
+  "options.unsaved": "Há alterações não salvas",
+  "options.savedStatus": "Tudo salvo",
+  "options.discard": "Descartar",
+  "options.saveChanges": "Salvar alterações",
+  "options.saving": "Salvando…",
+  "options.saveListsFailed": (p: { detail: string }) =>
+    `As configurações foram salvas, mas as listas de sites não. Tente salvar novamente. ${p.detail}`,
   "options.language.title": "Idioma",
   "options.language.label": "Idioma da interface",
   "options.language.auto": "Automático (idioma do navegador)",
   "options.language.hint":
-    "Vale para o painel, as configurações, o aviso na página e as notificações. As respostas do agente seguem o idioma da sua mensagem.",
+    "Vale para o painel, as configurações, o aviso na página e as notificações. Salva automaticamente; as respostas do agente seguem o idioma da sua mensagem.",
   "options.connection": "Conexão",
   "options.api": (p: { state: string }) => `API: ${p.state}`,
   "options.apiUnconfigured": "não configurada",
@@ -329,9 +345,6 @@ export const pt = {
   "options.defaultModel": "Modelo padrão",
   "options.defaultModelHint":
     "Usado ao criar novas sessões. Você pode trocar por conversa no seletor do painel.",
-  "options.defaultAgentTitle": "Agente padrão",
-  "options.browserAgentDefault":
-    "Usar o agente `opencode-browser` nas novas sessões (desligue para usar o agente selecionado acima)",
   "options.followGroups":
     "Mostrar no painel a conversa do grupo de abas que está em foco (cada sessão fica atrelada ao seu grupo)",
   "options.autoGroup":
@@ -343,8 +356,10 @@ export const pt = {
     "Ações que mudam a página (clicar, digitar, navegar, executar JS) seguem o modo abaixo. Leitura de página, console e rede é liberada.",
   "options.mode.ask": "Perguntar a cada site",
   "options.mode.askHint": "Pede na primeira ação em cada domínio.",
-  "options.mode.allow": "Permitir ações automaticamente (recomendado)",
+  "options.mode.allow": "Permitir ações automaticamente",
   "options.mode.allowHint": "Não pergunta; usa a lista de bloqueio abaixo.",
+  "options.mode.allowWarning":
+    "As ações no site serão executadas sem pedir confirmação. Evite este modo em sites sensíveis.",
   "options.mode.deny": "Bloquear ações",
   "options.mode.denyHint": "Só leitura; nenhuma interação é executada.",
   "options.timeout": "Tempo para responder a um pedido:",
@@ -370,8 +385,7 @@ export const pt = {
     "No modo agrupado, uma linha resume a execução e abre a lista completa de tools; só a ferramenta em execução fica no chat. Em “Ocultar”, o raciocínio e as tools somem e só aparece o indicador de trabalho; perguntas do agente continuam visíveis.",
   "options.allowList": "Sites sempre permitidos (um por linha)",
   "options.denyList": "Sites sempre bloqueados (um por linha)",
-  "options.savePermissions": "Salvar permissões",
-  "options.saved": "Permissões salvas.",
+  "options.saved": "Configurações salvas.",
   "options.browserTools": "Ferramentas do navegador",
   "options.browserToolsHint":
     "Expostas ao OpenCode pelo plugin `browser-relay` (namespace `browser`). O agente só vê abas do grupo criado para a sessão.",
@@ -414,6 +428,8 @@ export const pt = {
   "badge.unread": (p: { count: number }) =>
     `OpenCode Browser: ${p.count} conversa${p.count > 1 ? "s" : ""} com novidade`,
   "background.notConfigured": "OpenCode não configurado.",
+  "background.browserAgentUnavailable":
+    "O agente OpenCode Browser não está disponível. Reconecte o plugin e tente novamente.",
   "background.configureFirst": "Configure o pareamento primeiro.",
   "background.invalidConfig": "Configuração inválida.",
   "background.noActiveSession": "Nenhuma sessão ativa.",

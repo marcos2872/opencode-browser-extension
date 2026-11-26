@@ -568,12 +568,14 @@ describe("OpencodeClient.createSession", () => {
     expect(headers.authorization).toBe(expectedAuth());
   });
 
-  it("envia body vazio sem model/agent/directory", async () => {
+  it("envia o agente quando não há model ou directory", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ data: makeSession() }));
 
-    await makeClient().createSession();
+    await makeClient().createSession(undefined, "opencode-browser");
 
-    expect(JSON.parse(lastCall().init.body as string)).toEqual({});
+    expect(JSON.parse(lastCall().init.body as string)).toEqual({
+      agent: "opencode-browser",
+    });
     expect(new URL(lastCall().url).searchParams.has("directory")).toBe(false);
   });
 
@@ -585,7 +587,9 @@ describe("OpencodeClient.createSession", () => {
       { data: { title: "sem id" } },
     ]) {
       fetchMock.mockResolvedValue(jsonResponse(payload));
-      await expect(makeClient().createSession()).rejects.toThrow(
+      await expect(
+        makeClient().createSession(undefined, "opencode-browser"),
+      ).rejects.toThrow(
         /Sessão criada sem id/,
       );
     }
@@ -617,21 +621,6 @@ describe("OpencodeClient.switchModel", () => {
     expect(init.method).toBe("POST");
     expect(new URL(url).pathname).toBe("/api/session/ses_1/model");
     expect(JSON.parse(init.body as string)).toEqual({ model });
-  });
-});
-
-describe("OpencodeClient.switchAgent", () => {
-  it("faz POST com o agent no body", async () => {
-    fetchMock.mockResolvedValue(response({ status: 204 }));
-
-    await expect(
-      makeClient().switchAgent("ses_1", "plan"),
-    ).resolves.toBeUndefined();
-
-    const { url, init } = lastCall();
-    expect(init.method).toBe("POST");
-    expect(new URL(url).pathname).toBe("/api/session/ses_1/agent");
-    expect(JSON.parse(init.body as string)).toEqual({ agent: "plan" });
   });
 });
 

@@ -112,7 +112,7 @@ prompt, interrupção, contexto, geração stateless) e assinatura do SSE.
 | `listModels()` / `defaultModel()` | catálogo |
 | `listAgents()` / `listCommands()` | agentes e comandos |
 | `listSessions()` / `createSession()` / `deleteSession()` | sessões |
-| `switchModel()` / `switchAgent()` | troca em sessão |
+| `switchModel()` | troca de modelo em sessão |
 | `context()` / `prompt()` / `runCommand()` / `interrupt()` | conversa |
 | `generate(prompt, model?)` | texto stateless |
 | `subscribe(onEvent, signal)` | stream SSE |

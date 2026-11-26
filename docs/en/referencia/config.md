@@ -11,17 +11,18 @@ or on the options page.
 | `token` | Pairing token | string | — | Yes | Basic header |
 | `directory` | Extension conversations folder (session location) | string | announced by the plugin (`~/.opencode-browser-extensions`) | No | `?directory=` and `session.create` |
 | `defaultModel` | Default model | ModelRef | server default model | No | Session creation |
-| `defaultAgent` | Default agent | string | `build` | No | Session creation |
 | `permissionMode` | Permission mode | `ask` \| `allow` \| `deny` | `allow` | Yes | Permissions |
 | `permissionTimeoutMs` | Prompt timeout | number | `60000` | No | Permissions |
 | `findMode` | `find` ranking | `heuristic` \| `model` | `heuristic` | No | `tools/page.ts` |
 | `soundEnabled` | Notification sound | boolean | `true` | No | Offscreen |
 | `notifyEnabled` | System notification | boolean | `true` | No | `chrome.notifications` |
 | `toolDisplay` | How tools appear in the chat (`grouped`, `rows`, `full`, `hidden`) | string | `grouped` | No | `sidepanel/Chat` |
-| `browserAgentDefault` | Uses the `opencode-browser` agent in new sessions | boolean | `true` | No | `service-worker` |
 | `bringTabsToFront` | Lets agent actions activate tabs/windows (stealing focus) | boolean | `false` | No | `background/focus.ts` |
 | `followTabGroups` | Shows the session of the focused tab group in the panel | boolean | `true` | No | `service-worker` |
 | `autoGroupNewSessions` | Creates a tab group (with a background tab) when starting a conversation | boolean | `false` | No | `service-worker` |
+
+The extension always uses the `opencode-browser` agent for new sessions.
+Existing conversations are unchanged; the panel selector controls only the model.
 
 ### Permission modes
 

@@ -145,7 +145,7 @@ Requests permission for new domains (a transition card when the host changes).
 | `ref` | string | No | Ref from `read_page`/`find` |
 | `coordinate` | [number, number] | No | Viewport coordinate |
 | `text` | string | No | Text for `type` |
-| `keys` | string | No | Combination for `key` (e.g. `Ctrl+A`) |
+| `keys` | string | No | Key or combination for `keyDown`/`keyUp` events; does not insert text (e.g. `Enter`, `Ctrl+A`, `!`) |
 | `submit` | boolean | No | Presses Enter after typing |
 | `click_count` | number | No | 1–3 clicks |
 | `button` | `left` \| `right` \| `middle` | No | Mouse button |
@@ -163,6 +163,11 @@ such as the requirements map.
 
 Clicks and typing use trusted events through CDP. Iframe refs use DOM events.
 With DevTools open, click/hover fall back to DOM events when there is a ref.
+
+`action: "key"` sends `keyDown`/`keyUp` events; use `action: "type"` to insert
+text into a field, including symbols. For key events, pass layout-dependent
+symbols literally (for example, `!`) instead of asking for a physical chord such
+as `Shift+1`. The keyboard layout is not inferred.
 
 ### `browser_form_input`
 
@@ -201,7 +206,7 @@ Runs in the page context with a 10 s timeout and output limited to 50 KB.
 
 Shows an approval card. Approved domains are added to the session allowlist.
 
-### `browser_browser_batch`
+### `browser_batch`
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|

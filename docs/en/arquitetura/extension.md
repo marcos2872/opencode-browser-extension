@@ -112,17 +112,16 @@ options, it takes precedence. Sessions without a `location` remain visible
 (defensive).
 
 In the global OpenCode configuration (`~/.config/opencode/agents/`), the plugin
-ensures the `opencode-browser` agent from the
+ensures the restricted `opencode-browser` agent from the
 `plugin/opencode-browser.agent.md` template. The file is updated by version
-(`<!-- opencode-browser-agent vN -->`): an older version is replaced with a
-`.bak-vN` backup; a file without the marker or already at the current version is
-preserved. The current template is **v5** (security, extension environment,
-tabs by origin and context economy). When the server lists that agent, new
-sessions start using it (`browserAgentDefault`, on by default; turning it off in
-the options goes back to using the chosen default agent). It restricts tools to
-`browser_*` and `question` — the agent does not read files, run commands or
-access machine data. Being global, it appears in every OpenCode project, not
-only in extension conversations.
+(`<!-- opencode-browser-agent vN -->`), and an older version gets a `.bak-vN`
+backup. The current template is **v6**: it keeps the security boundaries and
+allows loading the `browser-relay` skill, whose detailed workflow is installed
+in `~/.config/opencode/skills/`. The agent cannot read files, run commands or
+access machine data outside pages. New extension sessions always use this agent;
+existing sessions are not changed. The panel lets users change the model, not
+the agent. Because it is global, the agent also appears in projects opened
+directly in OpenCode.
 
 ### Tab groups
 

@@ -21,6 +21,32 @@ const MODIFIERS: Record<string, number> = {
   shift: 8,
 }
 
+type KeyDetails = {
+  key: string
+  code: string
+  windowsVirtualKeyCode?: number
+}
+
+const NAMED_KEYS: Record<string, KeyDetails> = {
+  enter: { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 },
+  tab: { key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 },
+  escape: { key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 },
+  esc: { key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 },
+  backspace: { key: "Backspace", code: "Backspace", windowsVirtualKeyCode: 8 },
+  delete: { key: "Delete", code: "Delete", windowsVirtualKeyCode: 46 },
+  del: { key: "Delete", code: "Delete", windowsVirtualKeyCode: 46 },
+  home: { key: "Home", code: "Home", windowsVirtualKeyCode: 36 },
+  end: { key: "End", code: "End", windowsVirtualKeyCode: 35 },
+  pageup: { key: "PageUp", code: "PageUp", windowsVirtualKeyCode: 33 },
+  pagedown: { key: "PageDown", code: "PageDown", windowsVirtualKeyCode: 34 },
+  insert: { key: "Insert", code: "Insert", windowsVirtualKeyCode: 45 },
+  arrowleft: { key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 },
+  arrowup: { key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 },
+  arrowright: { key: "ArrowRight", code: "ArrowRight", windowsVirtualKeyCode: 39 },
+  arrowdown: { key: "ArrowDown", code: "ArrowDown", windowsVirtualKeyCode: 40 },
+  space: { key: " ", code: "Space", windowsVirtualKeyCode: 32 },
+}
+
 function parseKey(input: string): { key: string; modifiers: number } {
   const parts = input.split("+").map((part) => part.trim()).filter(Boolean)
   let modifiers = 0
@@ -31,6 +57,39 @@ function parseKey(input: string): { key: string; modifiers: number } {
     else keys.push(part)
   }
   return { key: keys.at(-1) ?? input, modifiers }
+}
+
+function keyDetails(key: string, modifiers: number): KeyDetails {
+  const letter = /^[a-z]$/i.test(key) ? key.toUpperCase() : undefined
+  if (letter) {
+    const shifted = (modifiers & MODIFIERS.shift) !== 0
+    return {
+      key: shifted ? letter : letter.toLowerCase(),
+      code: `Key${letter}`,
+      windowsVirtualKeyCode: letter.charCodeAt(0),
+    }
+  }
+
+  if (/^[0-9]$/.test(key)) {
+    if ((modifiers & MODIFIERS.shift) !== 0) {
+      throw new Error(
+        `Cannot infer the shifted character for ${key} without the keyboard layout. Pass the intended symbol directly (for example, "!") instead of "Shift+${key}".`,
+      )
+    }
+    return { key, code: `Digit${key}`, windowsVirtualKeyCode: key.charCodeAt(0) }
+  }
+
+  const named = NAMED_KEYS[key.toLowerCase()]
+  if (named) return named
+
+  const functionKey = /^F([1-9]|1[0-2])$/i.exec(key)
+  if (functionKey) {
+    const normalized = `F${functionKey[1]}`
+    return { key: normalized, code: normalized, windowsVirtualKeyCode: 111 + Number(functionKey[1]) }
+  }
+
+  // Símbolos são valores lógicos; sem o layout não inventamos um código físico.
+  return { key, code: "" }
 }
 
 async function pointFor(
@@ -240,8 +299,10 @@ export const computerTools: ToolMap = {
     if (action === "key") {
       const raw = requireString(args, "keys")
       const { key, modifiers } = parseKey(raw)
-      await ctx.cdp.key(tabId, "keyDown", key, { modifiers, code: key })
-      await ctx.cdp.key(tabId, "keyUp", key, { modifiers, code: key })
+      const details = keyDetails(key, modifiers)
+      const options = { code: details.code, windowsVirtualKeyCode: details.windowsVirtualKeyCode, modifiers }
+      await ctx.cdp.key(tabId, "keyDown", details.key, options)
+      await ctx.cdp.key(tabId, "keyUp", details.key, options)
       await sleep(150)
       await adoptOpenerTabs(ctx, tabId)
       return { content: `Tecla ${raw} pressionada.` }

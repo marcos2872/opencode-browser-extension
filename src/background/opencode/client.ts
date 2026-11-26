@@ -277,13 +277,6 @@ export class OpencodeClient {
     });
   }
 
-  async switchAgent(id: string, agent: string): Promise<void> {
-    await this.request<void>(`/api/session/${encodeURIComponent(id)}/agent`, {
-      method: "POST",
-      body: JSON.stringify({ agent }),
-    });
-  }
-
   async generate(prompt: string, model?: ModelRef): Promise<string> {
     const payload = await this.request<{ data?: { text?: string } }>(
       "/api/experimental/generate",
@@ -328,10 +321,10 @@ export class OpencodeClient {
     return best?.usage;
   }
 
-  async createSession(model?: ModelRef, agent?: string): Promise<SessionInfo> {
+  async createSession(model: ModelRef | undefined, agent: string): Promise<SessionInfo> {
     const body: Record<string, unknown> = {};
     if (model) body.model = model;
-    if (agent) body.agent = agent;
+    body.agent = agent;
     if (this.directory) body.location = { directory: this.directory };
     const payload = await this.request<{ data: SessionInfo }>("/api/session", {
       method: "POST",

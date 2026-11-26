@@ -8,6 +8,7 @@ interface Props {
   connection: ConnectionState
   relay: RelayState
   onRetry: () => void
+  onRetryRelay: () => void
   onOpenOptions: () => void
 }
 
@@ -78,31 +79,46 @@ export function ConnectionBanner({
   connection,
   relay,
   onRetry,
+  onRetryRelay,
   onOpenOptions,
 }: Props) {
   const { t, locale } = useI18n()
   const content = describe(connection, t)
-  if (!content) return null
   const relayOffline = !relay.connected
+  if (!content && !relayOffline) return null
 
   return (
-    <div className={`connection-banner ${content.tone}`} role="alert">
-      <div className="connection-text">
-        <strong>{content.title}</strong>
-        <span>{content.detail}</span>
+    <div className={`connection-banner ${content?.tone ?? "warn"}`} role="alert">
+      <div className="connection-messages">
+        {content ? (
+          <div className="connection-text">
+            <strong>{content.title}</strong>
+            <span>{content.detail}</span>
+          </div>
+        ) : null}
         {relayOffline ? (
-          <span className="connection-note">{describeRelay(relay, locale)}</span>
+          <div className="connection-text">
+            <strong>{t("banner.toolsOffline.title")}</strong>
+            <span>{describeRelay(relay, locale)}</span>
+          </div>
         ) : null}
       </div>
-      {content.action === "retry" ? (
-        <button className="btn small" onClick={onRetry}>
-          <RefreshIcon size={13} /> {content.actionLabel ?? t("app.retry")}
-        </button>
-      ) : content.action === "options" ? (
-        <button className="btn small" onClick={onOpenOptions}>
-          <SettingsIcon size={13} /> {content.actionLabel ?? t("app.openSettings")}
-        </button>
-      ) : null}
+      <div className="connection-actions">
+        {content?.action === "retry" ? (
+          <button className="btn small" onClick={onRetry}>
+            <RefreshIcon size={13} /> {content.actionLabel ?? t("app.retry")}
+          </button>
+        ) : content?.action === "options" ? (
+          <button className="btn small" onClick={onOpenOptions}>
+            <SettingsIcon size={13} /> {content.actionLabel ?? t("app.openSettings")}
+          </button>
+        ) : null}
+        {relayOffline ? (
+          <button className="btn small" onClick={onRetryRelay}>
+            <RefreshIcon size={13} /> {t("banner.reconnectPlugin")}
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }

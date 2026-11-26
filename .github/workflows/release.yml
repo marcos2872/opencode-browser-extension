@@ -55,9 +55,10 @@ jobs:
           staging="$(mktemp -d)"
           trap 'rm -rf "$staging"' EXIT
           bundle="$staging/opencode-browser"
-          mkdir -p "$bundle/extension" "$bundle/plugin" "$bundle/scripts/lib"
+          mkdir -p "$bundle/extension" "$bundle/plugin/skills/browser-relay" "$bundle/scripts/lib"
           cp -R dist/. "$bundle/extension/"
           cp plugin/browser-relay.ts plugin/opencode-browser.agent.md "$bundle/plugin/"
+          cp plugin/skills/browser-relay/SKILL.md "$bundle/plugin/skills/browser-relay/"
           cp scripts/install-plugin.mjs "$bundle/scripts/"
           cp scripts/lib/opencode-paths.mjs "$bundle/scripts/lib/"
           cat > "$bundle/INSTALAR.txt" <<'INSTALL'

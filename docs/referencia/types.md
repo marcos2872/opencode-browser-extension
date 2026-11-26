@@ -17,14 +17,12 @@ pareamento.
 | `token` | string | Sim | Token de sessão obtido no pareamento |
 | `directory` | string | Não | Diretório enviado como `location`/`?directory=` |
 | `defaultModel` | ModelRef | Não | Modelo usado ao criar sessões |
-| `defaultAgent` | string | Não | Agente padrão (`build`, `ask`, `plan`…) |
 | `permissionMode` | `ask` \| `allow` \| `deny` | Sim | Modo de permissão |
 | `permissionTimeoutMs` | number | Não | Timeout do prompt (padrão 60 000) |
 | `findMode` | `heuristic` \| `model` | Não | Ranking do `find` |
 | `soundEnabled` | boolean | Não | Aviso sonoro (padrão true) |
 | `notifyEnabled` | boolean | Não | Notificação do sistema (padrão true) |
 | `toolDisplay` | `grouped` \| `rows` \| `full` \| `hidden` | Não | Exibição das tools no chat (padrão `grouped`; `hidden` esconde tools e raciocínio) |
-| `browserAgentDefault` | boolean | Não | Novas sessões usam `opencode-browser` (padrão true) |
 | `bringTabsToFront` | boolean | Não | Ações do agente podem ativar abas/janelas (padrão false) |
 | `followTabGroups` | boolean | Não | Painel segue o grupo de abas em foco (padrão true) |
 | `autoGroupNewSessions` | boolean | Não | Cria grupo + aba ao iniciar uma conversa (padrão false) |

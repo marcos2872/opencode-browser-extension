@@ -30,6 +30,7 @@ describe("components/PermissionCard", () => {
     expect(screen.getByText("example.com")).toBeInTheDocument()
     expect(screen.getByText("Abrir a página inicial")).toBeInTheDocument()
     expect(screen.getByText("Navegação · pedido de permissão")).toBeInTheDocument()
+    expect(screen.getByText("Permissões mais amplas")).toBeInTheDocument()
   })
 
   it("usa o nome cru do tool quando não há rótulo conhecido", () => {
@@ -103,6 +104,21 @@ describe("components/PermissionCard", () => {
 
     await user.keyboard("{Escape}")
     expect(onDecision).toHaveBeenCalledWith({ allowed: false })
+  })
+
+  it("move e mantém o foco dentro do diálogo por teclado", async () => {
+    const user = userEvent.setup()
+    render(<PermissionCard request={makeRequest()} onDecision={vi.fn()} />)
+
+    const heading = screen.getByRole("heading", { name: "Navegar para example.com" })
+    const first = screen.getByRole("button", { name: /Permitir uma vez/ })
+    const last = screen.getByRole("button", { name: "Permitir sempre para example.com" })
+    expect(heading).toHaveFocus()
+
+    await user.tab()
+    expect(first).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(last).toHaveFocus()
   })
 
   it("Enter com foco em um botão não dispara decisão pelo teclado", () => {

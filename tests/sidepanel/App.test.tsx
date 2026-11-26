@@ -191,7 +191,7 @@ describe("sidepanel/App", () => {
 
   it("mostra o backend online e offline", async () => {
     await renderApp(makeSnapshot({ connection: offlineConnection() }))
-    expect(screen.getByText("offline")).toBeInTheDocument()
+    expect(screen.getByText("API: offline")).toBeInTheDocument()
   })
 
   it("mostra banner acionável quando o OpenCode não responde", async () => {
@@ -227,7 +227,7 @@ describe("sidepanel/App", () => {
       },
     )
 
-    expect(screen.getByText("offline")).toBeInTheDocument()
+    expect(screen.getByText("API: offline")).toBeInTheDocument()
     expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
 
     await user.click(await screen.findByRole("button", { name: "Mostrar 1 aba conectada" }))
@@ -452,13 +452,13 @@ describe("sidepanel/App", () => {
     })
   })
 
-  it("troca o agente da sessão", async () => {
-    const { user } = await renderApp(
+  it("mantém a troca de modelo e não expõe o seletor de agente", async () => {
+    await renderApp(
       makeSnapshot({ agents: [makeAgent(), makeAgent({ id: "plan", name: "Plan" })] }),
     )
 
-    await user.selectOptions(screen.getByTitle("Agente do OpenCode"), "plan")
-    expect(sent("session:agent")).toEqual({ type: "session:agent", agent: "plan" })
+    expect(screen.getByTitle("Modelo do OpenCode")).toBeInTheDocument()
+    expect(screen.queryByTitle("Agente do OpenCode")).not.toBeInTheDocument()
   })
 
   it("anexa a aba atual ao grupo", async () => {
@@ -492,16 +492,6 @@ describe("sidepanel/App", () => {
 
     await user.selectOptions(screen.getByTitle("Modelo do OpenCode"), "provider-2/model-2")
     expect(await screen.findByText("config inválida")).toBeInTheDocument()
-  })
-
-  it("mostra toast quando a troca de agente falha", async () => {
-    const { user } = await renderApp(
-      makeSnapshot({ agents: [makeAgent(), makeAgent({ id: "plan", name: "Plan" })] }),
-      { "session:agent": { ok: false, error: "agente inválido" } },
-    )
-
-    await user.selectOptions(screen.getByTitle("Agente do OpenCode"), "plan")
-    expect(await screen.findByText("agente inválido")).toBeInTheDocument()
   })
 
   it("mostra toast quando criar uma nova sessão falha", async () => {

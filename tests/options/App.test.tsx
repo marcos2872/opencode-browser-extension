@@ -58,7 +58,7 @@ function sent(type: string): any {
 async function renderOptions(snapshot: AppSnapshot | null, overrides: Record<string, unknown> = {}) {
   mockSendMessage(snapshot, overrides)
   render(<App />)
-  if (snapshot) await screen.findByText("Conexão")
+  if (snapshot) await screen.findByRole("heading", { name: "Conexão" })
   return { user: userEvent.setup() }
 }
 
@@ -94,9 +94,25 @@ describe("options/App", () => {
     expect(select).toHaveValue("grouped")
 
     await user.selectOptions(select, "hidden")
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
     expect(sent("settings:update").patch.toolDisplay).toBe("hidden")
+  })
+
+  it("mostra alterações pendentes e permite descartá-las", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+    const save = screen.getByRole("button", { name: "Salvar alterações" })
+    const discard = screen.getByRole("button", { name: "Descartar" })
+    const display = screen.getByLabelText("Ferramentas no chat")
+
+    expect(save).toBeDisabled()
+    await user.selectOptions(display, "hidden")
+    expect(save).toBeEnabled()
+    expect(screen.getByRole("status")).toHaveTextContent("Há alterações não salvas")
+
+    await user.click(discard)
+    expect(display).toHaveValue("grouped")
+    expect(save).toBeDisabled()
   })
 
   it("usa permitir ações automaticamente quando a config não traz o modo", async () => {
@@ -109,20 +125,18 @@ describe("options/App", () => {
     expect(
       screen.getByRole("radio", { name: /Permitir ações automaticamente/ }),
     ).toBeChecked()
+    expect(screen.getByText(/As ações no site serão executadas sem pedir confirmação/)).toBeInTheDocument()
   })
 
-  it("salva a preferência de agente do navegador", async () => {
-    const { user } = await renderOptions(makeSnapshot())
+  it("não oferece controles de agente nas opções", async () => {
+    await renderOptions(
+      makeSnapshot({ agents: [makeAgent(), makeAgent({ id: "plan", name: "Plan" })] }),
+    )
 
-    const toggle = screen.getByRole("checkbox", {
-      name: /opencode-browser.*novas sessões/,
-    })
-    expect(toggle).toBeChecked()
-
-    await user.click(toggle)
-    await user.click(screen.getByRole("button", { name: "Salvar", exact: true }))
-
-    expect(sent("settings:update").patch.browserAgentDefault).toBe(false)
+    expect(screen.queryByTitle("Agente padrão")).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("checkbox", { name: /opencode-browser.*novas sessões/ }),
+    ).not.toBeInTheDocument()
   })
 
   it("salva a pasta das conversas informada", async () => {
@@ -131,7 +145,7 @@ describe("options/App", () => {
     const input = screen.getByLabelText("Pasta das conversas do navegador")
     await user.clear(input)
     await user.type(input, "/tmp/conversas")
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
     expect(sent("settings:update").patch.directory).toBe("/tmp/conversas")
   })
@@ -174,7 +188,7 @@ describe("options/App", () => {
     const connected = makeSnapshot()
     mockSendMessage(makeSnapshot({ config: null }), { pair: { ok: true, snapshot: connected } })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
     const button = screen.getByRole("button", { name: "Conectar" })
     expect(button).toBeDisabled()
@@ -192,7 +206,7 @@ describe("options/App", () => {
     const user = userEvent.setup()
     mockSendMessage(makeSnapshot({ config: null }), { pair: { ok: false, error: "link expirado" } })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
     await user.type(screen.getByLabelText(/Link do/), "http://x")
     await user.click(screen.getByRole("button", { name: "Conectar" }))
@@ -223,7 +237,7 @@ describe("options/App", () => {
       "settings:update": { ok: true, snapshot: { ...snapshot, config: makeConfig({ permissionMode: "allow" }) } },
     })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
     await user.click(screen.getByRole("radio", { name: /Permitir ações automaticamente/ }))
     await user.selectOptions(screen.getByLabelText(/Tempo para responder/), "120")
@@ -238,7 +252,7 @@ describe("options/App", () => {
       target: { value: "banco.com\n" },
     })
 
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
     expect(chrome.storage.local.data.get("permissions.allow")).toEqual(["github.com", "example.com"])
     expect(chrome.storage.local.data.get("permissions.deny")).toEqual(["banco.com"])
@@ -246,30 +260,48 @@ describe("options/App", () => {
       type: "settings:update",
       patch: {
         permissionMode: "allow",
-        defaultAgent: "build",
         findMode: "model",
         permissionTimeoutMs: 120000,
         soundEnabled: false,
         notifyEnabled: false,
         bringTabsToFront: false,
         toolDisplay: "grouped",
-        browserAgentDefault: true,
         followTabGroups: true,
         autoGroupNewSessions: false,
         directory: undefined,
       },
     })
-    expect(await screen.findByText("Permissões salvas.")).toBeInTheDocument()
+    expect(await screen.findByText("Configurações salvas.")).toBeInTheDocument()
   })
 
   it("mostra toast quando salvar permissões falha", async () => {
     const user = userEvent.setup()
     mockSendMessage(makeSnapshot(), { "settings:update": { ok: false, error: "config inválida" } })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await chrome.storage.local.set({ "permissions.allow": ["old.example"] })
+    fireEvent.change(screen.getByLabelText("Sites sempre permitidos (um por linha)"), {
+      target: { value: "new.example" },
+    })
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
     expect(await screen.findByText("config inválida")).toBeInTheDocument()
+    expect(chrome.storage.local.data.get("permissions.allow")).toEqual(["old.example"])
+    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
+  })
+
+  it("mantém o estado pendente se falhar ao gravar as listas locais", async () => {
+    const { user } = await renderOptions(makeSnapshot())
+    vi.spyOn(chrome.storage.local, "set").mockRejectedValueOnce(new Error("storage cheio"))
+    fireEvent.change(screen.getByLabelText("Sites sempre permitidos (um por linha)"), {
+      target: { value: "example.com" },
+    })
+
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/listas de sites não.*storage cheio/)
+    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
+    expect(screen.getByRole("status")).toHaveTextContent("Há alterações não salvas")
   })
 
   it("usa os valores salvos da config nos campos", async () => {
@@ -298,7 +330,7 @@ describe("options/App", () => {
     const snapshot = makeSnapshot()
     mockSendMessage(snapshot, { unpair: { ok: true, snapshot: { ...snapshot, config: null } } })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
     await user.click(screen.getByRole("button", { name: "Desconectar" }))
     expect(sent("unpair")).toEqual({ type: "unpair" })
@@ -366,7 +398,9 @@ describe("options/App", () => {
   })
 
   it("lista as ferramentas do navegador", async () => {
-    await renderOptions(makeSnapshot())
+    const { user } = await renderOptions(makeSnapshot())
+
+    await user.click(screen.getByText("Ferramentas do navegador"))
 
     expect(screen.getByText("browser_batch")).toBeInTheDocument()
     expect(screen.getByText("executa várias ações em sequência")).toBeInTheDocument()
@@ -384,7 +418,7 @@ describe("options/App", () => {
     expect(screen.getByText("2 modelo(s) disponível(is). Modelos sem suporte a tools continuam servindo para conversar, mas não controlam o navegador.")).toBeInTheDocument()
 
     await user.selectOptions(screen.getByTitle("Modelo do OpenCode"), "provider-2/model-2")
-    await user.click(screen.getByRole("button", { name: "Salvar" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
     expect(sent("settings:update").patch.defaultModel).toEqual({ id: "model-2", providerID: "provider-2" })
   })
 
@@ -401,7 +435,8 @@ describe("options/App", () => {
     // O modelo salvo não está na lista; mesmo assim não pode ser descartado.
     expect(screen.getByTitle("Modelo do OpenCode")).toHaveValue("provider-2/model-2")
 
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.selectOptions(screen.getByLabelText(/Tempo para responder/), "120")
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
     expect(sent("settings:update").patch).not.toHaveProperty("defaultModel")
   })
 
@@ -423,7 +458,7 @@ describe("options/App", () => {
     })
     mockSendMessage(unpaired, { pair: { ok: true, snapshot: paired } })
     render(<App />)
-    await screen.findByText("Conexão")
+    await screen.findByRole("heading", { name: "Conexão" })
 
     await user.type(
       screen.getByLabelText(/Link do/),
@@ -432,18 +467,9 @@ describe("options/App", () => {
     await user.click(screen.getByRole("button", { name: "Conectar" }))
     await screen.findByText("Conectado.")
 
-    await user.click(screen.getByRole("button", { name: "Salvar permissões" }))
+    await user.selectOptions(screen.getByLabelText(/Tempo para responder/), "120")
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
     expect(sent("settings:update").patch).not.toHaveProperty("defaultModel")
-  })
-
-  it("troca o agente padrão", async () => {
-    const { user } = await renderOptions(
-      makeSnapshot({ agents: [makeAgent(), makeAgent({ id: "plan", name: "Plan" })] }),
-    )
-
-    await user.selectOptions(screen.getByTitle("Agente padrão"), "plan")
-    await user.click(screen.getByRole("button", { name: "Salvar" }))
-    expect(sent("settings:update").patch.defaultAgent).toBe("plan")
   })
 
   it("não mostra o seletor de agente sem agentes", async () => {
@@ -452,8 +478,9 @@ describe("options/App", () => {
   })
 
   it("mostra a seção de segurança", async () => {
-    await renderOptions(makeSnapshot())
-    expect(screen.getByRole("heading", { name: "Segurança" })).toBeInTheDocument()
+    const { user } = await renderOptions(makeSnapshot())
+    await user.click(screen.getByText("Segurança"))
+    expect(screen.getByText("Segurança")).toBeInTheDocument()
     expect(screen.getByText(/ws:\/\/127\.0\.0\.1:8799/)).toBeInTheDocument()
   })
 })
@@ -468,7 +495,7 @@ describe("options/App: grupo automático", () => {
     expect(toggle).not.toBeChecked()
 
     await user.click(toggle)
-    await user.click(screen.getByRole("button", { name: "Salvar", exact: true }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
     expect(sent("settings:update").patch.autoGroupNewSessions).toBe(true)
   })

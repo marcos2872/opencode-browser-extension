@@ -189,7 +189,6 @@ export interface OpencodeConfig {
   token: string;
   directory?: string;
   defaultModel?: ModelRef;
-  defaultAgent?: string;
   permissionMode: PermissionMode;
   permissionTimeoutMs?: number;
   findMode?: "heuristic" | "model";
@@ -197,8 +196,6 @@ export interface OpencodeConfig {
   notifyEnabled?: boolean;
   /** Como as tools aparecem no chat. Padrão: agrupadas em um modal. */
   toolDisplay?: "grouped" | "rows" | "full" | "hidden";
-  /** Usa o agente `opencode-browser` nas novas sessões. Padrão: true. */
-  browserAgentDefault?: boolean;
   /**
    * Permite que as ações do agente ativem abas/janelas do Chrome. Padrão:
    * `false` — a extensão trabalha em segundo plano para não tirar o foco da

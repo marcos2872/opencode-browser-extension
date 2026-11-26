@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { AgentInfo, SessionInfo, SessionMeta } from "../shared/types"
+import type { SessionInfo, SessionMeta } from "../shared/types"
 import type { BrowserTabContext } from "../shared/types"
 import { sessionLabel } from "../shared/sessionLabel"
 import { LinkIcon, PlusIcon, TrashIcon, XIcon } from "../components/icons"
@@ -15,14 +15,11 @@ interface Props {
   meta?: SessionMeta[]
   contextTabs: BrowserTabContext[]
   contextError: string | null
-  agents: AgentInfo[]
-  agent: string | null
   onSelect: (id: string) => void
   onNew: () => void
   onDelete: () => void
   onAttach: () => void
   onDetach: (tabID: number) => void
-  onAgent: (agent: string) => void
 }
 
 /** Marca na lista as conversas executando ou com resultado não lido. */
@@ -48,14 +45,11 @@ export function SessionBar({
   meta = [],
   contextTabs,
   contextError,
-  agents,
-  agent,
   onSelect,
   onNew,
   onDelete,
   onAttach,
   onDetach,
-  onAgent,
 }: Props) {
   const { t } = useI18n()
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
@@ -79,21 +73,6 @@ export function SessionBar({
           </option>
         ))}
       </select>
-      {agents.length > 0 ? (
-        <select
-          className="select agent-select"
-          value={agent ?? ""}
-          disabled={busy}
-          onChange={(event) => onAgent(event.target.value)}
-          title={t("session.agentTitle")}
-        >
-          {agents.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name ?? item.id}
-            </option>
-          ))}
-        </select>
-      ) : null}
       <div className="session-attach-control">
         <button
           className={`icon-btn session-attach${hasConnectedTabs ? " connected" : ""}`}
@@ -116,9 +95,19 @@ export function SessionBar({
           aria-controls={hasConnectedTabs ? "session-attach-menu" : undefined}
         >
           <LinkIcon size={15} />
+          {hasConnectedTabs ? (
+            <span className="session-attach-count" aria-hidden="true">
+              {contextTabs.length}
+            </span>
+          ) : null}
         </button>
         {contextMenuOpen && hasConnectedTabs ? (
-          <div className="session-attach-menu" id="session-attach-menu" aria-label={t("session.attach.menu")}>
+          <div
+            className="session-attach-menu"
+            id="session-attach-menu"
+            role="region"
+            aria-label={t("session.attach.menu")}
+          >
             <ul>
               {contextTabs.map((tab) => (
                 <li key={tab.id}>
@@ -163,7 +152,13 @@ export function SessionBar({
       >
         <PlusIcon size={16} />
       </button>
-      <button className="icon-btn" onClick={onDelete} disabled={!activeID || busy} title={t("session.delete")}>
+      <button
+        className="icon-btn"
+        onClick={onDelete}
+        disabled={!activeID || busy}
+        title={t("session.delete")}
+        aria-label={t("session.delete")}
+      >
         <TrashIcon size={15} />
       </button>
     </div>

@@ -8,6 +8,7 @@ OpenCode plugin.
 | Document | Description |
 |---|---|
 | [User guide](guias/guia-do-usuario.md) · [HTML version](../../web/en/index.html) | End-user guide: install, pair, chat, tabs, parallel sessions, permissions and settings |
+| [Changelog](changelog.md) | What is new in each OpenCode Browser release |
 | [architecture.md](arquitetura/architecture.md) | Architecture overview, components and flows |
 | [extension.md](arquitetura/extension.md) | How the extension works internally (service worker, content scripts, pages, offscreen) |
 | [plugin.md](arquitetura/plugin.md) | OpenCode plugin: WebSocket relay, handshake, ports, private token, HTTP fallback and lifecycle |

@@ -1,12 +1,12 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Instala a extensão OpenCode Browser e o plugin do relay.
+    Instala a extensão OpenCode Browser, o relay, o agente e a skill browser-relay.
 
 .DESCRIPTION
     Valida Node.js 20+, npm e OpenCode v2 e, em seguida, roda:
-    npm install, npm run build, npm run install:plugin e
-    opencode service restart.
+    npm install, npm run build, npm run install:plugin (relay, agente e skill)
+    e opencode service restart.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
@@ -107,9 +107,9 @@ Write-Step "Gerando o build da extensão (npm run build)"
 Invoke-Npm @("run", "build") "Falha no build. Veja o erro acima."
 Write-Ok "Build gerado em $Root\dist"
 
-Write-Step "Instalando o plugin no OpenCode (npm run install:plugin)"
+Write-Step "Instalando relay, agente e skill no OpenCode (npm run install:plugin)"
 Invoke-Npm @("run", "install:plugin") "Falha ao instalar o plugin."
-Write-Ok "Plugin copiado para a pasta de plugins do OpenCode."
+Write-Ok "Relay, agente e skill browser-relay instalados no OpenCode."
 
 Write-Step "Reiniciando o serviço do OpenCode (opencode service restart)"
 & $opencodePath service restart

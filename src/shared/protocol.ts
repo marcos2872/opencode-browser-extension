@@ -70,14 +70,12 @@ export type UiRequest =
   | {
       type: "session:new";
       model?: ModelRef;
-      agent?: string;
       /** Janela do painel: o grupo automático nasce nela, não na última focada. */
       windowId?: number;
     }
   | { type: "session:select"; id: string }
   | { type: "session:delete"; id: string }
   | { type: "session:model"; model: ModelRef; sessionID?: string }
-  | { type: "session:agent"; agent: string; sessionID?: string }
   | { type: "tabs:attach-current"; sessionID?: string }
   | { type: "tabs:list"; sessionID: string }
   | { type: "tabs:detach"; sessionID: string; tabID: number }

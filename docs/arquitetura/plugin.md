@@ -1,9 +1,10 @@
 # Plugin do OpenCode (`browser-relay`)
 
 Arquivo: `plugin/browser-relay.ts`
-Instalação: `npm run install:plugin` copia o relay e o template
-`opencode-browser.agent.md` para `~/.config/opencode/plugins/` (e remove a cópia
-antiga `opencode-browser.ts`, se existir). Depois do install, reinicie o serviço
+Instalação: `npm run install:plugin` copia o relay e o template do agente para
+`~/.config/opencode/plugins/` e instala a skill `browser-relay` em
+`~/.config/opencode/skills/`. O instalador também remove a cópia antiga
+`opencode-browser.ts`, se existir. Depois do install, reinicie o serviço
 (`opencode service restart`) para carregar o relay e o agente novos.
 
 > Mantenha **apenas uma** cópia do plugin em `~/.config/opencode/plugins/`.
@@ -33,7 +34,7 @@ mudanças no arquivo.
    precisa do arquivo, não só da imagem na conversa, para montar páginas que
    embutem a tela.
 
-## Agente do navegador
+## Agente e skill do navegador
 
 O plugin cria o agente primário `opencode-browser` na configuração global do
 OpenCode a partir do template `plugin/opencode-browser.agent.md`, que é
@@ -45,11 +46,16 @@ instalado ao lado do plugin. O arquivo é atualizado **por versão**:
 - não tem marcador (o usuário o removeu) ou já está na versão do template → é
   preservado, inclusive edições manuais.
 
-O template atual é **v5**, escrito em inglês, e inclui regras de segurança (prompt injection),
-limitações do ambiente da extensão, abas por origem, economia de contexto e o
-nome correto das ferramentas. Para personalizar, edite
+O template atual é **v6**, escrito em inglês, e mantém somente a identidade do
+agente, os limites de segurança e a permissão para carregar a skill. Para
+personalizar, edite
 `~/.config/opencode/agents/opencode-browser.md`; para voltar ao padrão, apague o
 arquivo e reinicie o OpenCode.
+
+O fluxo detalhado de navegação está em `plugin/skills/browser-relay/SKILL.md`.
+O instalador o copia para `~/.config/opencode/skills/browser-relay/SKILL.md`.
+O agente carrega essa skill antes de operar o navegador; ela explica o fluxo e
+as ferramentas, mas não substitui as permissões restritas do agente.
 
 > A ferramenta de fechar aba é `browser_tabs_close_tab` (wire `tabs_close`).
 > O nome `browser_tabs_close` colide com `browser.tabs.close` do plugin nativo
@@ -78,21 +84,24 @@ permissions:
   - action: question
     resource: "*"
     effect: allow
+  - action: skill
+    resource: browser-relay
+    effect: allow
   - action: doom_loop
     resource: "*"
     effect: ask
 ```
 
-Na prática, o agente só enxerga as ferramentas do navegador e `question`:
+Na prática, o agente só enxerga as ferramentas do navegador, `question` e a
+skill `browser-relay`:
 `read`, `edit`, `shell`, `glob`, `grep`, `webfetch` e afins ficam bloqueados,
 então ele não consegue mexer em arquivos ou dados da máquina fora das páginas.
-O corpo do Markdown (v5) traz segurança/prompt injection, limitações do
-ambiente da extensão, abas por origem, economia de contexto e confirmação antes
-de ações destrutivas.
+O corpo da skill traz segurança contra prompt injection, limitações da extensão,
+abas por origem, economia de contexto e confirmação antes de ações destrutivas.
 
-A extensão pede a gravação por `ensure_agent` sempre que o relay conecta ou a
-configuração muda e, quando o agente aparece em `GET /api/agent`, passa a usá-lo
-como padrão (`defaultAgent`) se o usuário ainda não escolheu outro.
+O relay instala/atualiza o agente por `ensure_agent`. A extensão usa sempre
+`opencode-browser` nas **novas** conversas; conversas existentes mantêm o agente
+com que foram criadas. O seletor do painel permite trocar somente o modelo.
 
 > Por ser global, o agente aparece em todos os projetos do OpenCode, não só nas
 > conversas da extensão. Se o servidor não recarregar a lista sozinho, reinicie

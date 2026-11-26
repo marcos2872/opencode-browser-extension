@@ -8,6 +8,7 @@ OpenCode.
 | Documento | Descrição |
 |---|---|
 | [Guia do usuário](guias/guia-do-usuario.md) · [versão HTML](../web/index.html) | Guia do usuário final: instalar, parear, conversar, abas, sessões paralelas, permissões e configurações |
+| [Histórico de versões](changelog.md) | Novidades de cada versão do OpenCode Browser |
 | [architecture.md](arquitetura/architecture.md) | Visão geral da arquitetura, componentes e fluxos |
 | [extension.md](arquitetura/extension.md) | Como a extensão funciona por dentro (service worker, content scripts, páginas, offscreen) |
 | [plugin.md](arquitetura/plugin.md) | Plugin do OpenCode: relay WebSocket, handshake, portas, token privado, fallback HTTP e ciclo de vida |

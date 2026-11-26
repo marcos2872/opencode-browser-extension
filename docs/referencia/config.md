@@ -11,17 +11,18 @@ ou na página de opções.
 | `token` | Token de pareamento | string | — | Sim | Header Basic |
 | `directory` | Pasta das conversas da extensão (location das sessões) | string | anunciada pelo plugin (`~/.opencode-browser-extensions`) | Não | `?directory=` e `session.create` |
 | `defaultModel` | Modelo padrão | ModelRef | modelo padrão do servidor | Não | Criação de sessão |
-| `defaultAgent` | Agente padrão | string | `build` | Não | Criação de sessão |
 | `permissionMode` | Modo de permissão | `ask` \| `allow` \| `deny` | `allow` | Sim | Permissions |
 | `permissionTimeoutMs` | Timeout do prompt | number | `60000` | Não | Permissions |
 | `findMode` | Ranking do `find` | `heuristic` \| `model` | `heuristic` | Não | `tools/page.ts` |
 | `soundEnabled` | Aviso sonoro | boolean | `true` | Não | Offscreen |
 | `notifyEnabled` | Notificação do sistema | boolean | `true` | Não | `chrome.notifications` |
 | `toolDisplay` | Como as tools aparecem no chat (`grouped`, `rows`, `full`, `hidden`) | string | `grouped` | Não | `sidepanel/Chat` |
-| `browserAgentDefault` | Usa o agente `opencode-browser` nas novas sessões | boolean | `true` | Não | `service-worker` |
 | `bringTabsToFront` | Permite que ações do agente ativem abas/janelas (roubando o foco) | boolean | `false` | Não | `background/focus.ts` |
 | `followTabGroups` | Mostra no painel a sessão do grupo de abas em foco | boolean | `true` | Não | `service-worker` |
 | `autoGroupNewSessions` | Cria um grupo de abas (com aba em segundo plano) ao iniciar uma conversa | boolean | `false` | Não | `service-worker` |
+
+A extensão sempre usa o agente `opencode-browser` em novas sessões. Conversas
+existentes não são alteradas; o seletor do painel controla somente o modelo.
 
 ### Modos de permissão
 
