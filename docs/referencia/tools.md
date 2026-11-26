@@ -144,7 +144,7 @@ Pede permissão para domínios novos (card de transição quando muda de host).
 | `ref` | string | Não | Ref de `read_page`/`find` |
 | `coordinate` | [number, number] | Não | Coordenada no viewport |
 | `text` | string | Não | Texto para `type` |
-| `keys` | string | Não | Tecla ou combinação para `key` (ex.: `Enter`, `Ctrl+A`, `!`) |
+| `keys` | string | Não | Tecla ou combinação para eventos `keyDown`/`keyUp`; não insere texto (ex.: `Enter`, `Ctrl+A`, `!`) |
 | `submit` | boolean | Não | Pressiona Enter após digitar |
 | `click_count` | number | Não | 1–3 cliques |
 | `button` | `left` \| `right` \| `middle` | Não | Botão do mouse |
@@ -163,8 +163,10 @@ Cliques e digitação usam eventos confiáveis via CDP. Refs de iframe usam even
 de DOM. Com o DevTools aberto, click/hover caem para eventos de DOM quando há
 ref.
 
-Passe símbolos que dependem do layout literalmente (por exemplo, `!`), em vez
-de pedir uma combinação física como `Shift+1`. O layout do teclado não é inferido.
+`action: "key"` envia eventos `keyDown`/`keyUp`; para inserir texto em um campo,
+use `action: "type"`, inclusive para símbolos. Em eventos de tecla, passe
+símbolos que dependem do layout literalmente (por exemplo, `!`), em vez de pedir
+uma combinação física como `Shift+1`. O layout do teclado não é inferido.
 
 ### `browser_form_input`
 

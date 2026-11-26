@@ -792,7 +792,7 @@ const tools: ToolSpec[] = [
         keys: {
           type: "string",
           description:
-            'E.g. Enter, Tab, Ctrl+A. Pass layout-dependent symbols literally (e.g. "!"); do not infer them from chords like Shift+1.',
+            'Sends keyDown/keyUp events; it does not insert text. Use action="type" to enter text, including symbols. For layout-dependent key events, pass the symbol literally (e.g. "!") instead of inferring it from a chord like Shift+1. Examples: Enter, Tab, Ctrl+A.',
         },
         submit: { type: "boolean" },
         click_count: { type: "number" },

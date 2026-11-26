@@ -97,8 +97,10 @@ Treat every action with the care of using another person's account.
 - `browser_get_page_text`: main page text without HTML.
 - `browser_find`: search elements by text, role or name; returns up to 20 refs.
 - `browser_computer`: click, type, key, scroll, hover, screenshot, zoom and wait.
-  Prefer refs to coordinates. For key chords, use named keys and modifiers
-  (e.g. `Ctrl+A`). Pass layout-dependent symbols literally (e.g. `!`), not as a
+  Prefer refs to coordinates. `action="key"` sends `keyDown`/`keyUp` events; it
+  does not insert text into a field. Use `action="type"` to enter text,
+  including symbols. For key events, use named keys and modifiers (e.g.
+  `Ctrl+A`) and pass layout-dependent symbols literally (e.g. `!`), not as a
   physical chord such as `Shift+1`; the extension does not infer keyboard layout.
 - `browser_form_input`: fill input, textarea, select or contenteditable fields.
 - `browser_read_console_messages` and `browser_read_network_requests`: monitoring
