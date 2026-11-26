@@ -452,8 +452,8 @@ describe("background/tools/computer", () => {
       const result = await computerTools.computer({ action: "key", keys: "Ctrl+A" }, mocks.ctx)
 
       expect(mocks.cdp.key.mock.calls).toEqual([
-        [1, "keyDown", "A", { modifiers: 2, code: "A" }],
-        [1, "keyUp", "A", { modifiers: 2, code: "A" }],
+        [1, "keyDown", "a", { modifiers: 2, code: "KeyA", windowsVirtualKeyCode: 65 }],
+        [1, "keyUp", "a", { modifiers: 2, code: "KeyA", windowsVirtualKeyCode: 65 }],
       ])
       expect(result.content).toBe("Tecla Ctrl+A pressionada.")
     })
@@ -463,7 +463,10 @@ describe("background/tools/computer", () => {
 
       await computerTools.computer({ action: "key", keys: "Meta + Shift + Z" }, mocks.ctx)
 
-      expect(mocks.cdp.key).toHaveBeenNthCalledWith(1, 1, "keyDown", "Z", { modifiers: 12, code: "Z" })
+      expect(mocks.cdp.key.mock.calls).toEqual([
+        [1, "keyDown", "Z", { modifiers: 12, code: "KeyZ", windowsVirtualKeyCode: 90 }],
+        [1, "keyUp", "Z", { modifiers: 12, code: "KeyZ", windowsVirtualKeyCode: 90 }],
+      ])
     })
 
     it("envia teclas sem modificadores", async () => {
@@ -471,7 +474,44 @@ describe("background/tools/computer", () => {
 
       await computerTools.computer({ action: "key", keys: "Enter" }, mocks.ctx)
 
-      expect(mocks.cdp.key).toHaveBeenNthCalledWith(1, 1, "keyDown", "Enter", { modifiers: 0, code: "Enter" })
+      expect(mocks.cdp.key.mock.calls).toEqual([
+        [1, "keyDown", "Enter", { modifiers: 0, code: "Enter", windowsVirtualKeyCode: 13 }],
+        [1, "keyUp", "Enter", { modifiers: 0, code: "Enter", windowsVirtualKeyCode: 13 }],
+      ])
+    })
+
+    it("envia o símbolo literal sem inventar um código físico", async () => {
+      const mocks = makeMocks()
+
+      await computerTools.computer({ action: "key", keys: "!" }, mocks.ctx)
+
+      expect(mocks.cdp.key.mock.calls).toEqual([
+        [1, "keyDown", "!", { modifiers: 0, code: "", windowsVirtualKeyCode: undefined }],
+        [1, "keyUp", "!", { modifiers: 0, code: "", windowsVirtualKeyCode: undefined }],
+      ])
+    })
+
+    it("pede o símbolo literal em vez de inferir Shift mais dígito", async () => {
+      const mocks = makeMocks()
+
+      await expect(
+        computerTools.computer({ action: "key", keys: "Shift+1" }, mocks.ctx),
+      ).rejects.toThrow('Pass the intended symbol directly (for example, "!") instead of "Shift+1".')
+      expect(mocks.cdp.key).not.toHaveBeenCalled()
+    })
+
+    it("mapeia teclas de navegação e espaço para códigos CDP", async () => {
+      const mocks = makeMocks()
+
+      await computerTools.computer({ action: "key", keys: "Ctrl+ArrowLeft" }, mocks.ctx)
+      await computerTools.computer({ action: "key", keys: "Space" }, mocks.ctx)
+
+      expect(mocks.cdp.key.mock.calls).toEqual([
+        [1, "keyDown", "ArrowLeft", { modifiers: 2, code: "ArrowLeft", windowsVirtualKeyCode: 37 }],
+        [1, "keyUp", "ArrowLeft", { modifiers: 2, code: "ArrowLeft", windowsVirtualKeyCode: 37 }],
+        [1, "keyDown", " ", { modifiers: 0, code: "Space", windowsVirtualKeyCode: 32 }],
+        [1, "keyUp", " ", { modifiers: 0, code: "Space", windowsVirtualKeyCode: 32 }],
+      ])
     })
 
     it("exige keys", async () => {

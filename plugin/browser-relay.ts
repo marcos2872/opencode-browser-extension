@@ -789,7 +789,11 @@ const tools: ToolSpec[] = [
         ref: { type: "string" },
         coordinate: { type: "array", items: { type: "number" }, minItems: 2, maxItems: 2 },
         text: { type: "string" },
-        keys: { type: "string", description: "E.g. Enter, Tab, Ctrl+A." },
+        keys: {
+          type: "string",
+          description:
+            'E.g. Enter, Tab, Ctrl+A. Pass layout-dependent symbols literally (e.g. "!"); do not infer them from chords like Shift+1.',
+        },
         submit: { type: "boolean" },
         click_count: { type: "number" },
         button: { type: "string", enum: ["left", "right", "middle"] },
