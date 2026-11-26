@@ -26,7 +26,7 @@ npm run test:watch       # Vitest em modo interativo
 npm run test:coverage    # Vitest + cobertura (mínimo de 80%)
 npm run verify           # typecheck + build completo
 
-npm run install:plugin   # copia o relay e o template do agente para ~/.config/opencode/plugins
+npm run install:plugin   # copia relay/agente e instala a skill browser-relay
 npm run package          # build + zip em opencode-browser-extension.zip
 ```
 
@@ -57,6 +57,7 @@ O projeto tem duas partes que conversam por loopback:
 |---|---|---|
 | Extensão MV3 | UI, sessões, streaming, permissões e execução das ações no navegador | `src/` (build em `dist/`) |
 | Plugin `browser-relay` | Registra as 18 tools `browser_*` no OpenCode e faz a ponte WebSocket com a extensão | `plugin/browser-relay.ts` |
+| Skill `browser-relay` | Fluxo de navegação, segurança e referência das tools para o agente | `plugin/skills/browser-relay/SKILL.md` |
 
 Nada sai da máquina: a extensão fala com o OpenCode local (`127.0.0.1`) e o
 plugin escuta apenas em loopback (portas `8799`–`8802`). O relay exige um
@@ -136,10 +137,11 @@ Decisões estruturais estão em `docs/adr/`.
   parâmetros — nunca posicional. O idioma vem de `chrome.i18n.getUILanguage()`
   com troca manual em Configurações (`ui.locale` em `chrome.storage.local`).
   **O que o MODELO lê não é traduzido:** descrições/parâmetros das tools em
-  `plugin/browser-relay.ts`, conteúdo e erro de tool no background e o template
-  do agente ficam em **inglês fixo**; o agente responde no idioma do usuário.
-  O template `plugin/opencode-browser.agent.md` é em inglês e versionado pelo
-  marcador `<!-- opencode-browser-agent vN -->` (suba o `N` ao alterá-lo).
+  `plugin/browser-relay.ts`, conteúdo e erro de tool no background, a skill
+  `plugin/skills/browser-relay/SKILL.md` e o template do agente ficam em
+  **inglês fixo**; o agente responde no idioma do usuário. O template
+  `plugin/opencode-browser.agent.md` é versionado pelo marcador
+  `<!-- opencode-browser-agent vN -->` (suba o `N` ao alterá-lo).
   O manifest usa `__MSG_*__` com `public/_locales/{pt_BR,en}`.
 - **TypeScript estrito:** `strict: true`, `noEmit`, `verbatimModuleSyntax` e
   imports relativos (sem aliases). Use `import type` para tipos.
@@ -180,7 +182,7 @@ Decisões estruturais estão em `docs/adr/`.
   `OPENCODE_BROWSER_EXTENSION_ID` ou use `OPENCODE_BROWSER_ALLOW_ANY_EXTENSION=1`.
 - Mantenha **uma única** cópia do plugin em `~/.config/opencode/plugins/`; duas
   cópias registram o mesmo id e uma falha.
-- `npm run install:plugin` e o runtime do plugin usam apenas APIs Node/Bun
+- `npm run install:plugin` instala relay, template e skill usando apenas APIs Node/Bun
   (`os.homedir()`, `path.join`, `node:fs`, `node:crypto`), para funcionar em
   Linux, macOS e Windows. Não introduza comandos de shell POSIX no plugin.
 - O token/porta do relay ficam em `$XDG_RUNTIME_DIR/opencode-browser/relay.json`

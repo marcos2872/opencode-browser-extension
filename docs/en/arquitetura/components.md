@@ -111,7 +111,7 @@ prompt, interrupt, context, stateless generation) and SSE subscription.
 | `listModels()` / `defaultModel()` | catalog |
 | `listAgents()` / `listCommands()` | agents and commands |
 | `listSessions()` / `createSession()` / `deleteSession()` | sessions |
-| `switchModel()` / `switchAgent()` | in-session switch |
+| `switchModel()` | in-session model switch |
 | `context()` / `prompt()` / `runCommand()` / `interrupt()` | conversation |
 | `generate(prompt, model?)` | stateless text |
 | `subscribe(onEvent, signal)` | SSE stream |

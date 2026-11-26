@@ -143,7 +143,9 @@ function installFetch(
     if (pathname === "/api/agent")
       return options.agentStatus
         ? jsonResponse({ message: "agente indisponível" }, options.agentStatus)
-        : jsonResponse({ data: options.agents ?? [makeAgent()] });
+        : jsonResponse({
+            data: options.agents ?? [makeAgent(), makeAgent({ id: "opencode-browser" })],
+          });
     if (pathname === "/api/command")
       return jsonResponse({ data: [makeCommand()] });
     if (pathname === "/api/event") {
@@ -558,19 +560,6 @@ describe("service-worker: conexão e reconexão", () => {
     });
   })
 
-  it("prefere o agente do navegador quando ele existe", async () => {    installFetch({
-      agents: [
-        makeAgent({ id: "build" }),
-        makeAgent({ id: "opencode-browser" }),
-      ],
-    });
-    await loadWorker();
-    await pairWorker();
-
-    const state = await callWorker({ type: "state:get" });
-    expect(state.snapshot.config.defaultAgent).toBe("opencode-browser");
-  });
-
   it("cria novas sessões com o agente do navegador por padrão", async () => {
     installFetch({
       agents: [
@@ -580,6 +569,10 @@ describe("service-worker: conexão e reconexão", () => {
     });
     await loadWorker();
     await pairWorker();
+    await callWorker({
+      type: "settings:update",
+      patch: { browserAgentDefault: false, defaultAgent: "build" },
+    });
 
     const response = await callWorker({ type: "session:new" });
     expect(response.ok).toBe(true);
@@ -593,26 +586,15 @@ describe("service-worker: conexão e reconexão", () => {
     ).toBe("opencode-browser");
   });
 
-  it("respeita o agente padrão quando o agente do navegador está desligado", async () => {
-    installFetch({
-      agents: [
-        makeAgent({ id: "build" }),
-        makeAgent({ id: "opencode-browser" }),
-      ],
-    });
+  it("não cria uma sessão quando o agente do navegador não está disponível", async () => {
+    installFetch({ agents: [makeAgent({ id: "build" })] });
     await loadWorker();
     await pairWorker();
-    await callWorker({
-      type: "settings:update",
-      patch: { browserAgentDefault: false, defaultAgent: "build" },
-    });
-    apiCalls.length = 0;
 
-    await callWorker({ type: "session:new" });
-    const created = apiCalls.find(
-      (call) => call.method === "POST" && call.url.endsWith("/api/session"),
-    );
-    expect(created?.body).toMatchObject({ agent: "build" });
+    const response = await callWorker({ type: "session:new" });
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toContain("agente OpenCode Browser não está disponível");
   });
 
   it("volta a offline quando o stream termina", async () => {    await loadWorker();
@@ -680,7 +662,7 @@ describe("service-worker: conexão e reconexão", () => {
 });
 
 describe("service-worker: sessões e conversa", () => {
-  it("cria sessão com modelo e agente escolhidos", async () => {
+  it("cria sessão com o modelo escolhido e ignora agentes enviados pelo painel", async () => {
     await loadWorker();
     await pairWorker();
     const response = await callWorker({
@@ -694,7 +676,7 @@ describe("service-worker: sessões e conversa", () => {
     );
     expect(created?.body).toMatchObject({
       model: { id: "model-1", providerID: "provider-1" },
-      agent: "plan",
+      agent: "opencode-browser",
     });
   });
 
@@ -728,16 +710,17 @@ describe("service-worker: sessões e conversa", () => {
     expect(apiCalls.some((call) => call.url.includes("/command"))).toBe(true);
   });
 
-  it("troca modelo e agente da sessão ativa", async () => {
+  it("troca o modelo da sessão ativa", async () => {
     await loadWorker();
     await pairWorker();
     await callWorker({
       type: "session:model",
       model: { id: "model-2", providerID: "provider-1" },
     });
-    await callWorker({ type: "session:agent", agent: "ask" });
     expect(apiCalls.some((call) => call.url.endsWith("/model"))).toBe(true);
-    expect(apiCalls.some((call) => call.url.endsWith("/agent"))).toBe(true);
+    expect(
+      apiCalls.some((call) => new URL(call.url).pathname.endsWith("/session/ses_test/agent")),
+    ).toBe(false);
   });
 
   it("hidrata a conversa ao selecionar uma sessão", async () => {

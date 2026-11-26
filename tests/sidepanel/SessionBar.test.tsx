@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { SessionBar } from "../../src/sidepanel/SessionBar"
-import { makeAgent, makeSession } from "../helpers/factories"
+import { makeSession } from "../helpers/factories"
 import type { BrowserTabContext } from "../../src/shared/types"
 
 function setup(overrides: Partial<Parameters<typeof SessionBar>[0]> = {}) {
@@ -12,7 +12,6 @@ function setup(overrides: Partial<Parameters<typeof SessionBar>[0]> = {}) {
     onDelete: vi.fn(),
     onAttach: vi.fn(),
     onDetach: vi.fn(),
-    onAgent: vi.fn(),
   }
   const props = {
     sessions: [makeSession()],
@@ -20,8 +19,6 @@ function setup(overrides: Partial<Parameters<typeof SessionBar>[0]> = {}) {
     busy: false,
     contextTabs: [] as BrowserTabContext[],
     contextError: null,
-    agents: [makeAgent()],
-    agent: "build",
     ...handlers,
     ...overrides,
   }
@@ -98,6 +95,18 @@ describe("sidepanel/SessionBar", () => {
     expect(screen.getByRole("button", { name: "Conectar nova aba" })).toBeInTheDocument()
   })
 
+  it("mostra a quantidade de abas e dá nome acessível ao botão excluir", () => {
+    setup({
+      contextTabs: [
+        { id: 9, title: "Portal", url: "https://example.com/page", active: true },
+        { id: 10, title: "Docs", url: "https://docs.example.com/", active: false },
+      ],
+    })
+
+    expect(screen.getByText("2", { selector: ".session-attach-count" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Excluir sessão" })).toBeInTheDocument()
+  })
+
   it("desabilita excluir sem sessão ativa", () => {
     setup({ activeID: null })
     expect(screen.getByTitle("Excluir sessão")).toBeDisabled()
@@ -107,7 +116,7 @@ describe("sidepanel/SessionBar", () => {
     setup({ busy: true })
     expect(screen.getByTitle("Nova conversa")).toBeEnabled()
     expect(screen.getByTitle("Excluir sessão")).toBeDisabled()
-    expect(screen.getByTitle("Agente do OpenCode")).toBeDisabled()
+    expect(screen.queryByTitle("Agente do OpenCode")).not.toBeInTheDocument()
   })
 
   it("desabilita nova conversa apenas enquanto a criação está em andamento", () => {
@@ -116,27 +125,9 @@ describe("sidepanel/SessionBar", () => {
     expect(screen.getByTitle("Criando conversa…")).toHaveAttribute("aria-busy", "true")
   })
 
-  it("mostra o select de agente somente quando há agentes", () => {
-    const { rerender, props } = setup({ agents: [] })
+  it("não oferece mudança de agente", () => {
+    setup()
     expect(screen.queryByTitle("Agente do OpenCode")).not.toBeInTheDocument()
-
-    rerender(<SessionBar {...props} agents={[makeAgent()]} />)
-    expect(screen.getByTitle("Agente do OpenCode")).toBeInTheDocument()
-  })
-
-  it("lista agentes com nome ou id e chama onAgent", async () => {
-    const user = userEvent.setup()
-    const { onAgent } = setup({
-      agents: [makeAgent({ id: "build", name: "Build" }), makeAgent({ id: "plan", name: undefined })],
-      agent: "build",
-    })
-
-    const select = screen.getByTitle("Agente do OpenCode")
-    expect(screen.getByRole("option", { name: "Build" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "plan" })).toBeInTheDocument()
-
-    await user.selectOptions(select, "plan")
-    expect(onAgent).toHaveBeenCalledWith("plan")
   })
 })
 

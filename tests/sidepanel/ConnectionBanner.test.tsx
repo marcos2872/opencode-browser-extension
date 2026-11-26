@@ -37,6 +37,7 @@ function setup(
       connection={connection}
       relay={relay}
       onRetry={onRetry}
+      onRetryRelay={vi.fn()}
       onOpenOptions={onOpenOptions}
     />,
   )
@@ -50,6 +51,7 @@ describe("ConnectionBanner", () => {
         connection={ONLINE}
         relay={RELAY_OK}
         onRetry={vi.fn()}
+        onRetryRelay={vi.fn()}
         onOpenOptions={vi.fn()}
       />,
     )
@@ -60,10 +62,29 @@ describe("ConnectionBanner", () => {
         connection={{ ...ONLINE, phase: "unconfigured" }}
         relay={RELAY_OK}
         onRetry={vi.fn()}
+        onRetryRelay={vi.fn()}
         onOpenOptions={vi.fn()}
       />,
     )
     expect(unconfigured).toBeEmptyDOMElement()
+  })
+
+  it("avisa e permite reconectar o plugin quando só o relay está offline", async () => {
+    const user = userEvent.setup()
+    const onRetryRelay = vi.fn()
+    render(
+      <ConnectionBanner
+        connection={ONLINE}
+        relay={{ connected: false, url: "ws://127.0.0.1:8799", reason: "missing_plugin" }}
+        onRetry={vi.fn()}
+        onRetryRelay={onRetryRelay}
+        onOpenOptions={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText("Ferramentas do navegador desconectadas")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Reconectar plugin" }))
+    expect(onRetryRelay).toHaveBeenCalledOnce()
   })
 
   it("orienta a iniciar o servidor quando ele não responde", async () => {
@@ -92,6 +113,7 @@ describe("ConnectionBanner", () => {
         connection={offline({ failure: "timeout", detail: "não respondeu em 15s" })}
         relay={RELAY_OK}
         onRetry={vi.fn()}
+        onRetryRelay={vi.fn()}
         onOpenOptions={vi.fn()}
       />,
     )

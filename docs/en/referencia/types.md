@@ -16,14 +16,12 @@ pairing.
 | `token` | string | Yes | Session token obtained during pairing |
 | `directory` | string | No | Directory sent as `location`/`?directory=` |
 | `defaultModel` | ModelRef | No | Model used when creating sessions |
-| `defaultAgent` | string | No | Default agent (`build`, `ask`, `plan`…) |
 | `permissionMode` | `ask` \| `allow` \| `deny` | Yes | Permission mode |
 | `permissionTimeoutMs` | number | No | Prompt timeout (default 60,000) |
 | `findMode` | `heuristic` \| `model` | No | `find` ranking |
 | `soundEnabled` | boolean | No | Notification sound (default true) |
 | `notifyEnabled` | boolean | No | System notification (default true) |
 | `toolDisplay` | `grouped` \| `rows` \| `full` \| `hidden` | No | Tool display in the chat (default `grouped`; `hidden` hides tools and reasoning) |
-| `browserAgentDefault` | boolean | No | New sessions use `opencode-browser` (default true) |
 | `bringTabsToFront` | boolean | No | Agent actions may activate tabs/windows (default false) |
 | `followTabGroups` | boolean | No | Panel follows the focused tab group (default true) |
 | `autoGroupNewSessions` | boolean | No | Creates a group + tab when starting a conversation (default false) |

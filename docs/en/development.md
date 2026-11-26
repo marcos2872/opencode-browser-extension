@@ -20,10 +20,11 @@ files (`manifest.json`, icons, `offscreen.html`) come from `public/`.
 1. Edit the code in `src/` or `plugin/`.
 2. `npm run verify` (typecheck + build).
 3. Reload the extension at `chrome://extensions`.
-4. For the plugin: `npm run install:plugin` (copies `browser-relay.ts` and the
-   `opencode-browser.agent.md` template) and then `opencode service restart`.
-   The service loads plugin and agent at startup; without the restart, the old
-   version stays in memory. Confirm with `curl http://127.0.0.1:8799/health`.
+4. For the plugin: `npm run install:plugin` (copies `browser-relay.ts`, the
+   `opencode-browser.agent.md` template and the `browser-relay` skill) and then
+   `opencode service restart`. The service loads plugin and agent at startup;
+   without the restart, the old version stays in memory. Confirm with
+   `curl http://127.0.0.1:8799/health`.
 
 > Chrome caches the service worker. If behavior does not change after the
 > build, click **Reload** on the extension or close and reopen the test browser.
@@ -47,7 +48,7 @@ npm run test:watch       # watch mode
 | `src/content` | Accessibility tree, DOM actions and indicator |
 | `src/offscreen` | Keepalive, sound and GIF encoding |
 | `src/components`, `src/sidepanel`, `src/options` | UI components and flows |
-| `tests/plugin` | Agent creation, versioned update and backup |
+| `tests/plugin` | Agent creation/update and skill installation/update |
 
 `npm run typecheck` covers only `src/` (`tsconfig.json` with `include:
 ["src"]`). The plugin is validated by ESLint, `bun build` and the agent tests.
@@ -114,10 +115,10 @@ which shipped with the manifest still on `0.1.0`.
 | 7 | Ask for a file upload | The file name appears on the page |
 | 8 | `gif_creator start` → actions → `export` | GIF saved to Downloads |
 | 9 | Type `/` in the composer | Menu with the OpenCode commands |
-| 10 | Switch model and agent | The session starts using the new choice |
+| 10 | Switch the model | The session uses the new model and keeps the `opencode-browser` agent |
 | 11 | Close the panel and request an action | Permission popup opens |
 | 12 | `npm run build` + reload | No errors in the service worker console |
-| 13 | `npm run install:plugin` + `opencode service restart` | Agent v5 and relay version 6 loaded |
+| 13 | `npm run install:plugin` + `opencode service restart` | Agent v6, `browser-relay` skill and relay version 6 loaded |
 | 14 | Ask to close a tab | `browser_tabs_close_tab` tool (wire `tabs_close`) asks for permission and closes |
 
 ## Diagnostics
@@ -127,7 +128,7 @@ which shipped with the manifest still on `0.1.0`.
 | Service worker console | `chrome://extensions` → Details → "service worker" |
 | Relay status | `curl http://127.0.0.1:8799/health` (version 6) |
 | Token and port | `cat "${XDG_RUNTIME_DIR:-$HOME/.cache}/opencode-browser/relay.json"` |
-| Installed agent | `grep opencode-browser-agent ~/.config/opencode/agents/opencode-browser.md` (v5) |
+| Installed agent | `grep opencode-browser-agent ~/.config/opencode/agents/opencode-browser.md` (v6) |
 | OpenCode log | `~/.local/share/opencode/log/opencode.log` (Windows: `%USERPROFILE%\.local\share\opencode\log`); look for `browser-relay` |
 | OpenCode plugins | `~/.config/opencode/plugins` (Windows: `%USERPROFILE%\.config\opencode\plugins`) |
 | Conversations folder | `~/.opencode-browser-extensions` (created by the plugin) |

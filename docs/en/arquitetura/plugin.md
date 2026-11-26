@@ -1,11 +1,11 @@
 # OpenCode plugin (`browser-relay`)
 
 File: `plugin/browser-relay.ts`
-Install: `npm run install:plugin` copies the relay and the
-`opencode-browser.agent.md` template into `~/.config/opencode/plugins/` (and
-removes the old `opencode-browser.ts` copy, if present). After installing,
-restart the service (`opencode service restart`) to load the new relay and
-agent.
+Install: `npm run install:plugin` copies the relay and agent template into
+`~/.config/opencode/plugins/` and installs the `browser-relay` skill in
+`~/.config/opencode/skills/`. The installer also removes the old
+`opencode-browser.ts` copy, if present. After installing, restart the service
+(`opencode service restart`) to load the new relay and agent.
 
 > Keep **only one** copy of the plugin in `~/.config/opencode/plugins/`. Two
 > copies declare the same `opencode.browser-relay` id and OpenCode registers one
@@ -34,7 +34,7 @@ to the file.
    returning the path in the response text — the agent needs the file, not just
    the image in the conversation, to build pages that embed the screen.
 
-## Browser agent
+## Browser agent and skill
 
 The plugin creates the `opencode-browser` primary agent in the global OpenCode
 configuration from the `plugin/opencode-browser.agent.md` template, which is
@@ -46,11 +46,15 @@ installed alongside the plugin. The file is updated **by version**:
 - has no marker (the user removed it) or is already at the template version →
   it is preserved, including manual edits.
 
-The current template is **v5**, written in English, and includes security rules (prompt injection),
-extension environment limitations, tabs by origin, context economy and the
-correct tool names. To customize, edit
+The current template is **v6**, written in English, and contains only the agent
+identity, security boundaries and permission to load the skill. To customize, edit
 `~/.config/opencode/agents/opencode-browser.md`; to return to the default,
 delete the file and restart OpenCode.
+
+The detailed browser workflow lives in `plugin/skills/browser-relay/SKILL.md`.
+The installer copies it to `~/.config/opencode/skills/browser-relay/SKILL.md`.
+The agent loads the skill before operating the browser; it describes the
+workflow and tools but does not replace the agent's restrictive permissions.
 
 > The tool that closes a tab is `browser_tabs_close_tab` (wire name
 > `tabs_close`). The name `browser_tabs_close` collides with
@@ -80,21 +84,24 @@ permissions:
   - action: question
     resource: "*"
     effect: allow
+  - action: skill
+    resource: browser-relay
+    effect: allow
   - action: doom_loop
     resource: "*"
     effect: ask
 ```
 
-In practice, the agent only sees the browser tools and `question`: `read`,
+In practice, the agent only sees the browser tools, `question` and the
+`browser-relay` skill: `read`,
 `edit`, `shell`, `glob`, `grep`, `webfetch` and the like are blocked, so it
-cannot touch files or machine data outside the pages. The Markdown body (v5)
-covers security/prompt injection, extension environment limitations, tabs by
-origin, context economy and confirmation before destructive actions.
+cannot touch files or machine data outside the pages. The skill body covers
+prompt-injection safety, extension limitations, tabs by origin, context economy
+and confirmation before destructive actions.
 
-The extension requests the write via `ensure_agent` whenever the relay connects
-or the configuration changes and, when the agent appears in `GET /api/agent`,
-starts using it as the default (`defaultAgent`) if the user has not chosen
-another one yet.
+The relay installs/updates the agent through `ensure_agent`. The extension always
+uses `opencode-browser` for **new** conversations; existing conversations keep
+the agent they were created with. The panel lets users change only the model.
 
 > Being global, the agent appears in every OpenCode project, not only in
 > extension conversations. If the server does not refresh the list on its own,

@@ -32,7 +32,6 @@ export default function App() {
   const [creating, setCreating] = useState(false)
   const creatingRef = useRef(false)
   const [selectedModel, setSelectedModel] = useState<ModelRef | null>(null)
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [contextResult, setContextResult] = useState<{
     sessionID: string
@@ -158,7 +157,6 @@ export default function App() {
   useEffect(() => {
     if (!snapshot) return
     setSelectedModel(activeSession?.model ?? snapshot.config?.defaultModel ?? snapshot.defaultModel ?? null)
-    setSelectedAgent(activeSession?.agent ?? snapshot.config?.defaultAgent ?? "build")
   }, [snapshot?.activeSessionID])
 
   useEffect(() => {
@@ -190,12 +188,6 @@ export default function App() {
     if (next) {
       setSnapshot((current) => (current ? { ...current, config: next.config } : next))
     }
-  }
-
-  async function changeAgent(agent: string) {
-    setSelectedAgent(agent)
-    const response = await request({ type: "session:agent", agent })
-    if (!response.ok) showToast(response.error)
   }
 
   async function newSession() {
@@ -394,10 +386,10 @@ export default function App() {
     <div className="app">
       <div className="header">
         <div className="brand">
-          <span className="brand-mark">
+          <span className="brand-mark" role="img" aria-label={t("app.brand")}>
             <Logo size={15} />
           </span>
-          <span className="brand-text">{t("app.brand")}</span>
+          <span className="brand-text" aria-hidden="true">{t("app.brand")}</span>
         </div>
         {activeSession ? (
           <span className="session-title" title={sessionLabel(activeSession)}>
@@ -412,7 +404,7 @@ export default function App() {
           })}
         >
           <span className={`dot ${backendClass}`} />
-          {statusLabel}
+          {t("app.status.api", { status: statusLabel })}
         </span>
         <span className="spacer" />
         {snapshot.config ? (
@@ -446,6 +438,7 @@ export default function App() {
             connection={snapshot.connection}
             relay={snapshot.relay}
             onRetry={() => void request({ type: "connection:reconnect" })}
+            onRetryRelay={() => void request({ type: "relay:reconnect" })}
             onOpenOptions={() => void request({ type: "open:options" })}
           />
           <SessionBar
@@ -456,14 +449,11 @@ export default function App() {
             meta={snapshot.sessionMeta ?? []}
             contextTabs={contextTabs}
             contextError={contextError}
-            agents={snapshot.agents}
-            agent={selectedAgent}
             onSelect={(id) => void selectSession(id)}
             onNew={() => void newSession()}
             onDelete={() => void deleteSession()}
             onAttach={() => void attachCurrentTab()}
             onDetach={(tabID) => void detachTab(tabID)}
-            onAgent={(agent) => void changeAgent(agent)}
           />
           <Chat
             messages={snapshot.messages}

@@ -44,6 +44,14 @@ export async function setDenyList(hosts: string[]): Promise<void> {
   await chrome.storage.local.set({ [DENY_KEY]: [...new Set(hosts)] })
 }
 
+/** Persiste as duas listas em uma única operação do storage do Chrome. */
+export async function setPermissionLists(allow: string[], deny: string[]): Promise<void> {
+  await chrome.storage.local.set({
+    [ALLOW_KEY]: [...new Set(allow)],
+    [DENY_KEY]: [...new Set(deny)],
+  })
+}
+
 const LOCALE_VALUES = new Set<LocalePreference>(["auto", "pt-BR", "en"])
 
 export async function getLocalePreference(): Promise<LocalePreference | null> {

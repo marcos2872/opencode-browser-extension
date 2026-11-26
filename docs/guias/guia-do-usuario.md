@@ -569,8 +569,8 @@ do offline) e **Ferramentas:** (estado do plugin).
 |---|---|---|
 | **Pasta das conversas do navegador** | `~/.opencode-browser-extensions` | Só lista conversas dessa pasta |
 | **Modelo padrão** (+ variante) | modelo padrão do servidor | Modelo das novas conversas; modelos sem ferramentas aparecem como “(sem tools)” |
-| **Agente padrão** | `build` | Usado quando o agente do navegador está desligado |
-| **Usar o agente `opencode-browser` nas novas sessões** | ligado | Novas conversas nascem no agente que sabe usar o navegador |
+| **Agente das novas conversas** | `opencode-browser` | Fixo na extensão; o seletor permite trocar somente o modelo |
+| Conversas existentes | agente original | Não são alteradas automaticamente |
 | **Mostrar no painel a conversa do grupo de abas que está em foco** | ligado | O painel segue o grupo da aba em foco |
 | **Criar um grupo de abas ao iniciar uma nova conversa** | desligado | O **+** já cria grupo e aba em branco |
 | **Permitir que abas abertas ou anexadas pelo agente venham para frente** | desligado | Ligado, a extensão passa a ativar abas |

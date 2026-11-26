@@ -346,7 +346,7 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       await refreshSessions();
       return { ok: true, snapshot: snapshot(), sessions };
     case "session:new": {
-      const session = await createSession(request.model, request.agent);
+      const session = await createSession(request.model);
       const groupCreated =
         config?.autoGroupNewSessions === true
           ? await ensureSessionGroup(session, request.windowId)
@@ -361,9 +361,6 @@ async function handleUi(request: UiRequest): Promise<UiResponse> {
       return { ok: true, snapshot: snapshot() };
     case "session:model":
       await switchModel(request.model, request.sessionID);
-      return { ok: true, snapshot: snapshot() };
-    case "session:agent":
-      await switchAgent(request.agent, request.sessionID);
       return { ok: true, snapshot: snapshot() };
     case "tabs:attach-current": {
       const [tab] = await chrome.tabs.query({
@@ -649,24 +646,6 @@ async function refreshAgents(): Promise<void> {
   agents = listed.sort((a, b) =>
     (a.name ?? a.id).localeCompare(b.name ?? b.id),
   );
-  if (
-    config.defaultAgent &&
-    !agents.some((agent) => agent.id === config?.defaultAgent)
-  ) {
-    config = { ...config, defaultAgent: undefined };
-    await setConfig(config);
-  }
-  if (!config?.defaultAgent) {
-    const preferred = agents.some((agent) => agent.id === BROWSER_AGENT_ID)
-      ? BROWSER_AGENT_ID
-      : agents.some((agent) => agent.id === "build")
-        ? "build"
-        : undefined;
-    if (preferred) {
-      config = { ...config!, defaultAgent: preferred };
-      await setConfig(config);
-    }
-  }
   broadcastNow();
 }
 
@@ -735,25 +714,19 @@ function pickModel(explicit?: ModelRef): ModelRef | undefined {
     : undefined;
 }
 
-async function createSession(
-  model?: ModelRef,
-  agent?: string,
-): Promise<SessionInfo> {
+async function createSession(model?: ModelRef): Promise<SessionInfo> {
   if (!client) throw new Error(t("background.notConfigured"));
   cancelPendingFollow();
+  if (!agents.some((item) => item.id === BROWSER_AGENT_ID)) {
+    await ensureBrowserAgent();
+    await refreshAgents();
+  }
+  if (!agents.some((item) => item.id === BROWSER_AGENT_ID)) {
+    throw new Error(t("background.browserAgentUnavailable"));
+  }
   const chosen = pickModel(model);
-  const browserAgent =
-    config?.browserAgentDefault !== false &&
-    agents.some((item) => item.id === BROWSER_AGENT_ID)
-      ? BROWSER_AGENT_ID
-      : undefined;
-  const chosenAgent =
-    agent ??
-    browserAgent ??
-    config?.defaultAgent ??
-    agents.find((item) => item.id === "build")?.id;
-  const session = await client.createSession(chosen, chosenAgent);
-  if (!session.agent && chosenAgent) session.agent = chosenAgent;
+  const session = await client.createSession(chosen, BROWSER_AGENT_ID);
+  if (!session.agent) session.agent = BROWSER_AGENT_ID;
   sessions = [session, ...sessions.filter((item) => item.id !== session.id)];
   activeSessionID = session.id;
   await ownedSessions.add(session.id);
@@ -1089,22 +1062,6 @@ async function runCommand(
   } catch (error) {
     handleSendFailure(state, target, optimisticID, error);
   }
-}
-
-async function switchAgent(agent: string, sessionID?: string): Promise<void> {
-  if (!client) throw new Error(t("background.notConfigured"));
-  const target = sessionID ?? activeSessionID;
-  if (target) {
-    await client.switchAgent(target, agent);
-    await ownedSessions.add(target);
-    const session = sessions.find((item) => item.id === target);
-    if (session) session.agent = agent;
-    notifySession(target);
-    return;
-  }
-  config = { ...config!, defaultAgent: agent };
-  await setConfig(config);
-  broadcastNow();
 }
 
 async function sendPrompt(text: string, sessionID?: string): Promise<void> {

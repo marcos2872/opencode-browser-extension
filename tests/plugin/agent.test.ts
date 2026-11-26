@@ -34,11 +34,11 @@ describe("plugin: agente do navegador", () => {
     const content = readFileSync(path, "utf8")
     expect(content.startsWith("---\n")).toBe(true)
     expect(content).toContain("mode: primary")
-    // O agente é distribuído em inglês e responde no idioma do usuário.
-    expect(content).toContain("Answer in the same language as the user's message.")
+    // O agente é distribuído em inglês e usa a skill para o fluxo detalhado.
+    expect(content).toContain("load the `browser-relay` skill")
     expect(content).toContain("permissions:\n  - action: \"*\"")
     expect(content).toContain('action: "browser_*"')
-    expect(content).toContain("browser_tabs_context")
+    expect(content).toContain('resource: "browser-relay"')
   })
 
   it("não sobrescreve edições manuais do agente", () => {

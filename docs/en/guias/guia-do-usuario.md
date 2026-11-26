@@ -574,8 +574,8 @@ being offline) and **Tools:** (plugin state).
 |---|---|---|
 | **Browser conversations folder** | `~/.opencode-browser-extensions` | Only lists conversations from that folder |
 | **Default model** (+ variant) | server default model | Model of new conversations; models without tools appear as “(no tools)” |
-| **Default agent** | `build` | Used when the browser agent is off |
-| **Use the `opencode-browser` agent in new sessions** | on | New conversations start in the agent that knows how to use the browser |
+| **Agent for new conversations** | `opencode-browser` | Fixed by the extension; the selector only changes the model |
+| Existing conversations | Original agent | Not changed automatically |
 | **Show the conversation of the focused tab group in the panel** | on | The panel follows the group of the focused tab |
 | **Create a tab group when starting a new conversation** | off | The **+** already creates a group and a blank tab |
 | **Allow tabs opened or attached by the agent to come to the front** | off | When on, the extension starts activating tabs |

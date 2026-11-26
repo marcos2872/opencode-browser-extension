@@ -110,17 +110,16 @@ outro caminho nas opções, ele tem precedência. Sessões sem `location` contin
 visíveis (defensivo).
 
 Na configuração global do OpenCode (`~/.config/opencode/agents/`), o plugin
-garante o agente `opencode-browser` a partir do template
+garante o agente restrito `opencode-browser` a partir do template
 `plugin/opencode-browser.agent.md`. O arquivo é atualizado por versão
-(`<!-- opencode-browser-agent vN -->`): uma versão antiga é substituída com
-backup `.bak-vN`; um arquivo sem marcador ou já na versão atual é preservado.
-O template atual é **v5** (segurança, ambiente da extensão, abas por origem e
-economia de contexto). Quando o servidor lista esse agente, as novas sessões
-passam a usá-lo (`browserAgentDefault`, ligado por padrão; desligar nas opções
-volta a usar o agente padrão escolhido). Ele restringe as ferramentas a
-`browser_*` e `question` — o agente não lê arquivos, não executa comandos e não
-acessa dados da máquina. Por ser global, ele aparece em todos os projetos do
-OpenCode, não só nas conversas da extensão.
+(`<!-- opencode-browser-agent vN -->`) e uma versão antiga recebe backup
+`.bak-vN`. O template atual é **v6**: mantém os limites de segurança e permite
+carregar a skill `browser-relay`, cujo fluxo detalhado é instalado em
+`~/.config/opencode/skills/`. O agente não lê arquivos, não executa comandos e
+não acessa dados da máquina fora das páginas. Novas sessões da extensão sempre
+usam esse agente; sessões existentes não são alteradas. O painel permite trocar
+o modelo, mas não o agente. Por ser global, o agente também aparece nos projetos
+abertos diretamente no OpenCode.
 
 ### Grupos de abas
 

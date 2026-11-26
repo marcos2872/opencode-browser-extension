@@ -67,11 +67,10 @@ chamado `opencode-browser-ui` (SW → páginas).
 | `unpair`              | —                       | Remove token e zera o estado          |
 | `models:refresh`      | —                       | Recarrega o catálogo                  |
 | `sessions:list`       | —                       | Recarrega as sessões                  |
-| `session:new`         | `model?`, `agent?`, `windowId?` | Cria sessão; `windowId` define onde o grupo automático nasce |
+| `session:new`         | `model?`, `windowId?` | Cria sessão com o agente fixo do navegador; `windowId` define onde o grupo automático nasce |
 | `session:select`      | `id`                    | Seleciona e hidrata                   |
 | `session:delete`      | `id`                    | Remove a sessão                       |
 | `session:model`       | `model`, `sessionID?`   | Troca o modelo da sessão              |
-| `session:agent`       | `agent`, `sessionID?`   | Troca o agente da sessão              |
 | `tabs:attach-current` | `sessionID?`            | Anexa a aba ativa ao grupo (recusa aba de outra janela) |
 | `tabs:list`           | `sessionID`             | Lista abas no contexto da sessão      |
 | `tabs:detach`         | `sessionID`, `tabID`    | Remove a aba do contexto sem fechá-la |

@@ -6,6 +6,7 @@ import {
   setAllowList,
   setConfig,
   setDenyList,
+  setPermissionLists,
 } from "../../src/shared/storage"
 
 describe("shared/storage", () => {
@@ -43,6 +44,13 @@ describe("shared/storage", () => {
 
     await setDenyList(["banco.com", "banco.com"])
     await expect(getDenyList()).resolves.toEqual(["banco.com"])
+  })
+
+  it("grava listas de permitidos e bloqueados juntas", async () => {
+    await setPermissionLists(["example.com", "example.com"], ["private.test"])
+
+    await expect(getAllowList()).resolves.toEqual(["example.com"])
+    await expect(getDenyList()).resolves.toEqual(["private.test"])
   })
 
   it("retorna listas vazias quando os valores são inválidos", async () => {

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Instala a extensão OpenCode Browser e o plugin do relay.
+# Instala a extensão OpenCode Browser, o relay, o agente e a skill browser-relay.
 #
 # Uso (na raiz do repositório ou de qualquer lugar):
 #   ./scripts/install.sh
 #
 # O script valida Node.js 20+, npm e OpenCode v2 antes de instalar, buildar,
-# copiar o plugin para ~/.config/opencode/plugins e reiniciar o serviço.
+# instalar o relay, o agente e a skill no OpenCode e reiniciar o serviço.
 # Requer Linux ou macOS.
 
 set -euo pipefail
@@ -87,9 +87,9 @@ step "Gerando o build da extensão (npm run build)"
 npm run build || fail "Falha no build. Veja o erro acima."
 ok "Build gerado em ${ROOT}/dist"
 
-step "Instalando o plugin no OpenCode (npm run install:plugin)"
+step "Instalando relay, agente e skill no OpenCode (npm run install:plugin)"
 npm run install:plugin || fail "Falha ao instalar o plugin."
-ok "Plugin copiado para a pasta de plugins do OpenCode."
+ok "Relay, agente e skill browser-relay instalados no OpenCode."
 
 step "Reiniciando o serviço do OpenCode (opencode service restart)"
 if ! "$OPENCODE" service restart; then
