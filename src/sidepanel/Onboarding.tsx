@@ -101,8 +101,12 @@ export function Onboarding({ relay, error, busy, onPair, onReconnect }: Props) {
             </button>
           </div>
           <div className="status-line">
-            <span className={`dot ${relay.connected ? "ok" : "warn"}`} />
-            {relay.connected ? t("onboarding.plugin.connected") : describeRelay(relay)}
+            <div className="status-detail">
+              <span className={`dot ${relay.connected ? "ok" : "warn"}`} />
+              <span className="status-label">
+                {relay.connected ? t("onboarding.plugin.connected") : describeRelay(relay)}
+              </span>
+            </div>
             <button className="btn small" onClick={onReconnect}>
               <RefreshIcon size={13} /> {t("onboarding.plugin.reconnect")}
             </button>

@@ -244,9 +244,11 @@ describe("sidepanel/Composer", () => {
     render(<Harness />)
     expect(screen.getByText("Enter envia · Shift+Enter quebra linha")).toBeInTheDocument()
     expect(screen.getByRole("status")).toHaveTextContent("ferramentas offline")
+    expect(screen.getByRole("textbox", { name: "Mensagem para o agente" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Enviar (Enter)" })).toBeDisabled()
   })
 
-  it("troca a dica de teclado por contexto e custo da sessão", () => {
+  it("mantém a dica de teclado junto ao contexto e custo da sessão", () => {
     render(
       <Controlled
         value=""
@@ -261,9 +263,7 @@ describe("sidepanel/Composer", () => {
 
     const line = screen.getByText(/Contexto 12\.000 \(6%\)/)
     expect(line).toHaveTextContent("Sessão US$ 0,0300")
-    expect(
-      screen.queryByText("Enter envia · Shift+Enter quebra linha"),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText("Enter envia · Shift+Enter quebra linha")).toBeInTheDocument()
   })
 
   it("mostra só os tokens quando o modelo não informa a janela", () => {

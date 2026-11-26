@@ -116,6 +116,7 @@ export function Composer({
           ref={ref}
           value={value}
           rows={1}
+          aria-label={t("composer.inputLabel")}
           placeholder={
             busy ? t("composer.placeholder.busy") : blockedReason ?? t("composer.placeholder.idle")
           }
@@ -131,7 +132,12 @@ export function Composer({
         />
         <div className="composer-actions">
           {busy ? (
-            <button className="send-btn" onClick={onStop} title={t("composer.stop")}>
+            <button
+              className="send-btn"
+              onClick={onStop}
+              title={t("composer.stop")}
+              aria-label={t("composer.stop")}
+            >
               <StopIcon size={14} />
             </button>
           ) : (
@@ -140,6 +146,7 @@ export function Composer({
               onClick={onSend}
               disabled={disabled || Boolean(blockedReason) || !value.trim()}
               title={blockedReason ?? t("composer.send")}
+              aria-label={blockedReason ?? t("composer.send")}
             >
               <SendIcon size={14} />
             </button>
@@ -147,11 +154,12 @@ export function Composer({
         </div>
       </div>
       <div className="composer-hint">
+        <span className="composer-shortcut">{t("composer.hint")}</span>
         <span
           className="composer-usage"
           title={statsLabel ? t("composer.usageHint") : undefined}
         >
-          {statsLabel || t("composer.hint")}
+          {statsLabel}
         </span>
         <span
           className="status"

@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import type { PermissionDecision, PermissionRequest } from "../shared/types"
 import { CheckIcon, XIcon } from "./icons"
 import { useI18n } from "../shared/i18n/react"
@@ -25,20 +25,54 @@ interface Props {
 
 export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
   const { t } = useI18n()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const onDecisionRef = useRef(onDecision)
+
   useEffect(() => {
+    onDecisionRef.current = onDecision
+  }, [onDecision])
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    headingRef.current?.focus()
+
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
-        onDecision({ allowed: false })
+        onDecisionRef.current({ allowed: false })
       }
       if (event.key === "Enter" && !(event.target instanceof HTMLButtonElement)) {
         event.preventDefault()
-        onDecision({ allowed: true, scope: "once" })
+        onDecisionRef.current({ allowed: true, scope: "once" })
+      }
+      if (event.key === "Tab") {
+        const focusable = Array.from(
+          dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ) ?? [],
+        )
+        const first = focusable[0]
+        const last = focusable.at(-1)
+        if (!first || !last) {
+          event.preventDefault()
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
       }
     }
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [onDecision])
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [])
 
   const isPlan = request.kind === "plan"
   const isDomain = request.kind === "domain"
@@ -47,13 +81,14 @@ export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       className="permission-card"
       role="dialog"
       aria-modal="true"
       aria-label={t("permission.title")}
     >
       <div>
-        <h3>{request.title}</h3>
+          <h3 ref={headingRef} tabIndex={-1}>{request.title}</h3>
         <p className="sub">
           {sessionLabel
             ? t("permission.session", { label: sessionLabel })
@@ -119,18 +154,23 @@ export function PermissionCard({ request, sessionLabel, onDecision }: Props) {
           </>
         ) : (
           <>
-            <button className="btn primary" onClick={() => onDecision({ allowed: true, scope: "once" })}>
-              {t("permission.allowOnce")} <span className="status">Enter</span>
-            </button>
-            <button className="btn" onClick={() => onDecision({ allowed: true, scope: "site" })}>
-              {t("permission.allowSession")}
-            </button>
-            <button className="btn" onClick={() => onDecision({ allowed: true, scope: "always" })}>
-              {t("permission.allowAlways", { host: request.host ?? "" })}
-            </button>
-            <button className="btn danger" onClick={() => onDecision({ allowed: false })}>
-              {t("permission.denyAction")} <span className="status">Esc</span>
-            </button>
+            <div className="permission-main-actions">
+              <button className="btn primary" onClick={() => onDecision({ allowed: true, scope: "once" })}>
+                {t("permission.allowOnce")} <span className="status">Enter</span>
+              </button>
+              <button className="btn danger" onClick={() => onDecision({ allowed: false })}>
+                {t("permission.denyAction")} <span className="status">Esc</span>
+              </button>
+            </div>
+            <div className="permission-scope-actions">
+              <span className="permission-scope-label">{t("permission.scopeLabel")}</span>
+              <button className="btn" onClick={() => onDecision({ allowed: true, scope: "site" })}>
+                {t("permission.allowSession")}
+              </button>
+              <button className="btn" onClick={() => onDecision({ allowed: true, scope: "always" })}>
+                {t("permission.allowAlways", { host: request.host ?? "" })}
+              </button>
+            </div>
           </>
         )}
       </div>
